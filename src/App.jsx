@@ -752,6 +752,11 @@ const CSS = `
 .planttl { font-weight:700; font-size:14px; margin-bottom:10px; }
 .planrow { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; flex-wrap:nowrap; }
 .planrow:last-child { border-bottom:none; }
+.colpicker { display:flex; flex-wrap:wrap; gap:10px; padding:4px 0; }
+.colbtn { width:46px; height:46px; border-radius:12px; flex:none; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; border:2px solid rgba(255,255,255,.1); transition:transform .1s; }
+.colbtn:active { transform:scale(.9); }
+.colbtn.on { border-color:transparent; }
+.colcheck { font-size:20px; line-height:1; }
 .planrow .pld { font-family:'Barlow Condensed'; font-weight:700; flex:none; white-space:nowrap; color:var(--muted); font-variant-numeric:tabular-nums; }
 .pldInput { font-family:'Barlow Condensed'; font-weight:700; font-size:14px; color:var(--chalk); background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:4px 8px; flex:none; cursor:pointer; }
 .pldInput::-webkit-calendar-picker-indicator { filter:invert(0.7); cursor:pointer; }
@@ -2104,12 +2109,23 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
           </div>
 
           <div className="field"><label>Farbe der Griffe</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="z. B. lila, rot, blau…" autoFocus={isNew} />
+            <div className="colpicker">
+              {[["lila","#7B3FC8"],["pink","#D4287A"],["blau","#1A6FD4"],["rot","#D93025"],["grün","#1E9E48"],["gelb","#F5C800"],["holz","#9A5020"],["schwarz","#181C22"],["weiß","#EEEEE4"]].map(([cname, hex]) => {
+                const active = (name || "").toLowerCase() === cname;
+                const isLight = cname === "gelb" || cname === "weiß";
+                return (
+                  <button key={cname} type="button" className={"colbtn" + (active ? " on" : "")} style={{ background: hex, color: isLight ? "#111" : "#fff", boxShadow: active ? `0 0 0 3px ${hex}, 0 0 0 5px var(--bg)` : "none" }} onClick={() => setName(cname)} title={cname}>
+                    {active && <span className="colcheck">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {name && <div className="phint" style={{ marginTop: 6 }}>Ausgewählt: <b>{name}</b></div>}
           </div>
 
           <div className="field">
             <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>Routenname <button type="button" className="reroll" onClick={() => setNick(genName(uid(), grade))}>🎲 neu würfeln</button></label>
-            <input type="text" value={nick} onChange={e => setNick(e.target.value)} placeholder="Name der Route" />
+            <input type="text" value={nick} onChange={e => setNick(e.target.value)} placeholder="Name der Route" autoFocus={isNew} />
             <div className="phint">Wird automatisch aus Farbe & Grad gewürfelt — kannst du frei ändern.</div>
           </div>
 
