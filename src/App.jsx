@@ -244,75 +244,284 @@ const GNOUN_EN = ["Rockers", "Crushers", "Climbers", "Crimps", "Slopers", "Dynos
 function genGroupName(lang) { const en = (lang || LANG) === "en"; return en ? `The ${rnd(GADJ_EN)} ${rnd(GNOUN_EN)}` : `Die ${rnd(GADJ_DE)} ${rnd(GNOUN_DE)}`; }
 
 /* ---- große Emoji-Pools (≥1000), getrennt für Gruppen vs. Profil ---- */
-function buildEmojiPool(ranges) { const a = []; for (const [s, e] of ranges) for (let c = s; c <= e; c++) { try { a.push(String.fromCodePoint(c)); } catch (e) {} } return a; }
-const ALL_EMOJI = buildEmojiPool([[0x1F300, 0x1F5FF], [0x1F680, 0x1F6FF], [0x1F900, 0x1F9FF], [0x1FA70, 0x1FAFF], [0x1F600, 0x1F64F], [0x2600, 0x26FF], [0x2700, 0x27BF], [0x2B00, 0x2BFF], [0x1F000, 0x1F0FF]]);
-const EMOJI_GROUP = ALL_EMOJI.filter((_, i) => i % 2 === 0);
-const EMOJI_PROFILE = ALL_EMOJI.filter((_, i) => i % 2 === 1);
+// ── Kuratierte Emoji-Listen (alle getestet, keine defekten Zeichen) ──────────
+// Starter: 100 Emojis für alle von Anfang an
+// ── Emoji Pools ──────────────────────────────────────────────────────────
+// Starter: 100 Emojis — immer verfügbar
+const EMOJI_STARTER = [
+  // Klettern & Berg & Natur
+  "🧗","🏔","⛰️","🪨","🏕","🌄","🌅","🌊","🌈","🌟",
+  // Energie & Feuer
+  "🔥","💥","✨","⚡","💫","❄️","🌙","☀️","🌪","🌀",
+  // Sport & Sieg
+  "🏆","🥇","🥈","🥉","🎯","🎖","🏅","💪","🤜","👊",
+  // Tiere stark
+  "🦁","🐯","🦊","🐺","🦝","🐻","🐼","🦅","🦉","🦋",
+  // Tiere Wasser & Luft
+  "🐬","🦈","🦑","🐙","🦜","🐧","🦩","🦢","🐝","🦋",
+  // Essen witzig
+  "🍕","🍔","🌮","🍜","🍣","🍦","🎂","🍩","☕","🧃",
+  // Sport
+  "⚽","🏀","🏈","🎾","🏐","🏉","🎱","🏓","🥊","🎿",
+  // Abenteuer
+  "🚀","✈️","🏎","⛵","🛸","🎢","🎡","🎪","🪂","🏄",
+  // Musik
+  "🎸","🎹","🎺","🎻","🥁","🎷","🎵","🎶","🎤","🎧",
+  // Magie
+  "💎","🔮","🪄","🧲","🔭","🌍","🗺","🧭","⚓","🎃",
+];
 
-/* ============================ Achievements ============================ */
+// Wave 1: +60 ab 50 Ach-Pts (~12 Anfänger-Sessions / 6 Gut-Sessions)
+const EMOJI_WAVE1 = [
+  // Drachen & Fantasie
+  "🐲","🦄","🐉","🦕","🦖","🦎","🐍","👻","🧟","🧛",
+  // Blumen & Pflanzen
+  "🌵","🌴","🌿","🍀","🌸","🌺","🌻","🌹","🌷","🌼",
+  // Früchte
+  "🍎","🍊","🍋","🍇","🍓","🍑","🥭","🍍","🥥","🍄",
+  // Wassersport & Action
+  "🤿","🏊","🚣","🛶","🏋️","🤸","🤺","🥋","🏇","⛷️",
+  // Feier
+  "🎊","🎉","🎆","🎇","🧨","🎋","🎍","🎎","🎏","🎐",
+  // Mehr Tiere
+  "🦘","🦏","🐘","🦒","🦓","🐊","🦚","🦆","🐦","🕊️",
+];
+
+// Wave 2: +60 ab 150 Ach-Pts (~45 Anfänger / 23 Gut / 17 Pro Sessions)
+const EMOJI_WAVE2 = [
+  // Games & Tech
+  "🤖","👾","🎮","🕹️","🃏","🎲","🧩","🎳","🎰","🎭",
+  // Gebäude & Orte
+  "🏰","🗼","🗽","⛩️","🕌","⛪","🏯","🛕","🗿","🏛",
+  // Landschaften
+  "🌋","🏜","🏝","🏞","🌁","🌃","🌆","🌇","🌉","🌌",
+  // Fantasy Wesen
+  "🦸","🦹","🧙","🧝","🧜","🧚","🧞","🧿","👁","💀",
+  // Bäume & Natur
+  "🍁","🍂","🍃","🪴","🌾","☘️","🌱","🌲","🌳","🪵",
+  // Tiere selten
+  "🦦","🦥","🐿","🦔","🦬","🐃","🐎","🦙","🐐","🦌",
+];
+
+// Wave 3: +60 ab 300 Ach-Pts (~89 Anfänger / 45 Gut / 34 Pro Sessions)
+const EMOJI_WAVE3 = [
+  // Wissenschaft
+  "⚗️","🔬","🧪","🧬","💊","🩺","🩻","🧠","🫀","🫁",
+  // Tech & Digital
+  "🌐","📡","🛰","💻","📱","⌚","🎙","📷","📸","🎬",
+  // Abenteuer & Waffen
+  "💣","⚔️","🛡","🔱","⚜️","🏴‍☠️","🚩","☠️","🦴","👣",
+  // Weltraum
+  "🪐","🌠","☄️","🌑","🌒","🌓","🌔","🌕","🔭","🛸",
+  // Meer & Tiefsee
+  "🐚","🪸","🦭","🐳","🦀","🦞","🦐","🐡","🐠","🐟",
+  // Mehr Komisches
+  "🫧","🪩","🎪","🎠","🎡","🎢","🎯","🎳","🎲","🧸",
+];
+
+// Wave 4: +60 ab 500 Ach-Pts (~134 Anfänger / 67 Gut / 50 Pro Sessions)
+const EMOJI_WAVE4 = [
+  // Süßes Essen
+  "🧁","🍰","🍫","🍬","🍭","🍮","🧇","🥞","🧆","🥐",
+  // Fahrzeuge
+  "🚁","🛩","🚂","🚢","🛳","🛥","🚤","⛴","🛟","⚓",
+  // Kunst & Kreativität
+  "🎨","🖼","🖌","🖍","✏️","📝","📚","📖","🗓","📌",
+  // Mehr Pflanzen
+  "💐","🌹","🥀","🌷","🪷","🌻","🌼","🌺","🌸","🌱",
+  // Energie & Licht
+  "🌡","🧲","🔋","💡","🔦","🕯","🪔","🏮","🔆","🌈",
+  // Tiere exotisch
+  "🦋","🐛","🐌","🪲","🪳","🦗","🪰","🐜","🐝","🪱",
+];
+
+// Wave 5: +60 ab 700 Ach-Pts (~178 Anfänger / 89 Gut / 67 Pro Sessions)
+const EMOJI_WAVE5 = [
+  // Neue 2023/24 Emojis
+  "🫨","🪬","🪤","🪆","🪅","🎑","🀄","🫶","🤝","🫂",
+  // Herzen & Gefühle
+  "🩷","🩶","🩵","💜","💙","💚","💛","🧡","❤️","🖤",
+  // Essen Asiatisch
+  "🍱","🥟","🦪","🍤","🍙","🍘","🍥","🥮","🍡","🧋",
+  // Mehr Sport
+  "🏂","🏌️","🤼","🤾","🏊","🚴","🛹","🛷","🥌","🎣",
+  // Mehr Natur
+  "🦠","🧫","🧬","🔬","🌡","🧪","🔭","🌍","🌎","🌏",
+  // Lifestyle
+  "🛋","🪑","🚪","🪟","🧳","👜","👝","🎒","💼","🪮",
+];
+
+// Wave 6: +60 ab 900 Ach-Pts (~223 Anfänger / 112 Gut / 84 Pro Sessions)
+const EMOJI_WAVE6 = [
+  // Exklusiv & Selten — die coolsten
+  "👑","💯","🔱","🎭","🃏","🧧","🎴","🎑","🀄","🎖",
+  "🦄","🐲","🐉","🦕","🦖","🦅","🦁","🐯","🦊","🦝",
+  "🌋","🗻","🏔","🏕","🏖","🏜","🏝","🏞","🌌","🌠",
+  "💎","🔮","🪄","✨","💥","🔥","⭐","🌟","💫","⚡",
+  // Ultra rare
+  "🧿","☯️","☮️","✡️","🕎","🔯","🪬","🧲","🌀","💠",
+  "🏹","🗡","⚔️","🛡","🪃","🔱","⚜️","🎯","💣","🎪",
+];
+
+function getUnlockedEmojis(achScore, isAdmin = false) {
+  if (isAdmin) {
+    // Admin bekommt immer alles
+    return [...new Set([...EMOJI_STARTER,...EMOJI_WAVE1,...EMOJI_WAVE2,...EMOJI_WAVE3,...EMOJI_WAVE4,...EMOJI_WAVE5,...EMOJI_WAVE6])];
+  }
+  return [...new Set([
+    ...EMOJI_STARTER,
+    ...(achScore >= 50   ? EMOJI_WAVE1 : []),
+    ...(achScore >= 150  ? EMOJI_WAVE2 : []),
+    ...(achScore >= 300  ? EMOJI_WAVE3 : []),
+    ...(achScore >= 500  ? EMOJI_WAVE4 : []),
+    ...(achScore >= 700  ? EMOJI_WAVE5 : []),
+    ...(achScore >= 900  ? EMOJI_WAVE6 : []),
+  ])];
+}
+function getNextEmojiUnlock(achScore) {
+  const waves = [
+    { at: 50,  label: "Wave 1", hint: "~6–12 Sessions" },
+    { at: 150, label: "Wave 2", hint: "~20–45 Sessions" },
+    { at: 300, label: "Wave 3", hint: "~35–90 Sessions" },
+    { at: 500, label: "Wave 4", hint: "~50–135 Sessions" },
+    { at: 700, label: "Wave 5", hint: "~70–180 Sessions" },
+    { at: 900, label: "Wave 6", hint: "~85–225 Sessions" },
+  ];
+  return waves.find(w => achScore < w.at) || null;
+}
 function buildAchievements(lang) {
   const en = lang === "en";
   const A = []; let id = 0;
-  const push = (cat, icon, name, desc, target, key, pts) => A.push({ id: "a" + (id++), cat, icon, name, desc, target, key, pts });
-  const COLORS = ["blau", "grün", "rot", "gelb", "lila", "schwarz", "weiß", "pink", "orange", "holz"];
-  const CEN = { blau: "blue", grün: "green", rot: "red", gelb: "yellow", lila: "purple", schwarz: "black", weiß: "white", pink: "pink", orange: "orange", holz: "wood" };
-  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-  const cName = c => en ? cap(CEN[c]) : cap(c);          // display color (capitalized)
-  const cLow = c => en ? CEN[c] : c;                       // color in description
-  const cAdj = c => en ? CEN[c] : c + "e";                 // color adjective before "routes"
-  const tier = (arr, i, f) => arr[i] || `${f} ${i + 1}`;
-  const pts = n => Math.min(120, Math.max(5, Math.round(Math.sqrt(n) * 4)));
-  const L = { Gesamt: en ? "Total" : "Gesamt", Flash: "Flash", Punkte: en ? "Points" : "Punkte", Kombi: en ? "Combo" : "Kombi", Tagesform: en ? "Day form" : "Tagesform", Tagesfarbe: en ? "Day color" : "Tagesfarbe", Tagesgrad: en ? "Day grade" : "Tagesgrad", Spezial: en ? "Special" : "Spezial", Treue: en ? "Loyalty" : "Treue", Straßen: en ? "Straights" : "Straßen", Mehrling: en ? "Multiples" : "Mehrling", Ausdauer: en ? "Endurance" : "Ausdauer" };
-  const catGrade = g => en ? `Grade ${g}` : `Grad ${g}er`;
-  const catColor = c => en ? `Color ${cName(c)}` : `Farbe ${cName(c)}`;
-  const catWall = wn => en ? `Wall ${wn}` : `Wand ${wn}`;
+  const push = (cat, icon, name, desc, target, key, p) => A.push({ id: "a"+(id++), cat, icon, name, desc, target, key, pts: p });
+  const COLORS = ["blau","grün","rot","gelb","lila","schwarz","weiß","pink","orange","holz","violett","braun","türkis"];
+  const CEN = {blau:"blue",grün:"green",rot:"red",gelb:"yellow",lila:"purple",schwarz:"black",weiß:"white",pink:"pink",orange:"orange",holz:"wood",violett:"violet",braun:"brown",türkis:"turquoise"};
+  const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+  const cName = c => en ? cap(CEN[c]||c) : cap(c);
+  const tier = (arr, i, f) => arr[i] || `${f} ${i+1}`;
+  // Scaling: log-based, capped, calibrated to profiles
+  const pts = n => Math.min(150, Math.max(5, Math.round(Math.log2(n+1)*9+3)));
+  const L = {Gesamt:en?"Total":"Gesamt",Flash:"Flash",Punkte:en?"Points":"Punkte",Kombi:en?"Combo":"Kombi",Tagesform:en?"Day form":"Tagesform",Spezial:en?"Special":"Spezial",Treue:en?"Loyalty":"Treue",Straßen:en?"Straights":"Straßen",Mehrling:en?"Multiples":"Mehrling",Ausdauer:en?"Endurance":"Ausdauer"};
 
-  const TOTAL = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1500, 2000];
-  const TNAMES = ["Erster Zug", "Aufgewärmt", "Dabei", "Stammgast", "Eifrig", "Fleißig", "Vielkletterer", "Ehrgeizig", "Routenfresser", "Halbhundert", "Unermüdlich", "Wandfresser", "Hundert!", "Besessen", "Routen-Veteran", "Zweihundert", "Hartnäckig", "Dreihundert", "Routen-Maschine", "Fünfhundert", "Wandlegende", "Siebenfünfzig", "Tausendsassa", "Übermensch", "Boulder-Gott"];
-  const TNAMES_EN = ["First Move", "Warmed Up", "On Board", "Regular", "Keen", "Diligent", "Prolific", "Ambitious", "Route Muncher", "Half Century", "Tireless", "Wall Eater", "Hundred!", "Obsessed", "Route Veteran", "Two Hundred", "Persistent", "Three Hundred", "Route Machine", "Five Hundred", "Wall Legend", "Seven-Fifty", "Jack of All", "Superhuman", "Boulder God"];
-  TOTAL.forEach((n, i) => push(L.Gesamt, "🧗", tier(en ? TNAMES_EN : TNAMES, i, en ? "Collector" : "Sammler"), en ? `Climb ${n} routes in total` : `Schaffe ${n} Routen insgesamt`, n, "tops", pts(n)));
-  const FL = [1, 3, 5, 10, 15, 25, 40, 60, 100, 150, 200, 300, 500, 750, 1000];
-  const FNAMES = ["Blitzstart", "Schneller Finger", "Flash-Talent", "Schnellzünder", "Reflexe", "Flink", "Flash-Profi", "Im Flow", "Flash-Hunderter", "Lichtgeschwindigkeit", "Blitzmeister", "Dreihundert Blitze", "Flash-Maschine", "Überschall", "Flash-Legende"];
-  const FNAMES_EN = ["Quickstart", "Fast Finger", "Flash Talent", "Fast Fuse", "Reflexes", "Nimble", "Flash Pro", "In Flow", "Flash Hundred", "Light Speed", "Flash Master", "Three Hundred Flashes", "Flash Machine", "Supersonic", "Flash Legend"];
-  FL.forEach((n, i) => push(L.Flash, "⚡", tier(en ? FNAMES_EN : FNAMES, i, "Flash"), en ? `Flash ${n} routes in total` : `Flashe ${n} Routen insgesamt`, n, "flashes", pts(n) + 5));
-  const PTS = [5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 1500, 2000, 3000];
-  PTS.forEach((n, i) => push(L.Punkte, "💯", en ? `Point Hunter ${i + 1}` : `Punktejäger ${i + 1}`, en ? `Reach ${n} points` : `Erreiche ${n} Punkte`, n, "points", pts(n)));
-  const GT = [5, 10, 20, 35, 50, 75, 100, 150, 200, 300];
-  for (let g = 1; g <= 8; g++) GT.forEach(n => push(catGrade(g), "🔢", en ? `Grade ${g} Hunter ${n}` : `${g}er-Jäger ${n}`, en ? `Climb ${n} routes at grade ${g}` : `Schaffe ${n} Routen im Grad ${g}`, n, `grade:${g}:t`, pts(n)));
-  const GF = [3, 5, 10, 20, 35, 50];
-  for (let g = 1; g <= 8; g++) GF.forEach(n => push(catGrade(g), "🔢", en ? `Grade ${g} Flash ${n}` : `${g}er-Blitz ${n}`, en ? `Flash ${n} routes at grade ${g}` : `Flashe ${n} Routen im Grad ${g}`, n, `grade:${g}:f`, pts(n) + 5));
-  const CT = [5, 10, 20, 35, 50, 75, 100, 150, 200];
-  COLORS.forEach(c => CT.forEach(n => push(catColor(c), "🎨", en ? `${cName(c)} Hunter ${n}` : `${cName(c)}-Jäger ${n}`, en ? `Climb ${n} ${cAdj(c)} routes` : `Schaffe ${n} ${cAdj(c)} Routen`, n, `color:${c}:t`, pts(n))));
-  const CF = [3, 5, 10, 20, 35, 50, 75];
-  COLORS.forEach(c => CF.forEach(n => push(catColor(c), "🎨", en ? `${cName(c)} Flash ${n}` : `${cName(c)}-Blitz ${n}`, en ? `Flash ${n} ${cAdj(c)} routes` : `Flashe ${n} ${cAdj(c)} Routen`, n, `color:${c}:f`, pts(n) + 5)));
-  const WALLS = ["v", "h", "tb", "pl", "wkw"]; const WN = { v: "Block vorne", h: "Block hinten", tb: "Training & Bug", pl: "Platte", wkw: "Wettkampfwand" }; const WNEN = { v: "Front block", h: "Back block", tb: "Training & Bug", pl: "Slab", wkw: "Comp wall" };
-  const wn = w => en ? WNEN[w] : WN[w];
-  const WT = [10, 25, 50, 75, 100, 150, 200, 300];
-  WALLS.forEach(w => WT.forEach(n => push(catWall(wn(w)), "🧱", `${wn(w)} ×${n}`, en ? `Climb ${n} routes on: ${wn(w)}` : `Schaffe ${n} Routen an: ${wn(w)}`, n, `wall:${w}:t`, pts(n))));
-  const GCT = [3, 10, 25, 50];
-  for (let g = 1; g <= 8; g++) COLORS.forEach(c => GCT.forEach(n => push(L.Kombi, "🎯", en ? `${cName(c)} G${g} ×${n}` : `${cName(c)} ${g}er ×${n}`, en ? `Climb ${n} ${cLow(c)} grade-${g} routes` : `Schaffe ${n} ${cAdj(c)} ${g}er`, n, `gc:${g}:${c}:t`, pts(n) + 3)));
-  const GCF = [3, 10, 25];
-  for (let g = 2; g <= 8; g++) COLORS.forEach(c => GCF.forEach(n => push(L.Kombi, "🎯", en ? `${cName(c)} G${g} Flash ×${n}` : `${cName(c)} ${g}er-Blitz ×${n}`, en ? `Flash ${n} ${cLow(c)} grade-${g} routes` : `Flashe ${n} ${cAdj(c)} ${g}er`, n, `gc:${g}:${c}:f`, pts(n) + 8)));
-  [3, 5, 10, 15, 20, 25, 30, 40, 50].forEach(n => push(L.Tagesform, "📅", en ? `Day Form ${n}` : `Tagesform ${n}`, en ? `Climb ${n} routes in a single day` : `Schaffe ${n} Routen an einem Tag`, n, "maxDayTops", pts(n) + 5));
-  [3, 5, 10, 15, 20].forEach(n => push(L.Tagesform, "📅", en ? `Flash Day ${n}` : `Blitztag ${n}`, en ? `Flash ${n} routes in a single day` : `Flashe ${n} Routen an einem Tag`, n, "maxDayFlashes", pts(n) + 8));
-  COLORS.forEach(c => [3, 5, 10, 15, 20].forEach(n => push(L.Tagesfarbe, "🎨", en ? `${n}× ${cName(c)} in a day` : `${n}× ${cName(c)} an einem Tag`, en ? `Climb ${n} ${cAdj(c)} routes in a day` : `Schaffe ${n} ${cAdj(c)} Routen an einem Tag`, n, `maxColorDay:${c}`, pts(n) + 6)));
-  for (let g = 1; g <= 8; g++) [3, 5, 10, 15].forEach(n => push(L.Tagesgrad, "📈", en ? `${n}× G${g} in a day` : `${n}× ${g}er an einem Tag`, en ? `Climb ${n} grade-${g} routes in a day` : `Schaffe ${n} ${g}er an einem Tag`, n, `maxGradeDay:${g}`, pts(n) + 6));
-  [1, 2, 3, 5, 10].forEach((n, i) => push(L.Spezial, "🌈", tier(en ? ["Rainbow Day", "Double Rainbow", "Rainbow Collector", "Rainbow Pro", "Rainbow Legend"] : ["Regenbogen-Tag", "Doppel-Regenbogen", "Regenbogen-Sammler", "Regenbogen-Profi", "Regenbogen-Legende"], i, "Rainbow"), en ? `On ${n} day(s), climb a blue, green, red, yellow and purple route each` : `Schaffe an ${n} Tag(en) je eine blaue, grüne, rote, gelbe und lila Route`, n, "rainbowDays", 40 + i * 15));
-  [1, 2, 3, 5].forEach((n, i) => push(L.Spezial, "🌈", en ? `Grade Collector Day ${n > 1 ? n : ""}`.trim() : `Grad-Sammler-Tag ${n > 1 ? n : ""}`.trim(), en ? `On ${n} day(s), climb all grades 1–8` : `Schaffe an ${n} Tag(en) alle Grade 1–8`, n, "allGradeDays", 60 + i * 20));
-  const STR = en ? [["Small Straight", 4, 50], ["Medium Straight", 5, 70], ["Big Straight", 6, 95], ["Long Straight", 7, 120], ["Perfect Straight", 8, 150]] : [["Kleine Straße", 4, 50], ["Mittlere Straße", 5, 70], ["Große Straße", 6, 95], ["Lange Straße", 7, 120], ["Perfekte Straße", 8, 150]];
-  STR.forEach(([nm, k, p]) => push(L.Straßen, "🛤️", nm, en ? `In one day, climb grades 1 to ${k}` : `Schaffe an einem Tag die Grade 1 bis ${k}`, k, "maxFrom1", p));
-  const RUN = en ? [["Four Run", 4, 45], ["Five Run", 5, 65], ["Six Run", 6, 90]] : [["Vierer-Lauf", 4, 45], ["Fünfer-Lauf", 5, 65], ["Sechser-Lauf", 6, 90]];
-  RUN.forEach(([nm, k, p]) => push(L.Straßen, "🛤️", nm, en ? `In one day, climb ${k} consecutive grades` : `Schaffe an einem Tag ${k} aufeinanderfolgende Grade`, k, "maxRun", p));
-  const MUL = en ? [["Triple", 3, 35], ["Quad", 4, 50], ["Quintuple", 5, 70], ["Sextuple", 6, 95], ["Septuple", 7, 120], ["Octuple", 8, 150]] : [["Drilling", 3, 35], ["Vierling", 4, 50], ["Fünfling", 5, 70], ["Sechsling", 6, 95], ["Siebenling", 7, 120], ["Achtling", 8, 150]];
-  MUL.forEach(([nm, k, p]) => push(L.Mehrling, "🎲", nm, en ? `In one day, climb ${k} routes of the same grade` : `Schaffe an einem Tag ${k} Routen im selben Grad`, k, "maxOfAKind", p));
-  [1, 3, 5, 10, 15, 25, 50, 75, 100, 150, 200].forEach((n, i) => push(L.Treue, "🔥", tier(en ? ["First Day", "Returner", "Regular", "Loyal Soul", "Half Month", "Routine", "Die-hard", "Frequenter", "Hundred Days", "Addicted", "Life's Work"] : ["Erster Tag", "Wiederkehrer", "Stammkunde", "Treuer Geist", "Halbmonat", "Routine", "Eingefleischt", "Dauergast", "Hundert Tage", "Süchtig", "Lebensaufgabe"], i, en ? "Loyalty" : "Treue"), en ? `Climb on ${n} different days` : `Klettere an ${n} verschiedenen Tagen`, n, "distinctDays", pts(n * 3)));
-  // Ausdauer / Konsistenz
-  [3, 5, 8, 10, 15, 20, 30, 52].forEach(n => push(L.Ausdauer, "⏳", en ? `${n} weeks in a row` : `${n} Wochen in Folge`, en ? `Climb at least once a week for ${n} weeks straight` : `Klettere in ${n} aufeinanderfolgenden Wochen mindestens 1×`, n, "weekStreak1", pts(n * 4) + 10));
-  [2, 3, 4, 6, 8, 12].forEach(n => push(L.Ausdauer, "⏳", en ? `2×/week · ${n} weeks` : `2×/Woche · ${n} Wochen`, en ? `Climb at least twice a week for ${n} weeks straight` : `Klettere in ${n} aufeinanderfolgenden Wochen mindestens 2×`, n, "weekStreak2", pts(n * 6) + 15));
-  [10, 25, 50].forEach(n => push(L.Ausdauer, "📆", en ? `${n} days within 100` : `${n} Tage in 100`, en ? `Climb on ${n} days within any 100-day span` : `Klettere an ${n} Tagen innerhalb von 100 Tagen`, n, "daysIn100", pts(n * 4) + 10));
-  [25, 50, 100, 150, 200].forEach(n => push(L.Ausdauer, "📆", en ? `${n} days in a year` : `${n} Tage im Jahr`, en ? `Climb on ${n} days within any 365-day span` : `Klettere an ${n} Tagen innerhalb eines Jahres`, n, "daysIn365", pts(n * 3) + 10));
+  // GESAMT TOPS — Anfänger 14/sess→~1000 nach 70 sess; Gut 19/sess; Pro 32/sess
+  const TOPS=[1,3,5,10,20,35,50,75,100,150,200,300,500,750,1000,2000,3000,5000];
+  const TNAMES_DE=["Erster Zug","Handflächen warm","Dabei","Stammgast","Fleißig","Ehrgeizig","Halbhundert","Hartnäckig","Hundert!","Obsessiv","Zweihundert","Dreihundert","Fünfhundert","Dreiviertel-Tausend","Tausendsassa","Zweitausend","Dreitausend","Boulder-Gott"];
+  const TNAMES_EN=["First Move","Palms Warm","On Board","Regular","Diligent","Ambitious","Half Century","Persistent","Hundred!","Obsessed","Two Hundred","Three Hundred","Five Hundred","Three-Quarter K","Jack of All","Two Thousand","Three Thousand","Boulder God"];
+  TOPS.forEach((n,i)=>push(L.Gesamt,"🧗",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
+
+  // FLASH — harder, Anfänger flasst selten, Pro flasht ~6/sess
+  const FLASHES=[1,3,5,10,25,50,100,250,500,1000];
+  const FDE=["Erster Flash","Flash-Trio","Flash-Fünf","Flash-Zehn","Flash-Profi","Flash-Meister","Flash-Legende","Flash-Elite","Flash-Gott","Flash-Mythos"];
+  const FEN=["First Flash","Flash Trio","Flash Five","Flash Ten","Flash Pro","Flash Master","Flash Legend","Flash Elite","Flash God","Flash Myth"];
+  FLASHES.forEach((n,i)=>push("Flash","⚡",tier(en?FEN:FDE,i,""),en?`Flash ${n} routes`:`Flashe ${n} Routen`,n,"flashes",Math.round(pts(n)*2.2)));
+
+  // PUNKTE — Anfänger: 7pts/sess→100pts nach 14 sess; Gut: 22.5; Pro: 51.5
+  const PTS_V=[5,15,30,75,150,300,600,1000,2000,3500,5000];
+  const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott"];
+  const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God"];
+  PTS_V.forEach((n,i)=>push(L.Punkte,"💎",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
+
+  // GRADE — kalibriert: 1er/2er/3er Anfänger, 4er/5er Gut, 6er/7er Fortgeschritten, 8er Pro
+  const gScale=[0,1,1.2,1.5,2,3,5,8,15];
+  GRADES.forEach(g=>{
+    const tC=g<=2?[1,3,5,10,25,50,100]:g<=4?[1,3,5,10,25,50,100,200]:g<=6?[1,3,5,10,25,50,100]:g===7?[1,3,5,10,25,50]:[1,3,5,10,20];
+    tC.forEach((n)=>push(`${g}er`,"🪨",en?`${n}× Grade ${g}`:`${n}× ${g}er`,en?`Climb ${n} grade-${g} routes`:`Klettere ${n} ${g}er-Routen`,n,`grade:${g}:t`,Math.round(pts(n)*gScale[g])));
+    const fC=g<=3?[1,3,5]:g<=5?[1,3,5,10,25]:g<=7?[1,3,5,10,20]:[1,3,5,10];
+    fC.forEach((n)=>push(`${g}er`,"⚡",en?`Flash ${n}× Grade ${g}`:`Flash ${n}× ${g}er`,en?`Flash ${n} grade-${g} routes`:`Flashe ${n} ${g}er-Routen`,n,`grade:${g}:f`,Math.round(pts(n)*gScale[g]*2)));
+  });
+
+  // FARBE
+  COLORS.forEach(c=>{
+    [1,5,10,25,50,100].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
+    [1,3,5,10,25].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
+  });
+
+  // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
+  [3,5,8,10,15,20,25,35].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  [1,2,3,5,8,12,15].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
+
+  // KOMBI / SPEZIAL
+  [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
+  [1,2,3,5].forEach((n,i)=>push(L.Spezial,"📊",en?`All grades in one day (${n}×)`:`Alle Grade an einem Tag (${n}×)`,en?`On ${n} day(s) climb all grades 1–8`:`An ${n} Tag(en) alle Grade 1–8`,n,"allGradeDays",60+i*25));
+
+  // STRASSEN
+  [[4,50],[5,70],[6,100],[7,135],[8,175]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`Grades 1–${k} in one day`:`Grade 1–${k} an einem Tag`,en?`Climb grades 1–${k} in one day`:`Schaffe Grade 1–${k} an einem Tag`,k,"maxFrom1",p));
+  [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
+
+  // MEHRLING
+  [[3,30],[4,50],[5,75],[6,105],[7,145],[8,200]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+
+  // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
+  [[1,8],[3,14],[5,20],[10,30],[20,42],[35,55],[50,68],[75,85],[100,105],[150,135],[200,168],[300,220],[365,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
+
+  // AUSDAUER
+  [1,2,3,4,5,6,8,10,12,16,20,26,52].forEach(n=>push(L.Ausdauer,"⏳",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
+  [2,3,4,6,8,12,16,26].forEach(n=>push(L.Ausdauer,"⏳",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
+  [10,20,30,50,75,100].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
+  [20,50,75,100,150,200,250,300].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
+
+  // BERGE — totalRoutes × wallHeight(3.5m default)
+  [
+    [143,"500 Höhenmeter 🌱",en?"500m — First Summit Feeling":"500m — Erstes Gipfelgefühl",25],
+    [426,"Feldberg (1493m) 🌲",en?"Black Forest Top — Germany's highest in the West":"Feldberg — höchster Berg des Schwarzwalds",45],
+    [619,"Mount Olympus (2917m) 🏛",en?"Climb the throne of the Greek gods":"Erklimm den Thron der griechischen Götter",65],
+    [847,"Zugspitze (2962m) 🇩🇪",en?"Germany's highest peak — you made it!":"Zugspitze — höchster Berg Deutschlands — geschafft!",80],
+    [1137,"Großglockner (3798m) 🇦🇹",en?"Austria's crown — the Großglockner":"Österreichs Krone — der Großglockner",100],
+    [1280,"Matterhorn (4478m) 🇨🇭",en?"The iconic Swiss pyramid — the Matterhorn":"Die ikonische Schweizer Pyramide — das Matterhorn",120],
+    [1374,"Mont Blanc (4806m) 🇫🇷",en?"Western Europe's highest — Mont Blanc!":"Höchster Berg Westeuropas — Mont Blanc!",145],
+    [1615,"Mount Elbrus (5642m) 🇷🇺",en?"Europe's highest — the sleeping volcano Elbrus":"Europas höchster — der schlafende Vulkan Elbrus",180],
+    [1684,"Kilimanjaro (5895m) 🌍",en?"Roof of Africa — the lonely giant":"Dach Afrikas — der einsame Riese",205],
+    [1769,"Denali (6190m) 🌎",en?"The Great One — North America's throne":"The Great One — Nordamerikas Thron",250],
+    [1989,"Aconcagua (6961m) 🏔",en?"Stone Sentinel — highest in the Americas":"Steinerner Wächter — höchster Berg der Amerikas",310],
+    [2460,"K2 (8611m) ☠️",en?"The Savage Mountain — world's second highest":"The Savage Mountain — zweithöchster der Welt",410],
+    [2528,"Mount Everest (8849m) 🏆",en?"MOUNT EVEREST — THE ULTIMATE!":"MOUNT EVEREST — DIE ULTIMATIVE LEISTUNG!",500],
+  ].forEach(([n,name,desc,p])=>push("Berge","🏔",name,desc,n,"totalRoutes",p));
+
+  // KLETTERKLASSIKER — kumulierte Höhenmeter entsprechen der Länge legendärer Routen
+  // Jede Route in der Halle = WALL_HEIGHT Meter (Standard 3.5m)
+  // Diese Achievements feiern, wenn deine Gesamt-Höhenmeter eine berühmte Route "erklimmen"
+  const KLETTERR = "Klassiker";
+  [
+    // Höhenmeter-Äquivalente berühmter Routen (Länge der Route in Meter / 3.5)
+    [86,   en?"Via Ferrata Königsjodler (300m) 🇦🇹":"Via Ferrata Königsjodler (300m) 🇦🇹",
+           en?"Your total meters = the legendary Austrian via ferrata (300m)":"Deine Gesamtmeter = die legendäre österreichische Klettersteig-Route (300m)",30],
+    [257,  en?"El Capitan – The Nose (900m) 🏔":"El Capitan – The Nose (900m) 🏔",
+           en?"900m of climbing — as long as the most famous big wall route ever":"900m geklettert — so lang wie die berühmteste Big-Wall-Route der Welt",85],
+    [486,  en?"Trollveggen – Troll Wall (1700m) 🧌":"Trollveggen – Trollwand (1700m) 🧌",
+           en?"1700m — the height of Europe's tallest vertical rock face (Norway)":"1700m — Europas höchste senkrechte Felswand in Norwegen",155],
+    [514,  en?"Eiger Nordwand (1800m) ⚡":"Eiger Nordwand (1800m) ⚡",
+           en?"1800m — the height of the legendary Eiger North Face":"1800m — Höhe der legendären Eiger Nordwand",165],
+    [686,  en?"Grand Capucin – East Face (2400m) 🇫🇷":"Grand Capucin – Ostwand (2400m) 🇫🇷",
+           en?"2400m — like the classic Mont Blanc massif granite route":"2400m — wie die klassische Granit-Route am Mont-Blanc-Massiv",210],
+    [857,  en?"Yosemite Triple Crown (3000m) 👑":"Yosemite Triple Crown (3000m) 👑",
+           en?"3000m — like climbing El Capitan, Half Dome & Mt Watkins in a day":"3000m — wie El Capitan, Half Dome & Mt Watkins an einem Tag",280],
+  ].forEach(([n,name,desc,p])=>push(KLETTERR,"🧗",name,desc,n,"totalRoutes",p));
+
+  // ZEIT-CHALLENGES (Routen an einem Tag = maxDayTops)
+  const ZEIT = en?"Speed":"Speed";
+  [
+    // Everest Speed Record: Pemba Dorje Sherpa 8h 10min — symbolically: flash 8 routes in a day
+    [8,en?"Everest Speed Record (8 routes in 1 day) ⏱":"Everest Speedrekord (8 Routen an 1 Tag) ⏱",
+      en?"Climb 8 routes in one day — like Pemba's 8h10m Everest record":"8 Routen an einem Tag — wie Pemdas 8h10m Everest-Rekord",55],
+    // Alex Honnold El Cap Free Solo 3h 56min — 12 routes in a day
+    [12,en?"El Cap Free Solo (12 in 1 day) 🎬":"El Cap Free Solo (12 an 1 Tag) 🎬",
+      en?"12 routes in one day — like Alex Honnold's 3h56m free solo":"12 an einem Tag — wie Alex Honnolds 3h56m Free Solo",90],
+    // Ueli Steck Eiger Nordwand 2h47m — 15 routes
+    [15,en?"Ueli Steck – Eiger (15 in 1 day) 💨":"Ueli Steck – Eiger (15 an 1 Tag) 💨",
+      en?"15 routes in one day — like Ueli Steck's 2h47m Eiger record":"15 an einem Tag — wie Ueli Stecks 2h47m Eiger-Rekord",120],
+    // Tommy Caldwell & Jorgeson 19 days on Dawn Wall — 20 routes
+    [20,en?"Dawn Wall (20 in 1 day) 🌅":"Dawn Wall (20 an 1 Tag) 🌅",
+      en?"20 routes in one day — legendary like Caldwell & Jorgeson's Dawn Wall":"20 an einem Tag — legendär wie Caldwell & Jorgesons Dawn Wall",170],
+    // Deep Water Solo record — 25 routes
+    [25,en?"Deep Water Solo Mode (25 in 1 day) 🌊":"Deep Water Solo Modus (25 an 1 Tag) 🌊",
+      en?"25 routes in one day — no rope, no fear, just sending":"25 an einem Tag — kein Seil, keine Angst, nur Klettern",230],
+    // Pure madness — 35 routes (Pro level max)
+    [35,en?"Project Moonboard (35 in 1 day) 🌙":"Project Moonboard (35 an 1 Tag) 🌙",
+      en?"35 routes in one day — you are on another level entirely":"35 an einem Tag — du bist auf einem völlig anderen Level",350],
+  ].forEach(([n,name,desc,p])=>push(ZEIT,"⏱",name,desc,n,"maxDayTops",p));
+
   return A;
 }
+
 const ACH_DE = buildAchievements("de");
 const ACH_EN = buildAchievements("en");
 function ACHS() { return LANG === "en" ? ACH_EN : ACH_DE; }
@@ -326,7 +535,7 @@ function computeAgg(routes, name) {
     const st = r.results?.[name]; if (!st) return;
     const g = r.grade, w = wallCanon(r.gym), isF = st === "flash";
     const cw = colorWord(r.name); const c = cw ? normColor(cw.toLowerCase()) : null;
-    agg.tops++; if (isF) agg.flashes++; agg.points += pointsFor(g, st);
+  agg.tops++; if (isF) agg.flashes++; agg.points += pointsFor(g, st); agg.totalRoutes = (agg.totalRoutes || 0) + 1;
     (agg.grade[g] = agg.grade[g] || { t: 0, f: 0 }).t++; if (isF) agg.grade[g].f++;
     (agg.wall[w] = agg.wall[w] || { t: 0, f: 0 }).t++; if (isF) agg.wall[w].f++;
     if (c) { (agg.color[c] = agg.color[c] || { t: 0, f: 0 }).t++; if (isF) agg.color[c].f++; const k = g + "|" + c; (agg.gradeColor[k] = agg.gradeColor[k] || { t: 0, f: 0 }).t++; if (isF) agg.gradeColor[k].f++; }
@@ -366,7 +575,7 @@ function achValue(agg, key) {
   if (key === "maxFrom1") return agg.maxFrom1;
   if (key === "maxRun") return agg.maxRun;
   if (key === "maxOfAKind") return agg.maxOfAKind;
-  if (key === "distinctDays") return agg.distinctDays;
+  if (key === "totalRoutes") return agg.totalRoutes || 0;
   if (key === "weekStreak1") return agg.weekStreak1 || 0;
   if (key === "weekStreak2") return agg.weekStreak2 || 0;
   if (key === "daysIn100") return agg.daysIn100 || 0;
@@ -468,7 +677,7 @@ const CSS = `
 .bld, .login { --bg:#181c24; --panel:#1d222a; --panel2:#262d37; --line:#323a46; --chalk:#edeee8; --muted:#909caa; --amber:#c8d42e; --topfill:#aeb9c4; --topbg:#33414e; --topbd:#46586a; }
 .bld { position:fixed; inset:0; background:var(--bg); color:var(--chalk); font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; overflow:hidden; }
 .bld *, .login * { font-family:inherit; }
-.bld button, .login button { cursor:pointer; border:none; background:none; color:inherit; font:inherit; }
+.bld button, .login button { cursor:pointer; background:none; color:inherit; font:inherit; outline:none; } /* NO border:none — let specific classes set their own */
 .scroll { overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
 .scroll::-webkit-scrollbar { width:0; }
 /* ── Responsive desktop layout ── */
@@ -520,12 +729,12 @@ const CSS = `
 .uchip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); border-radius:22px; padding:4px 5px 4px 10px; flex:none; position:relative; z-index:1; }
 .uchip .un { font-size:12.5px; font-weight:600; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .adminpill { font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--amber); border:1px solid #5a4715; background:#332a12; padding:1px 5px; border-radius:5px; font-weight:700; }
-.seg { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:3px; width:fit-content; }
-.seg button { font-size:12px; font-weight:600; padding:6px 11px; border-radius:6px; color:var(--muted); white-space:nowrap; }
-.seg button.on { background:var(--panel2); color:var(--chalk); }
+.seg { display:flex; background:var(--panel); border:1px solid rgba(255,255,255,.12); border-radius:9px; padding:3px; width:fit-content; }
+.seg button { font-size:12px; font-weight:600; padding:6px 11px; border-radius:6px; color:var(--muted); white-space:nowrap; background:none; border:1.5px solid transparent !important; }
+.seg button.on { background:var(--panel2); color:var(--chalk); border:1.5px solid rgba(255,255,255,.35) !important; }
 .segwrap { padding:0 16px 4px; display:flex; align-items:center; gap:10px; }
 .seg.full, .segwrap .seg { width:fit-content; }
-.addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:none; color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
+.addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:2px solid rgba(255,255,255,.45) !important; color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
 .addtop-tb .plus { font-size:17px; font-weight:300; line-height:1; }
 .addtop-tb:hover { background:#d4de32; }
 
@@ -580,14 +789,14 @@ const CSS = `
 .archtag { font-size:9px; letter-spacing:.12em; color:var(--muted); border:1px solid var(--line); padding:2px 6px; border-radius:5px; text-transform:uppercase; }
 
 .rfoot { display:flex; align-items:center; gap:8px; margin-top:8px; }
-.du { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:9px 13px; border-radius:10px; border:1.5px solid #3d4f66; background:#252d3d; color:var(--chalk); font-weight:700; font-size:13.5px; user-select:none; }
+.du { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 13px; border-radius:10px; border:1.5px solid rgba(255,255,255,.35); background:#2c3650; color:var(--chalk); font-weight:700; font-size:13.5px; user-select:none; }
 
  50% { box-shadow:0 0 11px 0 rgba(242,180,65,.28);} }
 .du:active { transform:scale(.98); }
 .du.top { background:#1f3a26; border-color:#3fae5e; color:#5cc97e; }
 .du.flash { background:#2a2310; border-color:var(--amber); color:var(--amber); }
 .du .dpts { font-family:'Barlow Condensed'; font-weight:700; opacity:.85; }
-.pill { display:inline-flex; align-items:center; gap:5px; padding:8px 11px; border-radius:10px; background:#252d3d; border:1.5px solid #3d4f66; color:var(--chalk); font-weight:600; font-size:13px; flex:none; }
+.pill { display:inline-flex; align-items:center; gap:5px; padding:8px 11px; border-radius:10px; background:#2c3650; border:1.5px solid rgba(255,255,255,.35); color:var(--chalk); font-weight:600; font-size:13px; flex:none; }
 .pill.has { color:var(--chalk); }
 
 /* route stats */
@@ -604,6 +813,8 @@ const CSS = `
 .ovb { position:relative; }
 .ovb.done { box-shadow:0 0 0 2.6px #5cc97e !important; }
 .ovchk { position:absolute; right:-3px; top:-3px; width:17px; height:17px; border-radius:50%; background:#3fae5e; color:#0d130f; font-size:11px; font-weight:800; font-style:normal; display:flex; align-items:center; justify-content:center; border:2px solid var(--panel); }
+.routebadge { position:absolute; top:8px; right:8px; display:flex; gap:4px; z-index:4; }
+.rbadge { font-size:13px; line-height:1; opacity:.85; }
 .rpills { display:flex; gap:5px; align-items:center; flex:none; margin-left:auto; }
 .rschip { font-size:11px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap; }
 .rschip.top { background:#1f3a26; color:#5cc97e; }
@@ -635,7 +846,7 @@ const CSS = `
 .rolebtn.adm { color:var(--amber); border-color:#5a4715; }
 .removex { color:#e98b7d; font-size:16px; padding:4px 9px; background:rgba(233,139,125,.12); border-radius:8px; border:1px solid rgba(233,139,125,.3); font-weight:700; }
 .danger { color:#dd5468 !important; }
-.miniaction { width:100%; text-align:center; background:#252d3d; border:1.5px solid #3d4f66; border-radius:10px; padding:11px 12px; font-size:13.5px; font-weight:700; margin-top:8px; color:var(--chalk); display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .12s; }
+.miniaction { width:100%; text-align:center; background:#2c3650; border:1.5px solid rgba(255,255,255,.35); border-radius:10px; padding:11px 12px; font-size:13.5px; font-weight:700; margin-top:8px; color:var(--chalk); display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .12s; }
 .miniaction:hover { background:#2e3848; }
 .miniaction:active { background:#262d37; }
 .miniaction.primary { background:var(--amber); border-color:var(--amber); color:#13161a; box-shadow:0 4px 14px rgba(200,212,46,.28); }
@@ -673,7 +884,7 @@ const CSS = `
 .wtile.on { background:#23262a; border-color:var(--amber); color:var(--chalk); }
 .wtile .wl { font-size:11px; font-weight:600; text-align:center; line-height:1.2; }
 .fpttl { font-size:13px; color:var(--muted); text-align:center; line-height:1.5; margin:2px 6px 12px; }
-.fpwrap { background:var(--panel2); border:1px solid var(--line); border-radius:16px; padding:14px; }
+.fpwrap { padding:6px 0; }
 .fp { width:100%; max-width:420px; display:block; margin:0 auto; }
 .fp text { user-select:none; }
 .wallbar { display:flex; align-items:center; gap:11px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:11px 12px; margin-bottom:16px; }
@@ -717,7 +928,7 @@ const CSS = `
 .tipcompose button { background:var(--amber); color:#13161a; font-weight:700; border-radius:10px; padding:0 16px; align-self:stretch; }
 
 /* map browse */
-.mapbrowse { padding:8px 14px 120px; }
+.mapbrowse { padding:0 0 120px; }
 .walllegend { margin-top:12px; display:flex; flex-direction:column; gap:7px; }
 .wlrow { display:flex; align-items:center; gap:11px; background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:10px 12px; text-align:left; width:100%; }
 .wlrow:active { transform:scale(.99); }
@@ -728,25 +939,26 @@ const CSS = `
 /* groups */
 .gemoji { width:38px; height:38px; border-radius:10px; background:var(--panel2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
 .lbrow .gemoji { width:34px; height:34px; font-size:18px; }
-.primaryaction { width:100%; background:var(--amber); color:#13161a; font-weight:700; font-size:15px; border-radius:11px; padding:13px; margin-bottom:16px; border:none; }
+.primaryaction { width:100%; background:var(--amber); color:#13161a; font-weight:700; font-size:15px; border-radius:11px; padding:13px; margin-bottom:16px; border:2px solid rgba(255,255,255,.4) !important; }
 .primaryaction:hover { background:#d4de32; }
 .primaryaction.locked { opacity:.6; cursor:not-allowed; background:var(--panel2); color:var(--muted); box-shadow:none; border:1px solid var(--line); }
 /* Accordion */
-.routefilters { padding:10px 16px 4px; display:flex; flex-direction:column; gap:8px; }
+.routefilters { padding:10px 14px 14px; display:flex; flex-direction:column; gap:10px; }
 .filterrow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-.searchinp { width:100%; padding:10px 14px; border-radius:12px; background:var(--panel); border:1px solid var(--line); color:var(--chalk); font-size:14px; outline:none; }
+.searchinp { width:100%; padding:11px 14px; border-radius:12px; background:#2c3650; border:1.5px solid rgba(255,255,255,.22); color:var(--chalk); font-size:14px; outline:none; }
 .searchinp::placeholder { color:var(--muted); }
 .gradefilter { display:flex; flex-wrap:wrap; gap:5px; }
-.wallsection { border-bottom:1px solid var(--line); }
-.wallacchead { width:100%; display:flex; align-items:center; gap:10px; padding:13px 16px; background:#252d3d; text-align:left; border:none; border-bottom:1px solid #3d4f66; color:var(--chalk); cursor:pointer; }
+.wallsection { border-radius:14px; overflow:hidden; margin:0 14px 10px; border:1.5px solid rgba(255,255,255,.18); }
+.wallacchead { width:100%; display:flex; align-items:center; gap:10px; padding:13px 16px; background:#2c3650; text-align:left; border:none; color:var(--chalk); cursor:pointer; }
 .wallacchead:active { background:rgba(255,255,255,.04); }
-.wallacchead.open { background:#2a3545; }
+.wallacchead.open { background:#2a3545; border-bottom:1px solid #4a6080; }
 .waname { flex:1; font-weight:600; font-size:15px; }
 .waic { display:flex; align-items:center; color:var(--muted); }
 .wadone { font-family:'Barlow Condensed'; font-weight:700; font-size:13px; color:#5cc97e; }
-.wacount { font-family:'Barlow Condensed'; font-weight:700; font-size:15px; color:var(--muted); }
+.wacount { font-family:'Barlow Condensed'; font-weight:700; font-size:13px; color:var(--muted); }
+.waflash { font-family:'Barlow Condensed'; font-weight:700; font-size:13px; color:var(--amber); }
 .wachevron { font-size:11px; color:var(--muted); }
-.wallbody { padding:4px 12px 14px; }
+.wallbody { padding:10px 12px 14px; background:var(--panel); }
 .lhsub { font-size:11.5px; color:var(--muted); margin-bottom:8px; }
 .gcard { display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:11px 12px; margin-bottom:9px; }
 .gcard .ginfo { flex:1; min-width:0; }
@@ -757,12 +969,16 @@ const CSS = `
 .gcard .gp .u { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
 .joinbtn { background:var(--amber); color:#13161a; font-weight:700; font-size:13px; border-radius:9px; padding:9px 14px; flex:none; }
 .leavebtn { background:var(--panel2); border:1px solid var(--line); color:var(--muted); font-weight:600; font-size:14px; border-radius:11px; }
-.emojipick { display:flex; gap:8px; flex-wrap:wrap; }
-.emojipick button { width:46px; height:46px; border-radius:11px; background:var(--panel2); border:1px solid var(--line); font-size:22px; display:flex; align-items:center; justify-content:center; }
+.emojipick { display:flex; gap:6px; flex-wrap:wrap; }
+.emojipick button { width:44px; height:44px; border-radius:11px; background:var(--panel2); border:1px solid var(--line); font-size:22px; display:flex; align-items:center; justify-content:center; }
 .emojipick button.on { border-color:var(--amber); background:#202508; }
-.emojipick.big { display:grid; grid-template-columns:repeat(auto-fill, minmax(42px, 1fr)); gap:6px; max-height:240px; overflow-y:auto; padding:8px; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
-.emojipick.big button { width:100%; height:40px; border-radius:9px; font-size:20px; background:transparent; border:1px solid transparent; }
-.emojipick.big button.on { border-color:var(--amber); background:#202508; }
+.emojipick.big { display:grid; grid-template-columns:repeat(auto-fill, minmax(44px, 1fr)); gap:6px; max-height:260px; overflow-y:auto; padding:8px; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+.emojipick.big .epick { width:100%; height:44px; border-radius:9px; font-size:22px; background:transparent; border:1px solid transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.emojipick.big .epick.on { border-color:var(--amber); background:#202508; }
+.emojipick.big .epick.locked { opacity:.28; cursor:default; filter:grayscale(1); }
+.emojipick.big.locked { opacity:.5; pointer-events:none; }
+.emojiunlock-hint { font-size:12px; color:var(--muted); background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:8px 12px; margin-bottom:10px; line-height:1.5; }
+.emojisep { font-size:11px; color:var(--muted); text-align:center; margin:14px 0 8px; letter-spacing:.06em; }
 .gtot { display:flex; gap:10px; margin-bottom:8px; }
 .gtot > div { flex:1; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:11px 8px; text-align:center; }
 .gtv { font-family:'Barlow Condensed'; font-weight:700; font-size:24px; line-height:1; }
@@ -1085,7 +1301,7 @@ export default function App() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [statsView, setStatsView] = useState("erfolge");
   const [achCat, setAchCat] = useState(null);
-  const [hallTab, setHallTab] = useState("halle"); // halle | creator
+  const [hallTab, setHallTab] = useState("halle"); // halle | meine | creator | data
   const [lang, setLang] = useState("de");
   setLangG(lang);
   function changeLang(l) { setLang(l); setLangG(l); try { window.storage.set("blocscore:lang", l, false); } catch (e) {} }
@@ -1128,9 +1344,11 @@ export default function App() {
   const myWallDone = useMemo(() => { const m = {}; routes.forEach(r => { if (r.archived) return; if (r.results?.[me?.name]) { const c = wallCanon(r.gym); m[c] = (m[c] || 0) + 1; } }); return m; }, [routes, me]);
   const screwDates = community?.screwDates || {};
   const STEP = community?.scoring?.step ?? 0.25;
+  const WALL_HEIGHT = community?.wallHeight ?? 3.5; // Meter pro Route (Wandhöhe)
   const FLASH_BONUS = community?.scoring?.flash ?? 0.25;
   _STEP = STEP; _FLASH_BONUS = FLASH_BONUS; // sync global for computeAgg etc.
   function setScoring(step, flash) { setCommunity(c => ({ ...c, scoring: { step: Number(step), flash: Number(flash) } })); }
+  function setWallHeight(h) { setCommunity(c => ({ ...c, wallHeight: Number(h) })); }
   const newestWall = useMemo(() => { let best = null, bd = ""; Object.entries(screwDates).forEach(([w, d]) => { if (d <= today && d > bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
   const nextWall = useMemo(() => { let best = null, bd = "9999"; Object.entries(screwDates).forEach(([w, d]) => { if (d > today && d < bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
   const groupStats = useMemo(() => groups.map(g => {
@@ -1207,6 +1425,10 @@ export default function App() {
     const routeSendCount = {};
     allResults.forEach(r => { routeSendCount[r.routeId] = (routeSendCount[r.routeId] || 0) + 1; });
     const popularRoutes = activeRoutes.map(r => ({ ...r, sendCount: routeSendCount[r.id] || 0 })).sort((a, b) => b.sendCount - a.sendCount).slice(0, 10);
+    const flashCount = {};
+    allResults.filter(r => r.status === "flash").forEach(r => { flashCount[r.routeId] = (flashCount[r.routeId] || 0) + 1; });
+    const topSendsId = popularRoutes[0]?.id || null;
+    const topFlashId2 = Object.entries(flashCount).sort((a,b) => b[1]-a[1])[0]?.[0] || null;
     // most active climbers
     const playerSends = {};
     allResults.forEach(r => { playerSends[r.player] = (playerSends[r.player] || 0) + 1; });
@@ -1240,7 +1462,7 @@ export default function App() {
     // storage estimate (community JSON without photo blobs)
     const communityKB = Math.round(JSON.stringify({ ...community, _noPhotos: true }).length / 1024);
     const archivedWithPhoto = routes.filter(r => r.archived && r.photos?.length > 0);
-    return { activeRoutes, todaySends, weekSends, monthSends, totalSends, totalFlashes, popularRoutes, activeClimbers, wallStats, sessionList, creators, totalComments, mostCommented, communityKB, archivedWithPhoto };
+    return { activeRoutes, todaySends, weekSends, monthSends, totalSends, totalFlashes, popularRoutes, activeClimbers, wallStats, sessionList, creators, totalComments, mostCommented, communityKB, archivedWithPhoto, topSendsId, topFlashId2 };
   }, [routes, accounts, today]);
   function groupOf(accId) { return groups.find(g => (g.members || []).includes(accId)); }
   function createGroup(name, emoji) { if (myGroup) return; const g = { id: uid(), name, emoji, members: [me.id], requests: [], createdBy: me.id }; setCommunity(c => ({ ...c, groups: [...(c.groups || []), g] })); }
@@ -1304,7 +1526,7 @@ export default function App() {
       <div className="topbar" style={{ backgroundImage: `url(${HEADER_BG})` }}>
         <div className="topbar-overlay" />
         <div className="brand">
-          <button onClick={() => setTab("routes")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
+          <button onClick={() => { setTab("routes"); setFWall("alle"); setFGrade(0); setFilterScope("aktuell"); setQ(""); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
             <img src={LOGO_IMG} alt="blocscore" className="brand-logo" />
           </button>
         </div>
@@ -1392,7 +1614,8 @@ export default function App() {
                   {newestWall === s.wall && <span className="freshbadge">{t("plan.fresh")}</span>}
                   {nextWall === s.wall && <span className="nextbadge">{t("plan.next")}</span>}
                   {myWallDone[s.wall] > 0 && <span className="wadone">✓ {myWallDone[s.wall]}</span>}
-                  <span className="wacount">{s.items.length}</span>
+                  {(() => { const flN = s.items.filter(r => r.results?.[me.name] === "flash").length; return flN > 0 ? <span className="waflash">⚡{flN}</span> : null; })()}
+                  <span className="wacount">{s.items.length} Routen</span>
                   <span className="wachevron">{isOpen ? "▲" : "▼"}</span>
                 </button>
                 {isOpen && (
@@ -1410,6 +1633,12 @@ export default function App() {
                       const tipsN = (r.tips || []).length;
                       return (
                         <div key={r.id} id={"r-" + r.id} className={"rc" + (col ? " rccol" : "") + (r.archived ? " arch" : "") + (flashId === r.id ? " flash" : "")} style={col ? { "--rcol": col } : undefined}>
+                          {(hallStats.topSendsId === r.id || hallStats.topFlashId2 === r.id) && (
+                            <div className="routebadge">
+                              {hallStats.topSendsId === r.id && <span className="rbadge hot" title="Beliebteste Route">🔥</span>}
+                              {hallStats.topFlashId2 === r.id && <span className="rbadge zap" title="Meiste Flashes">⚡</span>}
+                            </div>
+                          )}
                           {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const inline = r.photos[0].startsWith("data:"); const src = inline ? r.photos[0] : await loadPhotoBlob(r.photos[0]); setLightbox(src); }} />}
                           <div className="rbody">
                             <div className="rchead">
@@ -1433,7 +1662,9 @@ export default function App() {
                                   : myStatus === "top" ? <>✓ Top <span className="dpts">+{fmtPts(pointsFor(r.grade, "top"))}</span></>
                                     : <>+ Eintragen</>}
                               </button>
-                              <button className={"pill" + (tipsN ? " has" : "") + (canComment ? "" : " locked")} title={canComment ? "" : t("lock.comments", { n: achScore })} onClick={() => { if (canComment) setTipsRouteId(r.id); }}>{canComment ? <>💬 {tipsN || ""}</> : <>🔒</>}</button>
+                              <button className={"pill" + (tipsN ? " has" : "") + (canComment ? "" : " locked")} title={canComment ? "" : t("lock.comments", { n: achScore })} onClick={() => { if (canComment) setTipsRouteId(r.id); }}>
+                                {canComment ? <><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 10c0 4-3.6 7-8 7a8.8 8.8 0 0 1-4-.9L2 17l1-3.7A6.6 6.6 0 0 1 2 10c0-3.9 3.6-7 8-7s8 3.1 8 7Z"/></svg>{tipsN ? ` ${tipsN}` : ""}</> : <>🔒</>}
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1447,7 +1678,7 @@ export default function App() {
           })}
 
           {/* Umschraubplan */}
-          {fWall === "alle" && (<div className="plancard" style={{ marginTop: 16 }}>
+          {fWall === "alle" && (<div className="plancard" style={{ marginTop: 16, margin: "16px 14px 0" }}>
             <div className="planttl">🛠 {t("plan.title")}</div>
             {Object.entries(screwDates).sort((a, b) => a[1].localeCompare(b[1])).map(([w, d]) => { const fresh = newestWall === w; const nxt = nextWall === w; return (
               <div key={w} className={"planrow" + (fresh ? " fresh" : "") + (nxt ? " next" : "")}>
@@ -1543,14 +1774,14 @@ export default function App() {
         <div className="scroll"><div className="stats">
 
           {/* Umschalter: Halle / Route Creator (nur Admin) */}
-          {isAdmin && (
-            <div className="segwrap" style={{ marginBottom: 4 }}>
-              <div className="seg">
-                <button className={hallTab === "halle" ? "on" : ""} onClick={() => setHallTab("halle")}>{t("hall.activity")}</button>
-                <button className={hallTab === "creator" ? "on" : ""} onClick={() => setHallTab("creator")}>{t("hall.creator")}</button>
-              </div>
+          <div className="segwrap" style={{ marginBottom: 4 }}>
+            <div className="seg" style={{ flexWrap:"wrap" }}>
+              <button className={hallTab === "halle" ? "on" : ""} onClick={() => setHallTab("halle")}>{t("hall.activity")}</button>
+              <button className={hallTab === "meine" ? "on" : ""} onClick={() => setHallTab("meine")}>👤 {LANG==="en"?"My Stats":"Meine Stats"}</button>
+              {isAdmin && <button className={hallTab === "creator" ? "on" : ""} onClick={() => setHallTab("creator")}>{t("hall.creator")}</button>}
+              {isAdmin && <button className={hallTab === "data" ? "on" : ""} onClick={() => setHallTab("data")}>💾 Data</button>}
             </div>
-          )}
+          </div>
 
           {/* ── Hallenaktivität (alle sehen das) ── */}
           {hallTab === "halle" && (<>
@@ -1619,27 +1850,6 @@ export default function App() {
           {hallTab === "creator" && isAdmin && (<>
             <div className="note" style={{ marginBottom: 8 }}>{t("hall.creatorHint")}</div>
 
-            {/* Storage-Übersicht */}
-            <div className="stcard" style={{ marginBottom: 12 }}>
-              <h3><span>💾 Datensatz & Speicher</span></h3>
-              <div className="hkpi-grid">
-                <div className="hkpi"><div className="hkv">{hallStats.communityKB} KB</div><div className="hku">Daten (ohne Fotos)</div></div>
-                <div className="hkpi">
-                  <div className="hkv">{photoStorageKB === null ? "—" : photoStorageKB === "…" ? "⏳" : `${photoStorageKB >= 1024 ? (photoStorageKB/1024).toFixed(1)+" MB" : photoStorageKB+" KB"}`}</div>
-                  <div className="hku">Fotos gesamt</div>
-                </div>
-                <div className="hkpi"><div className="hkv">{routes.filter(r=>r.photos?.length).length}</div><div className="hku">Routen mit Foto</div></div>
-                <div className="hkpi"><div className="hkv">{hallStats.archivedWithPhoto.length}</div><div className="hku">Archiv mit Foto</div></div>
-              </div>
-              <button className="miniaction" style={{ marginTop: 0 }} onClick={measurePhotoStorage}>📏 Fotos messen</button>
-              {hallStats.archivedWithPhoto.length > 0 && (
-                <div className="note" style={{ marginTop: 10, color: "var(--amber)" }}>
-                  ⚠️ {hallStats.archivedWithPhoto.length} archivierte Routen haben noch Fotos — beim Löschen der Route werden die Fotos mitgelöscht und Speicher freigegeben.
-                </div>
-              )}
-              <div className="phint" style={{ marginTop: 8 }}>Neue Fotos werden automatisch auf max. 1080px und ~70 KB komprimiert. Supabase Free-Tier: 1 GB Datenbank-Speicher.</div>
-            </div>
-
             {/* Gesamt-KPIs für Admin */}
             <div className="hkpi-grid">
               <div className="hkpi"><div className="hkv">{hallStats.creators.length}</div><div className="hku">Route Creator</div></div>
@@ -1704,6 +1914,114 @@ export default function App() {
                 </div>
               );
             })}
+          </>)}
+
+          {/* ── Meine Stats ── */}
+          {hallTab === "meine" && (() => {
+            const myRoutes = routes.filter(r => r.results?.[me.name]);
+            const myFlashes = myRoutes.filter(r => r.results[me.name] === "flash").length;
+            const myTops = myRoutes.length - myFlashes;
+            const myPts = myRoutes.reduce((s,r) => s + pointsFor(r.grade, r.results[r.id] || r.results[me.name]), 0);
+            const myMeters = myRoutes.length * WALL_HEIGHT;
+            // Daily / weekly / monthly / yearly
+            const now = new Date(today);
+            const weekAgo = new Date(now - 7*86400000).toISOString().slice(0,10);
+            const monthAgo = new Date(now - 30*86400000).toISOString().slice(0,10);
+            const yearAgo = new Date(now - 365*86400000).toISOString().slice(0,10);
+            // We use route date as proxy for send date
+            const rByDate = (from) => routes.filter(r => r.date >= from && r.results?.[me.name]);
+            const todayR = routes.filter(r => r.date === today && r.results?.[me.name]);
+            const weekR = rByDate(weekAgo); const monthR = rByDate(monthAgo); const yearR = rByDate(yearAgo);
+            // Mountain comparison
+            const MOUNTAINS = [
+              {name:"Feldberg (DE)",m:1493},{name:"Zugspitze (DE)",m:2962},{name:"Großglockner (AT)",m:3798},
+              {name:"Matterhorn",m:4478},{name:"Mont Blanc",m:4806},{name:"Elbrus",m:5642},
+              {name:"Kilimanjaro",m:5895},{name:"Denali",m:6190},{name:"Aconcagua",m:6961},
+              {name:"Mount Everest",m:8849},
+            ];
+            const climbed = MOUNTAINS.filter(mn => myMeters >= mn.m);
+            const nextMtn = MOUNTAINS.find(mn => myMeters < mn.m);
+            return (<>
+              {/* Gesamt KPIs */}
+              <div className="stcard" style={{ padding:12 }}>
+                <div className="hkpi-grid" style={{ gridTemplateColumns:"repeat(2,1fr)" }}>
+                  <div className="hkpi"><div className="hkv">{myRoutes.length}</div><div className="hku">Begehungen</div></div>
+                  <div className="hkpi"><div className="hkv">{myFlashes}</div><div className="hku">Flashes ⚡</div></div>
+                  <div className="hkpi"><div className="hkv">{Math.round(myMeters)} m</div><div className="hku">Höhenmeter 🏔</div></div>
+                  <div className="hkpi"><div className="hkv">{fmtPts(myPts)}</div><div className="hku">Punkte</div></div>
+                </div>
+              </div>
+
+              {/* Zeitraum */}
+              <div className="stcard">
+                <h3><span>📅 Aktivität</span></h3>
+                {[
+                  ["Heute",todayR],["Diese Woche",weekR],["Diesen Monat",monthR],["Dieses Jahr",yearR]
+                ].map(([label, rs]) => (
+                  <div key={label} className="hwall-row">
+                    <span className="hwn">{label}</span>
+                    <span className="hws">{rs.length} Begehungen</span>
+                    <span className="hwf">⚡{rs.filter(r=>r.results[me.name]==="flash").length}</span>
+                    <span style={{fontSize:12,color:"var(--muted)"}}>{Math.round(rs.length*WALL_HEIGHT)} m</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Höhenmeter / Berge */}
+              <div className="stcard">
+                <h3><span>🏔 Erklommene Berge</span></h3>
+                <div className="phint" style={{marginBottom:10}}>Jede Route = {WALL_HEIGHT} Höhenmeter · Gesamt: {Math.round(myMeters)} m</div>
+                {MOUNTAINS.map(mn => {
+                  const done = myMeters >= mn.m;
+                  const pct = Math.min(100, (myMeters/mn.m)*100);
+                  return (
+                    <div key={mn.name} className="hwall-row" style={{opacity: done ? 1 : 0.6}}>
+                      <span className="hwn">{done?"✅":"🔒"} {mn.name}</span>
+                      <span className="hws" style={{color:done?"var(--amber)":"var(--muted)"}}>{mn.m} m</span>
+                      {!done && <div style={{flex:1,height:4,background:"var(--panel2)",borderRadius:2,overflow:"hidden",marginLeft:8}}>
+                        <div style={{height:"100%",width:`${pct}%`,background:"var(--amber)",borderRadius:2}}/>
+                      </div>}
+                    </div>
+                  );
+                })}
+                {nextMtn && <div className="note" style={{marginTop:10}}>Noch {Math.ceil(nextMtn.m - myMeters)} m bis zum <b>{nextMtn.name}</b> ({nextMtn.m} m)</div>}
+                {!nextMtn && <div className="note" style={{marginTop:10,color:"var(--amber)"}}>🏆 Du hast alle Berge erklommen — sogar den Mount Everest!</div>}
+              </div>
+            </>);
+          })()}
+
+          {/* ── Data Management (nur Admin) ── */}
+          {hallTab === "data" && isAdmin && (<>
+            <div className="stcard">
+              <h3><span>💾 Data Management</span></h3>
+              <div className="hkpi-grid" style={{ gridTemplateColumns:"repeat(2,1fr)", marginBottom:12 }}>
+                <div className="hkpi"><div className="hkv">{hallStats.communityKB} KB</div><div className="hku">Daten (ohne Fotos)</div></div>
+                <div className="hkpi"><div className="hkv">{photoStorageKB === null ? "—" : photoStorageKB === "…" ? "⏳" : `${photoStorageKB >= 1024 ? (photoStorageKB/1024).toFixed(1)+" MB" : photoStorageKB+" KB"}`}</div><div className="hku">Fotos gesamt</div></div>
+                <div className="hkpi"><div className="hkv">{routes.filter(r=>r.photos?.length).length}</div><div className="hku">Routen mit Foto</div></div>
+                <div className="hkpi"><div className="hkv">{hallStats.archivedWithPhoto.length}</div><div className="hku">Archiv mit Foto</div></div>
+              </div>
+              <button className="miniaction" onClick={measurePhotoStorage}>📏 Fotos messen</button>
+              {hallStats.archivedWithPhoto.length > 0 && <div className="note" style={{marginTop:10,color:"var(--amber)"}}>⚠️ {hallStats.archivedWithPhoto.length} archivierte Routen haben noch Fotos — beim Löschen wird Speicher freigegeben.</div>}
+              <div className="phint" style={{marginTop:8}}>Fotos werden auf max. 1080px / ~70 KB komprimiert. Supabase Free: 1 GB.</div>
+            </div>
+
+            <div className="stcard">
+              <h3><span>⚙️ Hallenkonfiguration</span></h3>
+              <div className="field" style={{margin:0}}>
+                <label>Wandhöhe (Meter pro Route)</label>
+                <input type="number" step="0.1" min="1" max="15" defaultValue={WALL_HEIGHT}
+                  onBlur={e => { const v=parseFloat(e.target.value); if(!isNaN(v)&&v>0) setWallHeight(v); }}
+                  style={{background:"var(--panel2)",border:"1.5px solid rgba(255,255,255,.22)",borderRadius:10,padding:"9px 12px",color:"var(--chalk)",fontSize:15,width:"100%"}} />
+                <div className="phint">Standard: 3.5 m · Wird für Höhenmeter-Berechnung genutzt</div>
+              </div>
+              <div className="field" style={{margin:"12px 0 0"}}>
+                <label>Punktesystem</label>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontSize:13,color:"var(--muted)"}}>Top-Faktor: {STEP} · Flash-Bonus: {FLASH_BONUS}</span>
+                  <button className="miniaction" style={{marginTop:0,width:"auto",padding:"6px 12px"}} onClick={()=>setScoringOpen(true)}>✎ Bearbeiten</button>
+                </div>
+              </div>
+            </div>
           </>)}
 
         </div></div>
@@ -1841,11 +2159,11 @@ export default function App() {
       {tipsRoute && (
         <TipsSheet route={tipsRoute} me={me} isAdmin={isAdmin} onClose={() => setTipsRouteId(null)} onAdd={(t) => addTip(tipsRoute.id, t)} onDelete={(id) => delTip(tipsRoute.id, id)} />
       )}
-      {newGroupOpen && <NewGroupSheet onClose={() => setNewGroupOpen(false)} onCreate={(n, e) => { createGroup(n, e); setNewGroupOpen(false); }} />}
+      {newGroupOpen && <NewGroupSheet onClose={() => setNewGroupOpen(false)} achScore={achScore} isAdmin={isAdmin} onCreate={(n, e) => { createGroup(n, e); setNewGroupOpen(false); }} />}
       {changePinOpen && <ChangePinSheet me={me} onClose={() => setChangePinOpen(false)} onSave={(p) => { setMyPin(p); setChangePinOpen(false); }} />}
       {scoringOpen && <ScoringSheet step={STEP} flash={FLASH_BONUS} onClose={() => setScoringOpen(false)} onSave={(s,f) => { setScoring(s,f); setScoringOpen(false); }} />}
       {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
-      {emojiOpen && <ProfileEmojiSheet me={me} onClose={() => setEmojiOpen(false)} onPick={(e) => { setMyEmoji(e); setEmojiOpen(false); }} />}
+      {emojiOpen && <ProfileEmojiSheet me={me} achScore={achScore} isAdmin={isAdmin} onClose={() => setEmojiOpen(false)} onPick={(e) => { setMyEmoji(e); setEmojiOpen(false); }} />}
       {confirmCreator && (
         <div className="scrim" onClick={() => setConfirmCreator(false)}>
           <div className="confirm" onClick={e => e.stopPropagation()}>
@@ -1922,20 +2240,29 @@ function TipsSheet({ route, me, isAdmin, onClose, onAdd, onDelete }) {
 }
 
 /* ============================ Draufsicht (Hallenplan) ============================ */
-const FP_SEGS = [
-  { code: "wkw", d: "M4,10 L36,10 L27,26 L36,40 L26,54 L36,68 L22,82 L4,82 Z",  tx: 16,  ty: 46, rot: -90, label: "WETTKAMPF­WAND" },
-  { code: "h",   d: "M43,13 L60,13 L62,27 L57,43 L46,46 L40,42 L39,27 Z",         tx: 50,  ty: 30, label: "BLOCK\nHINTEN" },
-  { code: "v",   d: "M46,50 L58,50 L64,66 L59,86 L44,87 L38,70 L41,57 Z",         tx: 51,  ty: 69, label: "BLOCK\nVORNE" },
-  { code: "pl",  d: "M67,20 L79,19 L81,87 L68,88 Z",                               tx: 74,  ty: 54, rot: -90, label: "PLATTE & BUG" },
-  { code: "tb",  d: "M84,11 L104,11 L104,32 L112,32 L112,56 L92,56 L84,37 Z",     tx: 96,  ty: 34, rot: -90, label: "TRAINING" },
-];
+function getFpSegs() {
+  const en = LANG === "en";
+  return [
+    { code: "wkw", d: "M4,10 L36,10 L27,26 L36,40 L26,54 L36,68 L22,82 L4,82 Z",  tx: 16,  ty: 43, rot: -90, label: en ? "COMP\nWALL" : "WETTKAMPF\nWAND" },
+    { code: "h",   d: "M43,13 L60,13 L62,27 L57,43 L46,46 L40,42 L39,27 Z",         tx: 50,  ty: 30, label: en ? "BACK\nBLOCK" : "BLOCK\nHINTEN" },
+    { code: "v",   d: "M46,50 L58,50 L64,66 L59,86 L44,87 L38,70 L41,57 Z",         tx: 51,  ty: 69, label: en ? "FRONT\nBLOCK" : "BLOCK\nVORNE" },
+    { code: "pl",  d: "M67,20 L79,19 L81,87 L68,88 Z",                               tx: 74,  ty: 54, rot: -90, label: en ? "SLAB &\nBUG" : "PLATTE &\nBUG" },
+    { code: "tb",  d: "M84,11 L104,11 L104,32 L112,32 L112,56 L92,56 L84,37 Z",     tx: 96,  ty: 34, rot: -90, label: en ? "TRAINING" : "TRAINING" },
+  ];
+}
 function FpLabel({ s, on }) {
   const fill = on ? "#14171c" : "#f1f1ec";
+  const t2 = s.rot ? `rotate(${s.rot} ${s.tx} ${s.ty})` : undefined;
   if (s.label.includes("\n")) {
     const [a, b] = s.label.split("\n");
-    return <text x={s.tx} y={s.ty} textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize="3.6" fill={fill}><tspan x={s.tx} dy="0">{a}</tspan><tspan x={s.tx} dy="4.2">{b}</tspan></text>;
+    const fs = Math.max(a.length, b.length) > 8 ? 2.8 : 3.4;
+    return (
+      <text transform={t2} textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={fs} fill={fill}>
+        <tspan x={s.tx} y={s.ty - 2.2}>{a}</tspan>
+        <tspan x={s.tx} dy="4">{b}</tspan>
+      </text>
+    );
   }
-  const t2 = s.rot ? `rotate(${s.rot} ${s.tx} ${s.ty})` : undefined;
   const fs = s.label.length > 12 ? 2.7 : 3.4;
   return <text x={s.tx} y={s.ty} transform={t2} textAnchor="middle" dominantBaseline="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={fs} fill={fill} letterSpacing="0.3">{s.label}</text>;
 }
@@ -1943,11 +2270,11 @@ function FloorPlan({ value, onChange, counts, newest }) {
   return (
     <svg className="fp" viewBox="0 0 118 100">
       <rect x="1" y="1" width="116" height="98" rx="4" fill="#d8d8d2" stroke="#b4b4ac" strokeWidth="0.8" />
-      <text x="60" y="7.5" textAnchor="middle" fontSize="3.2" fontWeight="700" fill="#3f444b" letterSpacing="0.6">GARTEN</text>
-      <text x="46" y="96" textAnchor="middle" fontSize="3.2" fontWeight="700" fill="#3f444b" letterSpacing="0.6">EINGANG</text>
+      <text x="60" y="7.5" textAnchor="middle" fontSize="3.2" fontWeight="700" fill="#3f444b" letterSpacing="0.6">{LANG==="en"?"GARDEN":"GARTEN"}</text>
+      <text x="46" y="96" textAnchor="middle" fontSize="3.2" fontWeight="700" fill="#3f444b" letterSpacing="0.6">{LANG==="en"?"ENTRANCE":"EINGANG"}</text>
       <rect x="84" y="62" width="20" height="20" rx="2" fill="#bdbdb6" stroke="#9c9c93" strokeWidth="0.6" />
-      <text x="94" y="71" textAnchor="middle" fontSize="2.4" fontWeight="600" fill="#42474e"><tspan x="94" dy="0">KINDER-</tspan><tspan x="94" dy="3.2">BEREICH</tspan></text>
-      {FP_SEGS.map(s => { const on = value === s.code; const fresh = newest === s.code; return (
+      <text x="94" y="71" textAnchor="middle" fontSize="2.4" fontWeight="600" fill="#42474e"><tspan x="94" dy="0">{LANG==="en"?"KIDS":"KINDER-"}</tspan><tspan x="94" dy="3.2">{LANG==="en"?"AREA":"BEREICH"}</tspan></text>
+      {getFpSegs().map(s => { const on = value === s.code; const fresh = newest === s.code; return (
         <g key={s.code} onClick={() => onChange(s.code)} style={{ cursor: "pointer" }}>
           <path d={s.d} fill={on ? "var(--amber)" : fresh ? "#3a4150" : "#2c3037"} stroke={on ? "#8a9520" : fresh ? "#9fe6a0" : "rgba(200,212,46,.5)"} strokeWidth={on || fresh ? 1.5 : 1.0} strokeLinejoin="round" />
           <FpLabel s={s} on={on} />
@@ -1985,14 +2312,35 @@ function CategorySheet({ cat, items, onClose }) {
 }
 
 /* ============================ Konto: Passwort ändern ============================ */
-function ProfileEmojiSheet({ me, onClose, onPick }) {
+function ProfileEmojiSheet({ me, achScore, isAdmin, onClose, onPick }) {
+  const unlocked = getUnlockedEmojis(achScore, isAdmin);
+  const next = getNextEmojiUnlock(achScore);
+  const locked = [...EMOJI_WAVE1,...EMOJI_WAVE2,...EMOJI_WAVE3,...EMOJI_WAVE4,...EMOJI_WAVE5,...EMOJI_WAVE6]
+    .filter(e => !unlocked.includes(e));
   return (
     <div className="scrim" onClick={onClose}>
       <div className="sheet" onClick={e => e.stopPropagation()}>
         <div className="grip" />
         <div className="shead"><h2>{t("acc.pickEmoji")}</h2><button className="x" onClick={onClose}>✕</button></div>
         <div className="sbody">
-          <div className="emojipick big">{EMOJI_PROFILE.map((e, i) => <button key={i} className={me.emoji === e ? "on" : ""} onClick={() => onPick(e)}>{e}</button>)}</div>
+          {next && (
+            <div className="emojiunlock-hint">
+              🔒 {next.count} weitere bei <b>{next.at} Ach-Pts</b> · du hast {Math.round(achScore)} · noch {Math.max(0, next.at - Math.round(achScore))} fehlen
+            </div>
+          )}
+          {!next && <div className="emojiunlock-hint" style={{ color: "var(--amber)" }}>🏆 Alle Emojis freigeschaltet!</div>}
+          <div className="emojipick big">
+            {unlocked.map((e, i) => (
+              <button key={i} className={"epick" + (me.emoji === e ? " on" : "")} onClick={() => onPick(e)}>{e}</button>
+            ))}
+          </div>
+          {locked.length > 0 && (<>
+            <div className="emojisep">🔒 Noch gesperrt ({locked.length})</div>
+            <div className="emojipick big locked">
+              {locked.slice(0, 30).map((e, i) => <span key={i} className="epick locked">{e}</span>)}
+              {locked.length > 30 && <span className="epick locked" style={{ fontSize: 11, width: "auto", padding: "0 8px" }}>+{locked.length - 30} mehr</span>}
+            </div>
+          </>)}
         </div>
       </div>
     </div>
@@ -2059,9 +2407,11 @@ function ChangePinSheet({ me, onClose, onSave }) {
 }
 
 /* ============================ Gruppen-Dialoge ============================ */
-function NewGroupSheet({ onClose, onCreate }) {
+function NewGroupSheet({ onClose, onCreate, achScore, isAdmin }) {
   const [name, setName] = useState(() => genGroupName(LANG));
-  const [emoji, setEmoji] = useState(EMOJI_GROUP[0]);
+  const unlocked = getUnlockedEmojis(achScore || 0, isAdmin);
+  const [emoji, setEmoji] = useState(unlocked[0]);
+  const next = getNextEmojiUnlock(achScore || 0);
   const valid = name.trim().length > 0;
   return (
     <div className="scrim" onClick={onClose}>
@@ -2075,7 +2425,8 @@ function NewGroupSheet({ onClose, onCreate }) {
             <div className="phint">{t("grp.nameHint")}</div>
           </div>
           <div className="field"><label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>{t("grp.symbol")} <span className="bigpick" style={{ fontSize: 22 }}>{emoji}</span></label>
-            <div className="emojipick big">{EMOJI_GROUP.map((e, i) => <button key={i} className={emoji === e ? "on" : ""} onClick={() => setEmoji(e)}>{e}</button>)}</div>
+            {next && <div className="emojiunlock-hint" style={{ marginBottom: 8 }}>🔒 +50 bei {next.at} Ach-Pts</div>}
+            <div className="emojipick big">{unlocked.map((e, i) => <button key={i} className={"epick" + (emoji === e ? " on" : "")} onClick={() => setEmoji(e)}>{e}</button>)}</div>
           </div>
           <button className={"save" + (valid ? "" : " disabled")} onClick={() => valid && onCreate(name.trim(), emoji)}>{t("grp.create")}</button>
         </div>
