@@ -71,7 +71,7 @@ function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(
 function fmtPts(n) { return (Math.round(n * 100) / 100).toLocaleString("de-DE", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
 function avColor(name) { let h = 0; for (let i = 0; i < (name || "").length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return `hsl(${h} 45% 62%)`; }
 function ago(ts) { const s = (Date.now() - ts) / 1000; if (s < 60) return "gerade eben"; if (s < 3600) return Math.floor(s / 60) + " min"; if (s < 86400) return Math.floor(s / 3600) + " h"; return Math.floor(s / 86400) + " d"; }
-function medal(i) { return ["🥇", "🥈", "🥉"][i] || null; }
+function medal(i) { return null; } // always use numbers
 function roleLabel(r) { return r === "admin" ? "Admin" : r === "schrauber" ? "Route Creator" : r === "archived" ? "Archived" : "Climber"; }
 const YEAR_MS = 365 * 24 * 3600 * 1000;
 function lastActiveISO(acc, routes) { if (acc.lastSeen) return acc.lastSeen; let m = null; for (const r of (routes || [])) { if (r.results && r.results[acc.name] && r.date && (!m || r.date > m)) m = r.date; } return m; }
@@ -465,7 +465,7 @@ function Avatar({ name, size = 22, ring, emoji }) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@200;300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 * { box-sizing:border-box; }
-.bld, .login { --bg:#14171c; --panel:#1d222a; --panel2:#262d37; --line:#323a46; --chalk:#edeee8; --muted:#909caa; --amber:#c8d42e; --topfill:#aeb9c4; --topbg:#33414e; --topbd:#46586a; }
+.bld, .login { --bg:#181c24; --panel:#1d222a; --panel2:#262d37; --line:#323a46; --chalk:#edeee8; --muted:#909caa; --amber:#c8d42e; --topfill:#aeb9c4; --topbg:#33414e; --topbd:#46586a; }
 .bld { position:fixed; inset:0; background:var(--bg); color:var(--chalk); font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; overflow:hidden; }
 .bld *, .login * { font-family:inherit; }
 .bld button, .login button { cursor:pointer; border:none; background:none; color:inherit; font:inherit; }
@@ -512,10 +512,10 @@ const CSS = `
 .roleseg button.on { background:var(--chalk); color:var(--bg); border-color:var(--chalk); }
 
 /* top bar */
-.topbar { padding:14px 16px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; background-size:cover; background-position:center 40%; min-height:64px; }
+.topbar { padding:14px 16px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; background-size:cover; background-position:center 40%; min-height:64px; border-bottom:1px solid rgba(255,255,255,.08); }
 .topbar-overlay { position:absolute; inset:0; background:linear-gradient(90deg, rgba(14,17,20,.82) 0%, rgba(14,17,20,.55) 60%, rgba(14,17,20,.75) 100%); pointer-events:none; }
 .brand { display:flex; align-items:center; position:relative; z-index:1; }
-.brand-logo { height:36px; width:auto; object-fit:contain; filter:drop-shadow(0 1px 4px rgba(0,0,0,.5)); }
+.brand-logo { height:44px; width:auto; object-fit:contain; filter:drop-shadow(0 1px 4px rgba(0,0,0,.5)); }
 .brand h1 { font-family:'Barlow Condensed'; font-weight:300; font-size:27px; margin:0; line-height:1; letter-spacing:.05em; color:var(--chalk); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .uchip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); border-radius:22px; padding:4px 5px 4px 10px; flex:none; position:relative; z-index:1; }
 .uchip .un { font-size:12.5px; font-weight:600; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -525,8 +525,9 @@ const CSS = `
 .seg button.on { background:var(--panel2); color:var(--chalk); }
 .segwrap { padding:0 16px 4px; display:flex; align-items:center; gap:10px; }
 .seg.full, .segwrap .seg { width:fit-content; }
-.addtop { margin-left:auto; flex:none; height:36px; padding:0 14px 0 11px; border-radius:10px; background:var(--amber); color:#13161a; font-weight:700; font-size:13.5px; display:flex; align-items:center; gap:5px; }
-.addtop .plus { font-size:19px; font-weight:300; line-height:1; }
+.addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:none; color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
+.addtop-tb .plus { font-size:17px; font-weight:300; line-height:1; }
+.addtop-tb:hover { background:#d4de32; }
 
 /* leaderboard */
 .lb { padding:4px 14px 96px; }
@@ -579,14 +580,14 @@ const CSS = `
 .archtag { font-size:9px; letter-spacing:.12em; color:var(--muted); border:1px solid var(--line); padding:2px 6px; border-radius:5px; text-transform:uppercase; }
 
 .rfoot { display:flex; align-items:center; gap:8px; margin-top:8px; }
-.du { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:9px 13px; border-radius:10px; border:1.5px solid #3a4150; background:var(--panel2); color:var(--chalk); font-weight:700; font-size:13.5px; user-select:none; }
-.du:not(.top):not(.flash) { background:linear-gradient(160deg,#2a2f1a,#222831); border-color:#5a4715; color:var(--amber); box-shadow:0 0 0 0 rgba(242,180,65,.5); animation:duglow 2.6s ease-in-out infinite; }
-@keyframes duglow { 0%,100% { box-shadow:0 0 0 0 rgba(242,180,65,0);} 50% { box-shadow:0 0 11px 0 rgba(242,180,65,.28);} }
+.du { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:9px 13px; border-radius:10px; border:1.5px solid #3d4f66; background:#252d3d; color:var(--chalk); font-weight:700; font-size:13.5px; user-select:none; }
+
+ 50% { box-shadow:0 0 11px 0 rgba(242,180,65,.28);} }
 .du:active { transform:scale(.98); }
-.du.top { background:linear-gradient(160deg,#1f3a26,#1c2a22); border:1.5px solid #3fae5e; color:#9fe6a0; animation:none; }
-.du.flash { background:linear-gradient(160deg,#5a4715,#3c3a1c); border:1.5px solid var(--amber); color:var(--amber); animation:none; }
+.du.top { background:#1f3a26; border-color:#3fae5e; color:#5cc97e; }
+.du.flash { background:#2a2310; border-color:var(--amber); color:var(--amber); }
 .du .dpts { font-family:'Barlow Condensed'; font-weight:700; opacity:.85; }
-.pill { display:inline-flex; align-items:center; gap:5px; padding:8px 11px; border-radius:10px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); font-weight:600; font-size:13px; flex:none; }
+.pill { display:inline-flex; align-items:center; gap:5px; padding:8px 11px; border-radius:10px; background:#252d3d; border:1.5px solid #3d4f66; color:var(--chalk); font-weight:600; font-size:13px; flex:none; }
 .pill.has { color:var(--chalk); }
 
 /* route stats */
@@ -632,10 +633,10 @@ const CSS = `
 .prow .prole { font-size:10.5px; color:var(--muted); margin-top:1px; }
 .rolebtn { font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; border:1px solid var(--line); color:var(--muted); background:var(--bg); white-space:nowrap; }
 .rolebtn.adm { color:var(--amber); border-color:#5a4715; }
-.removex { color:var(--muted); font-size:16px; padding:2px 7px; }
+.removex { color:#e98b7d; font-size:16px; padding:4px 9px; background:rgba(233,139,125,.12); border-radius:8px; border:1px solid rgba(233,139,125,.3); font-weight:700; }
 .danger { color:#dd5468 !important; }
-.miniaction { width:100%; text-align:center; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:11px 12px; font-size:13.5px; font-weight:700; margin-top:8px; color:var(--chalk); display:inline-flex; align-items:center; justify-content:center; gap:7px; box-shadow:0 1px 0 rgba(0,0,0,.25); transition:background .12s, border-color .12s; }
-.miniaction:hover { background:#2e3742; border-color:#46566a; }
+.miniaction { width:100%; text-align:center; background:#252d3d; border:1.5px solid #3d4f66; border-radius:10px; padding:11px 12px; font-size:13.5px; font-weight:700; margin-top:8px; color:var(--chalk); display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .12s; }
+.miniaction:hover { background:#2e3848; }
 .miniaction:active { background:#262d37; }
 .miniaction.primary { background:var(--amber); border-color:var(--amber); color:#13161a; box-shadow:0 4px 14px rgba(200,212,46,.28); }
 .miniaction.primary:hover { background:#f5c25c; border-color:#f5c25c; }
@@ -727,7 +728,26 @@ const CSS = `
 /* groups */
 .gemoji { width:38px; height:38px; border-radius:10px; background:var(--panel2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
 .lbrow .gemoji { width:34px; height:34px; font-size:18px; }
-.primaryaction { width:100%; background:var(--amber); color:#13161a; font-weight:700; font-size:15px; border-radius:11px; padding:13px; margin-bottom:16px; }
+.primaryaction { width:100%; background:var(--amber); color:#13161a; font-weight:700; font-size:15px; border-radius:11px; padding:13px; margin-bottom:16px; border:none; }
+.primaryaction:hover { background:#d4de32; }
+.primaryaction.locked { opacity:.6; cursor:not-allowed; background:var(--panel2); color:var(--muted); box-shadow:none; border:1px solid var(--line); }
+/* Accordion */
+.routefilters { padding:10px 16px 4px; display:flex; flex-direction:column; gap:8px; }
+.filterrow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.searchinp { width:100%; padding:10px 14px; border-radius:12px; background:var(--panel); border:1px solid var(--line); color:var(--chalk); font-size:14px; outline:none; }
+.searchinp::placeholder { color:var(--muted); }
+.gradefilter { display:flex; flex-wrap:wrap; gap:5px; }
+.wallsection { border-bottom:1px solid var(--line); }
+.wallacchead { width:100%; display:flex; align-items:center; gap:10px; padding:13px 16px; background:#252d3d; text-align:left; border:none; border-bottom:1px solid #3d4f66; color:var(--chalk); cursor:pointer; }
+.wallacchead:active { background:rgba(255,255,255,.04); }
+.wallacchead.open { background:#2a3545; }
+.waname { flex:1; font-weight:600; font-size:15px; }
+.waic { display:flex; align-items:center; color:var(--muted); }
+.wadone { font-family:'Barlow Condensed'; font-weight:700; font-size:13px; color:#5cc97e; }
+.wacount { font-family:'Barlow Condensed'; font-weight:700; font-size:15px; color:var(--muted); }
+.wachevron { font-size:11px; color:var(--muted); }
+.wallbody { padding:4px 12px 14px; }
+.lhsub { font-size:11.5px; color:var(--muted); margin-bottom:8px; }
 .gcard { display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:11px 12px; margin-bottom:9px; }
 .gcard .ginfo { flex:1; min-width:0; }
 .gcard .gn { font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -834,8 +854,8 @@ const CSS = `
 .reqbadge { display:inline-block; margin-left:7px; font-size:10.5px; font-weight:700; color:var(--amber); background:#21240a; border:1px solid #3a4010; border-radius:6px; padding:1px 6px; }
 .archbadge { display:inline-block; font-size:10.5px; font-weight:700; color:#cdd4dc; background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; }
 /* Hall stats */
-.hkpi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:0 16px 4px; }
-.hkpi { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+.hkpi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.hkpi { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
 .hkv { font-family:'Barlow Condensed'; font-weight:700; font-size:32px; color:var(--chalk); line-height:1; }
 .hku { font-size:11px; color:var(--muted); margin-top:3px; letter-spacing:.04em; }
 .hwall-row { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap; }
@@ -908,7 +928,7 @@ const CSS = `
 .rc.flash { box-shadow:0 0 0 2px var(--amber); }
 
 /* role dropdown */
-.roledd { background:var(--bg); border:1px solid var(--line); color:var(--chalk); border-radius:8px; padding:7px 8px; font-size:12.5px; font-weight:600; outline:none; }
+.roledd { background:var(--panel2); border:1.5px solid var(--amber); color:var(--chalk); border-radius:8px; padding:7px 10px; font-size:12.5px; font-weight:700; outline:none; cursor:pointer; }
 .roledd:focus { border-color:var(--amber); }
 
 /* achievements */
@@ -1043,7 +1063,6 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [tipsRouteId, setTipsRouteId] = useState(null);
   const [boardScope, setBoardScope] = useState("einzel");
-  const [routesView, setRoutesView] = useState("karte");
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [openGroupId, setOpenGroupId] = useState(null);
   const [flashId, setFlashId] = useState(null);
@@ -1124,22 +1143,25 @@ export default function App() {
   const myGroups = groupStats.filter(g => (g.members || []).includes(me?.id));
   const otherGroups = groupStats.filter(g => !(g.members || []).includes(me?.id));
 
-  const sessions = useMemo(() => {
+  const filteredSessions = useMemo(() => {
+    const scope = canSetRoutes ? filterScope : "aktuell";
     let rs = routes.filter(r => {
-      if (filterScope === "aktuell" && r.archived) return false;
-      if (filterScope === "archiv" && !r.archived) return false;
+      if (scope === "aktuell" && r.archived) return false;
+      if (scope === "archiv" && !r.archived) return false;
       if (fWall !== "alle" && wallCanon(r.gym) !== fWall) return false;
       if (fGrade && r.grade !== fGrade) return false;
       if (q && !((r.name || "").toLowerCase().includes(q.toLowerCase()) || routeTitle(r).toLowerCase().includes(q.toLowerCase()) || wallName(r.gym).toLowerCase().includes(q.toLowerCase()))) return false;
       return true;
     });
+    // Group by wall (accordion) — show each wall as one section
+    const wallOrder = WALLS.map(w => w.code);
     const map = new Map();
-    rs.forEach(r => { const k = (r.date || "0") + "|" + wallCanon(r.gym); if (!map.has(k)) map.set(k, { date: r.date, wall: wallCanon(r.gym), items: [] }); map.get(k).items.push(r); });
-    const arr = Array.from(map.values());
-    arr.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-    arr.forEach(s => s.items.sort((a, b) => a.grade - b.grade));
+    wallOrder.forEach(w => map.set(w, { wall: w, items: [] }));
+    rs.forEach(r => { const w = wallCanon(r.gym); if (!map.has(w)) map.set(w, { wall: w, items: [] }); map.get(w).items.push(r); });
+    const arr = Array.from(map.values()).filter(s => s.items.length > 0);
+    arr.forEach(s => s.items.sort((a, b) => a.grade - b.grade || (a.date || "").localeCompare(b.date || "")));
     return arr;
-  }, [routes, filterScope, fWall, fGrade, q]);
+  }, [routes, filterScope, fWall, fGrade, q, canSetRoutes]);
 
   function cycleMine(routeId) {
     if (!me) return;
@@ -1266,6 +1288,7 @@ export default function App() {
   function delTip(routeId, tipId) { setCommunity(c => ({ ...c, routes: c.routes.map(r => r.id === routeId ? { ...r, tips: (r.tips || []).filter(t => t.id !== tipId) } : r) })); }
   function setAccRole(id, role) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === id ? { ...a, role, roleRequest: null } : a) })); }
   function removeAccount(id) { setCommunity(c => ({ ...c, accounts: c.accounts.filter(a => a.id !== id) })); }
+  function deleteMyAccount() { if (confirm("Dein Konto wirklich löschen? Alle deine Ergebnisse bleiben erhalten, du kannst dich aber nicht mehr einloggen.")) { removeAccount(me.id); logout(); } }
   function handleLogin(id) { const s = { accountId: id }; setSession(s); saveSession(s); setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === id ? { ...a, lastSeen: todayISO() } : a) })); }
   function handleSignup({ name, pin, role, private: priv, emoji }) { const acc = { id: uid(), name, pin, role, private: !!priv, emoji: emoji || "", lastSeen: todayISO() }; setCommunity(c => ({ ...c, accounts: [...c.accounts, acc] })); handleLogin(acc.id); }
   function logout() { setSession(null); saveSession(null); setTab("routes"); }
@@ -1281,8 +1304,11 @@ export default function App() {
       <div className="topbar" style={{ backgroundImage: `url(${HEADER_BG})` }}>
         <div className="topbar-overlay" />
         <div className="brand">
-          <img src={LOGO_IMG} alt="blocscore" className="brand-logo" />
+          <button onClick={() => setTab("routes")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
+            <img src={LOGO_IMG} alt="blocscore" className="brand-logo" />
+          </button>
         </div>
+        {tab === "routes" && canSetRoutes && <button className="addtop-tb" onClick={() => setEditing("new")}><span className="plus">+</span>{t("routes.add")}</button>}
         <button className="uchip" onClick={() => setTab("account")}>
           {me.role !== "community" && <span className="adminpill">{me.role === "admin" ? "Admin" : "Route Creator"}</span>}
           <span className="un">{me.name}</span>
@@ -1336,164 +1362,111 @@ export default function App() {
 
       {/* ROUTES */}
       {tab === "routes" && (<>
-        <div className="segwrap">
-          <div className="seg">
-            <button className={routesView === "karte" ? "on" : ""} onClick={() => setRoutesView("karte")}>{t("routes.map")}</button>
-            <button className={routesView === "liste" ? "on" : ""} onClick={() => setRoutesView("liste")}>{t("routes.list")}</button>
+        <div className="scroll"><div className="mapbrowse">
+
+          {/* Floor Plan */}
+          <div className="fpwrap"><FloorPlan value={fWall === "alle" ? null : fWall} counts={wallCounts} newest={newestWall} onChange={(c) => { setFWall(fWall === c ? "alle" : c); setFGrade(0); }} /></div>
+
+          {/* Filter + Suche */}
+          <div className="routefilters">
+            <div className="filterrow">
+              {canSetRoutes && [...["aktuell", "alle"], ...["archiv"]].map(s => <button key={s} className={"chip" + (filterScope === s ? " on" : "")} onClick={() => setFilterScope(s)}>{s === "aktuell" ? t("routes.scope.aktuell") : s === "archiv" ? t("routes.scope.archiv") : t("routes.scope.alle")}</button>)}
+              {!canSetRoutes && ["aktuell"].map(s => <button key={s} className={"chip on"} onClick={() => {}}>{t("routes.scope.aktuell")}</button>)}
+              <div className="gradefilter">
+                <button className={"chip" + (!fGrade ? " on" : "")} onClick={() => setFGrade(0)}>{t("routes.allGrades")}</button>
+                {GRADES.map(g => <button key={g} className={"chip" + (fGrade === g ? " on" : "")} style={{ color: GRADE_COLOR[g], borderColor: fGrade === g ? GRADE_COLOR[g] : undefined, background: fGrade === g ? GRADE_COLOR[g]+"22" : undefined }} onClick={() => setFGrade(fGrade === g ? 0 : g)}>{g}er</button>)}
+              </div>
+            </div>
+            <input className="searchinp" value={q} onChange={e => setQ(e.target.value)} placeholder={t("routes.search")} />
           </div>
-          {canSetRoutes && <button className="addtop" onClick={() => setEditing("new")}><span className="plus">+</span>{t("routes.add")}</button>}
-        </div>
 
-        {routesView === "karte" && (
-          <div className="scroll"><div className="mapbrowse">
-            <div className="fpttl">{t("routes.tapHint")}</div>
-            <div className="fpwrap"><FloorPlan value={fWall === "alle" ? null : fWall} counts={wallCounts} newest={newestWall} onChange={(c) => { setFWall(c); setFGrade(0); setRoutesView("liste"); }} /></div>
-
-            <div className="walllegend">
-              {WALLS.map(w => { const gs = gradesByWall[w.code] || []; const fresh = newestWall === w.code; const nxt = nextWall === w.code; return (
-                <div key={w.code} className="wlrow2">
-                  <button className="wlhead" onClick={() => { setFWall(w.code); setFGrade(0); setRoutesView("liste"); }}>
-                    <span className="wlic"><WallIcon code={w.code} size={18} /></span>
-                    <span className="wlname">{w.name}{fresh && <span className="freshbadge">NEU</span>}{nxt && <span className="nextbadge">bald</span>}</span>
-                    {myWallDone[w.code] > 0 && <span className="wldone">✓ {myWallDone[w.code]}</span>}
-                    <span className="wlcount">{wallCounts[w.code] || 0}</span>
-                  </button>
-                  {gs.length > 0 && <div className="wlpills">{gs.map(g => {
-                    // Find routes of this grade on this wall to get hold colors
-                    const wallRoutes = routes.filter(r => !r.archived && wallCanon(r.gym) === w.code && r.grade === g);
-                    return wallRoutes.map(r => {
-                      const col = colorOf(r.name) || "#3a4150";
-                      const fg = colorFgOf(r.name);
-                      const myStatus = r.results?.[me.name];
+          {/* Accordion per Wall */}
+          {filteredSessions.length === 0 && <div className="empty"><div className="big">🪨</div>{t("routes.empty")}</div>}
+          {filteredSessions.map(s => {
+            const isOpen = fWall === s.wall || (fWall === "alle" && (q.length > 0 || fGrade > 0));
+            return (
+              <div key={s.wall} className="wallsection">
+                <button className={"wallacchead" + (isOpen ? " open" : "")} onClick={() => setFWall(fWall === s.wall ? "alle" : s.wall)}>
+                  <span className="waic"><WallIcon code={s.wall} size={18} /></span>
+                  <span className="waname">{wallName(s.wall)}</span>
+                  {newestWall === s.wall && <span className="freshbadge">{t("plan.fresh")}</span>}
+                  {nextWall === s.wall && <span className="nextbadge">{t("plan.next")}</span>}
+                  {myWallDone[s.wall] > 0 && <span className="wadone">✓ {myWallDone[s.wall]}</span>}
+                  <span className="wacount">{s.items.length}</span>
+                  <span className="wachevron">{isOpen ? "▲" : "▼"}</span>
+                </button>
+                {isOpen && (
+                  <div className="wallbody">
+                    {screwDates[s.wall] && <div className="lhsub">{t("routes.rescrewed")} {fmtDate(screwDates[s.wall])}</div>}
+                    <div className="route-grid">
+                    {s.items.map(r => {
+                      const myStatus = r.results?.[me.name] || null;
+                      const senders = players.filter(p => visName.has(p) && r.results?.[p]);
+                      const sendsN = senders.length;
+                      const flashN = senders.filter(p => r.results[p] === "flash").length;
+                      const topN = sendsN - flashN;
+                      const col = colorOf(r.name);
+                      const hasPhoto = r.photos?.length > 0;
+                      const tipsN = (r.tips || []).length;
                       return (
-                        <button key={r.id} className={"gpill2" + (myStatus ? " done" : "")}
-                          style={{ background: col, color: fg, boxShadow: myStatus === "flash" ? `0 0 0 2.5px var(--amber)` : myStatus === "top" ? `0 0 0 2.5px #29b85a` : "none" }}
-                          title={routeTitle(r)}
-                          onClick={() => cycleMine(r.id)}>
-                          {g}{myStatus === "flash" ? "⚡" : myStatus === "top" ? "✓" : ""}
-                        </button>
+                        <div key={r.id} id={"r-" + r.id} className={"rc" + (col ? " rccol" : "") + (r.archived ? " arch" : "") + (flashId === r.id ? " flash" : "")} style={col ? { "--rcol": col } : undefined}>
+                          {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const inline = r.photos[0].startsWith("data:"); const src = inline ? r.photos[0] : await loadPhotoBlob(r.photos[0]); setLightbox(src); }} />}
+                          <div className="rbody">
+                            <div className="rchead">
+                              <div className="gcol" style={col ? { background: col, color: colorFgOf(r.name) } : { background: GRADE_COLOR[r.grade] || "#666", color: "#fff" }}>
+                                <span className="ggrade">{r.grade}</span>
+                              </div>
+                              <div className="rname">
+                                <div className="t1"><span className="txt">{routeTitle(r)}</span>{r.archived && <span className="archtag">Archiv</span>}</div>
+                                {r.note ? <div className="rnote">{r.note}</div> : null}
+                                <div className="t2">{colorWord(r.name) ? colorWord(r.name) + " · " : ""}{r.grade}er · {wallName(r.gym)}</div>
+                              </div>
+                              <div className="rpills">
+                                <span className="rschip top">✓ {topN}</span>
+                                <span className="rschip flash">⚡ {flashN}</span>
+                              </div>
+                              {canSetRoutes && <button className="edit" onClick={() => setEditing(r)}>✎</button>}
+                            </div>
+                            <div className="rfoot">
+                              <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
+                                {myStatus === "flash" ? <>⚡ Flash <span className="dpts">+{fmtPts(pointsFor(r.grade, "flash"))}</span></>
+                                  : myStatus === "top" ? <>✓ Top <span className="dpts">+{fmtPts(pointsFor(r.grade, "top"))}</span></>
+                                    : <>+ Eintragen</>}
+                              </button>
+                              <button className={"pill" + (tipsN ? " has" : "") + (canComment ? "" : " locked")} title={canComment ? "" : t("lock.comments", { n: achScore })} onClick={() => { if (canComment) setTipsRouteId(r.id); }}>{canComment ? <>💬 {tipsN || ""}</> : <>🔒</>}</button>
+                            </div>
+                          </div>
+                        </div>
                       );
-                    });
-                  })}</div>}
-                </div>
-              ); })}
-            </div>
-
-            <div className="plancard">
-              <div className="planttl">🛠 {t("plan.title")}</div>
-              {Object.entries(screwDates).sort((a, b) => a[1].localeCompare(b[1])).map(([w, d]) => { const fresh = newestWall === w; const nxt = nextWall === w; return (
-                <div key={w} className={"planrow" + (fresh ? " fresh" : "") + (nxt ? " next" : "")}>
-                  <span className="plw"><WallIcon code={w} size={14} /> <span className="plwn">{wallName(w)}</span></span>
-                  <div className="plright">
-                    {fresh && <span className="freshbadge">{t("plan.fresh")}</span>}
-                    {nxt && <span className="nextbadge">{t("plan.next")}</span>}
-                    {canSetRoutes
-                      ? <input type="date" className="pldInput" value={d} onChange={e => { if (e.target.value) setScrewDate(w, e.target.value); }} />
-                      : <span className="pld">{fmtDate(d)}</span>}
-                  </div>
-                </div>
-              ); })}
-              {canSetRoutes && <div className="phint" style={{ marginTop: 8 }}>Datum ändern → neue Routen dieser Wand erben automatisch das Schraubdatum.</div>}
-            </div>
-          </div></div>
-        )}
-
-        {routesView === "liste" && (<>
-        <div className="filters">
-          <button className="chip" onClick={() => setRoutesView("karte")}>🗺 {t("routes.map")}</button>
-          {[...["aktuell", "alle"], ...(canSetRoutes ? ["archiv"] : [])].map(s => <button key={s} className={"chip" + (filterScope === s ? " on" : "")} onClick={() => setFilterScope(s)}>{s === "aktuell" ? t("routes.scope.aktuell") : s === "archiv" ? t("routes.scope.archiv") : t("routes.scope.alle")}</button>)}
-          <button className={"chip" + (fGrade === 0 ? " on" : "")} onClick={() => setFGrade(0)}>{t("routes.allGrades")}</button>
-          {wallsPresent.map(w => <button key={w.code} className={"chip" + (fWall === w.code ? " on" : "")} onClick={() => setFWall(fWall === w.code ? "alle" : w.code)}><WallIcon code={w.code} size={15} />{w.short}</button>)}
-        </div>
-        <div className="search"><input value={q} onChange={e => setQ(e.target.value)} placeholder={t("routes.search")} /></div>
-        <div className="listhead">
-          {fWall !== "alle" && (
-            <div className="lhwall">
-              <span className="wlic"><WallIcon code={fWall} size={18} /></span>
-              <div className="lhmeta">
-                <div className="lhname">{wallName(fWall)}{newestWall === fWall && <span className="freshbadge">NEU</span>}</div>
-                {screwDates[fWall] && <div className="lhsub">{t("routes.rescrewed")} {fmtDate(screwDates[fWall])}</div>}
-              </div>
-              <button className="lhclear" onClick={() => setFWall("alle")}>{t("routes.allWalls")}</button>
-            </div>
-          )}
-          <div className="gpillrow">
-            <button className={"gpill gp0" + (fGrade === 0 ? " on" : "")} onClick={() => setFGrade(0)}>Alle</button>
-            {(fWall !== "alle" ? (gradesByWall[fWall] || []) : gradesPresent).map(g => (
-              <button key={g} className="gpill" style={fGrade === g ? { background: GRADE_COLOR[g], borderColor: GRADE_COLOR[g], color: "#13161a" } : { background: "transparent", borderColor: GRADE_COLOR[g], color: GRADE_COLOR[g] }} onClick={() => setFGrade(fGrade === g ? 0 : g)}>{g}er</button>
-            ))}
-          </div>
-        </div>
-        <div className="scroll"><div className="routes">
-          {fWall !== "alle" && sessions.length > 0 && (() => { const flat = sessions.flatMap(s => s.items); const doneN = flat.filter(r => r.results?.[me.name]).length; return (
-            <div className="ovcard">
-              <div className="ovttl"><span className="wlic" style={{ width: 28, height: 28 }}><WallIcon code={fWall} size={16} /></span>{wallName(fWall)} · {flat.length} Routen <span className="ovdone">✓ {doneN} {t("routes.done")}</span></div>
-              <div className="ovbubbles">
-                {flat.map(r => { const col = colorOf(r.name) || "#3a4150"; const fg = colorFgOf(r.name); const myStatus = r.results?.[me.name]; return (
-                  <button key={r.id} className={"ovb" + (flashId === r.id ? " fl" : "") + (myStatus ? " done" : "")}
-                    onClick={() => cycleMine(r.id)}
-                    style={{ background: col, color: fg, boxShadow: myStatus === "flash" ? `0 0 0 3px var(--amber), 0 0 0 4.5px ${col}` : myStatus === "top" ? `0 0 0 3px #29b85a, 0 0 0 4.5px ${col}` : `0 0 0 2px rgba(255,255,255,.12)` }}
-                    title={routeTitle(r)}>
-                    <span className="ovgrade">{r.grade}</span>
-                    {myStatus === "flash" && <i className="ovchk">⚡</i>}
-                    {myStatus === "top" && <i className="ovchk">✓</i>}
-                  </button>
-                ); })}
-              </div>
-              <div className="ovlegend">Tippe eine Bubble zum Eintragen · Farbe = Griff · Ring = Status</div>
-            </div>
-          ); })()}
-          {sessions.length === 0 && <div className="empty"><div className="big">🪨</div>{t("routes.empty")}</div>}
-          {sessions.map(s => (
-            <div key={s.date + s.wall}>
-              <div className="sesh"><span className="ic"><WallIcon code={s.wall} size={18} /></span><span className="gymfull">{wallName(s.wall)}</span><span style={{ color: "var(--muted)" }}>· {fmtDate(s.date)}</span><span className="ln" /><span>{s.items.length}</span></div>
-              <div className="route-grid">
-              {s.items.map(r => {
-                const myStatus = r.results?.[me.name] || null;
-                const senders = players.filter(p => visName.has(p) && r.results?.[p]);
-                const sendsN = senders.length;
-                const flashN = senders.filter(p => r.results[p] === "flash").length;
-                const topN = sendsN - flashN;
-                const hasPhoto = r.photos?.length > 0;
-                const tipsN = (r.tips || []).length;
-                const col = colorOf(r.name);
-                return (
-                  <div key={r.id} id={"r-" + r.id} className={"rc" + (col ? " rccol" : "") + (r.archived ? " arch" : "") + (flashId === r.id ? " flash" : "")} style={col ? { "--rcol": col } : undefined}>
-                    {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const inline = r.photos[0].startsWith("data:"); const src = inline ? r.photos[0] : await loadPhotoBlob(r.photos[0]); setLightbox(src); }} />}
-                    <div className="rbody">
-                      <div className="rchead">
-                        <div className="gcol" style={col ? { background: col, color: colorFgOf(r.name) } : { background: GRADE_COLOR[r.grade] || "#666", color: "#fff" }}>
-                          <span className="ggrade">{r.grade}</span>
-                        </div>
-                        <div className="rname">
-                          <div className="t1"><span className="txt">{routeTitle(r)}</span>{r.archived && <span className="archtag">Archiv</span>}</div>
-                          {r.note ? <div className="rnote">{r.note}</div> : null}
-                          <div className="t2">{colorWord(r.name) ? colorWord(r.name) + " · " : ""}{r.grade}er · {wallName(r.gym)}</div>
-                        </div>
-                        <div className="rpills">
-                          <span className="rschip top">✓ {topN}</span>
-                          <span className="rschip flash">⚡ {flashN}</span>
-                        </div>
-                        {canSetRoutes && <button className="edit" onClick={() => setEditing(r)}>✎</button>}
-                      </div>
-                      <div className="rfoot">
-                        <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
-                          {myStatus === "flash" ? <>⚡ Flash <span className="dpts">+{fmtPts(pointsFor(r.grade, "flash"))}</span></>
-                            : myStatus === "top" ? <>✓ Top <span className="dpts">+{fmtPts(pointsFor(r.grade, "top"))}</span></>
-                              : <>+ {t("routes.add")}</>}
-                        </button>
-                        <button className={"pill" + (tipsN ? " has" : "") + (canComment ? "" : " locked")} title={canComment ? "" : t("lock.comments", { n: achScore })} onClick={() => { if (canComment) setTipsRouteId(r.id); }}>{canComment ? <>💬 {tipsN || ""}</> : <>🔒</>}</button>
-                      </div>
+                    })}
                     </div>
                   </div>
-                );
-              })}
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
+
+          {/* Umschraubplan */}
+          {fWall === "alle" && (<div className="plancard" style={{ marginTop: 16 }}>
+            <div className="planttl">🛠 {t("plan.title")}</div>
+            {Object.entries(screwDates).sort((a, b) => a[1].localeCompare(b[1])).map(([w, d]) => { const fresh = newestWall === w; const nxt = nextWall === w; return (
+              <div key={w} className={"planrow" + (fresh ? " fresh" : "") + (nxt ? " next" : "")}>
+                <span className="plw"><WallIcon code={w} size={14} /> <span className="plwn">{wallName(w)}</span></span>
+                <div className="plright">
+                  {fresh && <span className="freshbadge">{t("plan.fresh")}</span>}
+                  {nxt && <span className="nextbadge">{t("plan.next")}</span>}
+                  {canSetRoutes
+                    ? <input type="date" className="pldInput" value={d} onChange={e => { if (e.target.value) setScrewDate(w, e.target.value); }} />
+                    : <span className="pld">{fmtDate(d)}</span>}
+                </div>
+              </div>
+            ); })}
+            {canSetRoutes && <div className="phint" style={{ marginTop: 8 }}>Datum ändern → neue Routen dieser Wand erben automatisch das Schraubdatum.</div>}
+          </div>)}
+
         </div></div>
-        </>)}
       </>)}
+
 
       {/* STATS */}
       {tab === "stats" && (
@@ -1583,11 +1556,13 @@ export default function App() {
           {hallTab === "halle" && (<>
 
             {/* Kennzahlen */}
-            <div className="hkpi-grid">
-              <div className="hkpi"><div className="hkv">{hallStats.activeRoutes.length}</div><div className="hku">{t("hall.routes")}</div></div>
-              <div className="hkpi"><div className="hkv">{hallStats.totalSends}</div><div className="hku">{t("hall.sends")}</div></div>
-              <div className="hkpi"><div className="hkv">{hallStats.totalFlashes}</div><div className="hku">{t("hall.flashes")}</div></div>
-              <div className="hkpi"><div className="hkv">{accounts.filter(a => !a.staff).length}</div><div className="hku">{t("acc.members")}</div></div>
+            <div className="stcard" style={{ padding: "12px" }}>
+              <div className="hkpi-grid">
+                <div className="hkpi"><div className="hkv">{hallStats.activeRoutes.length}</div><div className="hku">{t("hall.routes")}</div></div>
+                <div className="hkpi"><div className="hkv">{hallStats.totalSends}</div><div className="hku">{t("hall.sends")}</div></div>
+                <div className="hkpi"><div className="hkv">{hallStats.totalFlashes}</div><div className="hku">{t("hall.flashes")}</div></div>
+                <div className="hkpi"><div className="hkv">{accounts.filter(a => !a.staff).length}</div><div className="hku">{t("acc.members")}</div></div>
+              </div>
             </div>
 
             {/* Wände */}
@@ -1608,7 +1583,7 @@ export default function App() {
             <div className="stcard">
               <h3><span>{t("hall.popular")}</span></h3>
               {hallStats.popularRoutes.map((r, i) => (
-                <div key={r.id} className="hpop-row" onClick={() => { setTab("routes"); setRoutesView("liste"); setTimeout(() => jumpToRoute(r.id), 80); }} style={{ cursor: "pointer" }}>
+                <div key={r.id} className="hpop-row" onClick={() => { setTab("routes"); setTimeout(() => jumpToRoute(r.id), 80); }} style={{ cursor: "pointer" }}>
                   <span className="hrank">{medal(i) || (i + 1)}</span>
                   {colorOf(r.name) && <span className="hrswatch" style={{ background: colorOf(r.name) }} />}
                   <div className="hrname">
@@ -1647,7 +1622,7 @@ export default function App() {
             {/* Storage-Übersicht */}
             <div className="stcard" style={{ marginBottom: 12 }}>
               <h3><span>💾 Datensatz & Speicher</span></h3>
-              <div className="hkpi-grid" style={{ marginBottom: 10 }}>
+              <div className="hkpi-grid">
                 <div className="hkpi"><div className="hkv">{hallStats.communityKB} KB</div><div className="hku">Daten (ohne Fotos)</div></div>
                 <div className="hkpi">
                   <div className="hkv">{photoStorageKB === null ? "—" : photoStorageKB === "…" ? "⏳" : `${photoStorageKB >= 1024 ? (photoStorageKB/1024).toFixed(1)+" MB" : photoStorageKB+" KB"}`}</div>
@@ -1666,7 +1641,7 @@ export default function App() {
             </div>
 
             {/* Gesamt-KPIs für Admin */}
-            <div className="hkpi-grid" style={{ marginBottom: 12 }}>
+            <div className="hkpi-grid">
               <div className="hkpi"><div className="hkv">{hallStats.creators.length}</div><div className="hku">Route Creator</div></div>
               <div className="hkpi"><div className="hkv">{hallStats.totalComments}</div><div className="hku">Kommentare</div></div>
               <div className="hkpi"><div className="hkv">{hallStats.sessionList.length}</div><div className="hku">Schraubsessions</div></div>
@@ -1775,6 +1750,7 @@ export default function App() {
               <button className="miniaction" style={{ marginTop: 0 }} onClick={() => setChangePinOpen(true)}><span className="mi-ic">🔑</span>{t("acc.changePw")}</button>
               <button className="miniaction danger" style={{ marginTop: 0 }} onClick={logout}><span className="mi-ic">🚪</span>{t("acc.logout")}</button>
             </div>
+            {!isAdmin && <button className="miniaction" style={{ marginTop: 8, color: "#e98b7d", borderColor: "rgba(233,139,125,.3)", background: "rgba(233,139,125,.08)" }} onClick={deleteMyAccount}><span className="mi-ic">🗑</span>Konto löschen</button>}
           </div>
           <div className="stcard">
             <h3><span>{t("acc.points")}</span>{isAdmin && <button className="miniaction" style={{ marginTop:0, marginLeft:"auto", width:"auto", padding:"4px 10px", fontSize:12 }} onClick={() => setScoringOpen(true)}>✎ Bearbeiten</button>}</h3>
@@ -2175,6 +2151,7 @@ function GroupSheet({ group, me, accById, boardMode, isMember, isCreator, reques
   );
 }
 function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screwDates }) {
+  const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
   const [wall, setWall] = useState(route ? wallCanon(route.gym) : null);
   const defaultDate = isNew ? (wall && screwDates?.[wall] ? screwDates[wall] : todayISO()) : (route?.date || todayISO());
