@@ -71,12 +71,26 @@ Import the repository, choose the **Vite** preset (build command `npm run build`
 
 ## 💾 Data & persistence
 
-This build stores everything in the browser via `localStorage` (see `src/storage.js`), so **each visitor
-has their own local board** — great for a demo or single-device use.
+This app ships with two storage modes — you choose by configuring environment variables:
 
-For **one shared board across all users** (everyone sees the same routes, results and rankings), replace
-`src/storage.js` with a backend such as [Supabase](https://supabase.com/) implementing the same
-`get / set / delete / list` interface. Nothing else in the app needs to change.
+| Mode | When | What it means |
+|---|---|---|
+| **localStorage** (default) | `VITE_SUPABASE_URL` not set | Each visitor has their own local board. Great for demos. |
+| **Supabase** | Both env vars set | One shared database — everyone sees the same routes, results and rankings. |
+
+### Setting up Supabase (shared gym board, ~10 minutes)
+
+1. Create a **free** project at [supabase.com](https://supabase.com) (no credit card needed).
+2. In the Supabase dashboard → **SQL Editor** → paste and run the contents of [`supabase_setup.sql`](supabase_setup.sql). This creates the `blocscore_store` table.
+3. Go to **Settings → API** and copy your **Project URL** and **anon/public key**.
+4. In your GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**, add:
+   - `VITE_SUPABASE_URL` → your project URL (e.g. `https://abcdef.supabase.co`)
+   - `VITE_SUPABASE_KEY` → your anon key (`eyJ...`)
+5. Trigger a new deploy (push any change, or **Actions → Run workflow**).
+
+That's it — blocscore now uses a real shared database. All climbers log in from their own device and see the same leaderboard.
+
+> **Local development:** copy `.env.example` to `.env` and fill in your Supabase credentials. Vite picks them up automatically.
 
 ## 🗂️ Project structure
 
