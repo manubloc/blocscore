@@ -24,7 +24,7 @@ It was originally built as a real-world example for **Boulderhalle Steinbock in 
 the seed data models that gym's walls and reset schedule — but it works for any gym: change the seed
 and the wall layout and you're ready to go.
 
-> **Elevate. Score. Repeat.**
+> **send. flash. compete.**
 
 ## ✨ Features
 
