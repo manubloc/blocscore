@@ -1,0 +1,41 @@
+{
+  "name": "blocscore",
+  "private": false,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "blocscore — a bouldering-gym scoreboard: routes, 1000+ achievements, groups and a leaderboard. Mobile-first React app.",
+  "keywords": [
+    "bouldering",
+    "climbing",
+    "scoreboard",
+    "leaderboard",
+    "gym",
+    "achievements",
+    "react",
+    "vite",
+    "pwa"
+  ],
+  "license": "GPL-3.0-or-later",
+  "author": "blocscore contributors",
+  "homepage": "https://github.com/manubloc/blocscore#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manubloc/blocscore.git"
+  },
+  "bugs": {
+    "url": "https://github.com/manubloc/blocscore/issues"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.10"
+  }
+}
