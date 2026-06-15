@@ -729,9 +729,9 @@ const CSS = `
 .uchip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); border-radius:22px; padding:4px 5px 4px 10px; flex:none; position:relative; z-index:1; }
 .uchip .un { font-size:12.5px; font-weight:600; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .adminpill { font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--amber); border:1px solid #5a4715; background:#332a12; padding:1px 5px; border-radius:5px; font-weight:700; }
-.seg { display:flex; background:var(--panel); border:1px solid rgba(255,255,255,.12); border-radius:9px; padding:3px; width:fit-content; }
-.seg button { font-size:12px; font-weight:600; padding:6px 11px; border-radius:6px; color:var(--muted); white-space:nowrap; background:none; border:1.5px solid transparent !important; }
-.seg button.on { background:var(--panel2); color:var(--chalk); border:1.5px solid rgba(255,255,255,.35) !important; }
+.seg { display:flex; background:var(--panel); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:3px; width:fit-content; }
+.seg button { font-size:12px; font-weight:600; padding:6px 11px; border-radius:6px; color:var(--muted); white-space:nowrap; background:none; border:1px solid transparent !important; }
+.seg button.on { background:rgba(255,255,255,.07); color:var(--chalk); border:1px solid rgba(255,255,255,.28) !important; }
 .segwrap { padding:0 16px 4px; display:flex; align-items:center; gap:10px; }
 .seg.full, .segwrap .seg { width:fit-content; }
 .addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:2px solid rgba(255,255,255,.45) !important; color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
@@ -789,14 +789,14 @@ const CSS = `
 .archtag { font-size:9px; letter-spacing:.12em; color:var(--muted); border:1px solid var(--line); padding:2px 6px; border-radius:5px; text-transform:uppercase; }
 
 .rfoot { display:flex; align-items:center; gap:8px; margin-top:8px; }
-.du { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 13px; border-radius:10px; border:1.5px solid rgba(255,255,255,.35); background:#2c3650; color:var(--chalk); font-weight:700; font-size:13.5px; user-select:none; }
+.du { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 13px; border-radius:10px; border:1px solid rgba(255,255,255,.28); background:#242c3a; color:var(--chalk); font-weight:700; font-size:13.5px; user-select:none; }
 
  50% { box-shadow:0 0 11px 0 rgba(242,180,65,.28);} }
 .du:active { transform:scale(.98); }
 .du.top { background:#1f3a26; border-color:#3fae5e; color:#5cc97e; }
 .du.flash { background:#2a2310; border-color:var(--amber); color:var(--amber); }
 .du .dpts { font-family:'Barlow Condensed'; font-weight:700; opacity:.85; }
-.pill { display:inline-flex; align-items:center; gap:5px; padding:8px 11px; border-radius:10px; background:#2c3650; border:1.5px solid rgba(255,255,255,.35); color:var(--chalk); font-weight:600; font-size:13px; flex:none; }
+.pill { display:inline-flex; align-items:center; gap:5px; padding:8px 11px; border-radius:10px; background:#242c3a; border:1px solid rgba(255,255,255,.22); color:var(--chalk); font-weight:600; font-size:13px; flex:none; }
 .pill.has { color:var(--chalk); }
 
 /* route stats */
@@ -846,7 +846,7 @@ const CSS = `
 .rolebtn.adm { color:var(--amber); border-color:#5a4715; }
 .removex { color:#e98b7d; font-size:16px; padding:4px 9px; background:rgba(233,139,125,.12); border-radius:8px; border:1px solid rgba(233,139,125,.3); font-weight:700; }
 .danger { color:#dd5468 !important; }
-.miniaction { width:100%; text-align:center; background:#2c3650; border:1.5px solid rgba(255,255,255,.35); border-radius:10px; padding:11px 12px; font-size:13.5px; font-weight:700; margin-top:8px; color:var(--chalk); display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .12s; }
+.miniaction { width:100%; text-align:center; background:#242c3a; border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:11px 12px; font-size:13.5px; font-weight:700; margin-top:8px; color:var(--chalk); display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .12s; }
 .miniaction:hover { background:#2e3848; }
 .miniaction:active { background:#262d37; }
 .miniaction.primary { background:var(--amber); border-color:var(--amber); color:#13161a; box-shadow:0 4px 14px rgba(200,212,46,.28); }
@@ -858,8 +858,8 @@ const CSS = `
 
 /* tabbar / fab */
 .tabbar { display:flex; background:var(--panel); border-top:1px solid var(--line); padding:8px 8px calc(8px + env(safe-area-inset-bottom)); gap:4px; }
-.tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px; border-radius:10px; color:var(--muted); }
-.tab.on { color:var(--chalk); }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px; border-radius:10px; color:var(--muted); border:1px solid transparent; }
+.tab.on { color:var(--chalk); border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.05); }
 .tab .ic { font-size:18px; line-height:1; }
 .tab .tl { font-size:10px; font-weight:600; }
 .fab { position:fixed; right:18px; bottom:84px; height:52px; padding:0 22px 0 18px; border-radius:26px; background:var(--amber); color:#13161a; font-size:15px; font-weight:700; display:flex; align-items:center; gap:7px; box-shadow:0 10px 26px rgba(0,0,0,.5); z-index:60; }
@@ -945,10 +945,10 @@ const CSS = `
 /* Accordion */
 .routefilters { padding:10px 14px 14px; display:flex; flex-direction:column; gap:10px; }
 .filterrow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-.searchinp { width:100%; padding:11px 14px; border-radius:12px; background:#2c3650; border:1.5px solid rgba(255,255,255,.22); color:var(--chalk); font-size:14px; outline:none; }
+.searchinp { width:100%; padding:11px 14px; border-radius:12px; background:#242c3a; border:1px solid rgba(255,255,255,.22); color:var(--chalk); font-size:14px; outline:none; }
 .searchinp::placeholder { color:var(--muted); }
 .gradefilter { display:flex; flex-wrap:wrap; gap:5px; }
-.wallsection { border-radius:14px; overflow:hidden; margin:0 14px 10px; border:1.5px solid rgba(255,255,255,.18); }
+.wallsection { border-radius:14px; overflow:hidden; margin:0 14px 10px; border:1px solid rgba(255,255,255,.18); }
 .wallacchead { width:100%; display:flex; align-items:center; gap:10px; padding:13px 16px; background:#2c3650; text-align:left; border:none; color:var(--chalk); cursor:pointer; }
 .wallacchead:active { background:rgba(255,255,255,.04); }
 .wallacchead.open { background:#2a3545; border-bottom:1px solid #4a6080; }
@@ -1301,7 +1301,7 @@ export default function App() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [statsView, setStatsView] = useState("erfolge");
   const [achCat, setAchCat] = useState(null);
-  const [hallTab, setHallTab] = useState("halle"); // halle | meine | creator | data
+  const [hallTab, setHallTab] = useState("halle"); // halle | meine | creator
   const [lang, setLang] = useState("de");
   setLangG(lang);
   function changeLang(l) { setLang(l); setLangG(l); try { window.storage.set("blocscore:lang", l, false); } catch (e) {} }
@@ -1399,7 +1399,7 @@ export default function App() {
   }, [myAgg, lang]);
   const nextUp = useMemo(() => achState.evald.filter(a => !a.done).sort((a, b) => (b.ratio - a.ratio) || (a.target - b.target)).slice(0, 10), [achState]);
   const achScore = achState.score;
-  const NEED_COMMENT = 100, NEED_GROUP = 1000, NEED_CREATOR = 10000;
+  const NEED_COMMENT = 100, NEED_GROUP = 200, NEED_CREATOR = 10000;
   const canComment = isAdmin || canSetRoutes || achScore >= NEED_COMMENT;
   const canCreateGroup = isAdmin || canSetRoutes || achScore >= NEED_GROUP;
   const canRequestCreator = achScore >= NEED_CREATOR;
@@ -1779,7 +1779,6 @@ export default function App() {
               <button className={hallTab === "halle" ? "on" : ""} onClick={() => setHallTab("halle")}>{t("hall.activity")}</button>
               <button className={hallTab === "meine" ? "on" : ""} onClick={() => setHallTab("meine")}>👤 {LANG==="en"?"My Stats":"Meine Stats"}</button>
               {isAdmin && <button className={hallTab === "creator" ? "on" : ""} onClick={() => setHallTab("creator")}>{t("hall.creator")}</button>}
-              {isAdmin && <button className={hallTab === "data" ? "on" : ""} onClick={() => setHallTab("data")}>💾 Data</button>}
             </div>
           </div>
 
@@ -1990,39 +1989,7 @@ export default function App() {
             </>);
           })()}
 
-          {/* ── Data Management (nur Admin) ── */}
-          {hallTab === "data" && isAdmin && (<>
-            <div className="stcard">
-              <h3><span>💾 Data Management</span></h3>
-              <div className="hkpi-grid" style={{ gridTemplateColumns:"repeat(2,1fr)", marginBottom:12 }}>
-                <div className="hkpi"><div className="hkv">{hallStats.communityKB} KB</div><div className="hku">Daten (ohne Fotos)</div></div>
-                <div className="hkpi"><div className="hkv">{photoStorageKB === null ? "—" : photoStorageKB === "…" ? "⏳" : `${photoStorageKB >= 1024 ? (photoStorageKB/1024).toFixed(1)+" MB" : photoStorageKB+" KB"}`}</div><div className="hku">Fotos gesamt</div></div>
-                <div className="hkpi"><div className="hkv">{routes.filter(r=>r.photos?.length).length}</div><div className="hku">Routen mit Foto</div></div>
-                <div className="hkpi"><div className="hkv">{hallStats.archivedWithPhoto.length}</div><div className="hku">Archiv mit Foto</div></div>
-              </div>
-              <button className="miniaction" onClick={measurePhotoStorage}>📏 Fotos messen</button>
-              {hallStats.archivedWithPhoto.length > 0 && <div className="note" style={{marginTop:10,color:"var(--amber)"}}>⚠️ {hallStats.archivedWithPhoto.length} archivierte Routen haben noch Fotos — beim Löschen wird Speicher freigegeben.</div>}
-              <div className="phint" style={{marginTop:8}}>Fotos werden auf max. 1080px / ~70 KB komprimiert. Supabase Free: 1 GB.</div>
-            </div>
 
-            <div className="stcard">
-              <h3><span>⚙️ Hallenkonfiguration</span></h3>
-              <div className="field" style={{margin:0}}>
-                <label>Wandhöhe (Meter pro Route)</label>
-                <input type="number" step="0.1" min="1" max="15" defaultValue={WALL_HEIGHT}
-                  onBlur={e => { const v=parseFloat(e.target.value); if(!isNaN(v)&&v>0) setWallHeight(v); }}
-                  style={{background:"var(--panel2)",border:"1.5px solid rgba(255,255,255,.22)",borderRadius:10,padding:"9px 12px",color:"var(--chalk)",fontSize:15,width:"100%"}} />
-                <div className="phint">Standard: 3.5 m · Wird für Höhenmeter-Berechnung genutzt</div>
-              </div>
-              <div className="field" style={{margin:"12px 0 0"}}>
-                <label>Punktesystem</label>
-                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                  <span style={{fontSize:13,color:"var(--muted)"}}>Top-Faktor: {STEP} · Flash-Bonus: {FLASH_BONUS}</span>
-                  <button className="miniaction" style={{marginTop:0,width:"auto",padding:"6px 12px"}} onClick={()=>setScoringOpen(true)}>✎ Bearbeiten</button>
-                </div>
-              </div>
-            </div>
-          </>)}
 
         </div></div>
       )}
@@ -2081,6 +2048,32 @@ export default function App() {
               ])}
             </div>
           </div>
+
+          {/* Admin-Einstellungen */}
+          {isAdmin && (<>
+            <div className="stcard">
+              <h3><span>⚙️ Hallenkonfiguration</span></h3>
+              <div className="field" style={{ margin: 0 }}>
+                <label>Wandhöhe (Meter pro Route)</label>
+                <input type="number" step="0.1" min="1" max="15" defaultValue={WALL_HEIGHT}
+                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setWallHeight(v); }}
+                  style={{ background: "var(--panel2)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 10, padding: "9px 12px", color: "var(--chalk)", fontSize: 15, width: "100%" }} />
+                <div className="phint">Standard: 3.5 m · Wird für Höhenmeter-Berechnung genutzt</div>
+              </div>
+            </div>
+            <div className="stcard">
+              <h3><span>💾 Data Management</span></h3>
+              <div className="hkpi-grid" style={{ gridTemplateColumns: "repeat(2,1fr)", marginBottom: 12 }}>
+                <div className="hkpi"><div className="hkv">{hallStats.communityKB} KB</div><div className="hku">Daten (ohne Fotos)</div></div>
+                <div className="hkpi"><div className="hkv">{photoStorageKB === null ? "—" : photoStorageKB === "…" ? "⏳" : `${photoStorageKB >= 1024 ? (photoStorageKB / 1024).toFixed(1) + " MB" : photoStorageKB + " KB"}`}</div><div className="hku">Fotos gesamt</div></div>
+                <div className="hkpi"><div className="hkv">{routes.filter(r => r.photos?.length).length}</div><div className="hku">Routen mit Foto</div></div>
+                <div className="hkpi"><div className="hkv">{hallStats.archivedWithPhoto.length}</div><div className="hku">Archiv mit Foto</div></div>
+              </div>
+              <button className="miniaction" onClick={measurePhotoStorage}>📏 Fotos messen</button>
+              {hallStats.archivedWithPhoto.length > 0 && <div className="note" style={{ marginTop: 10, color: "var(--amber)" }}>⚠️ {hallStats.archivedWithPhoto.length} archivierte Routen haben noch Fotos — beim Löschen wird Speicher freigegeben.</div>}
+              <div className="phint" style={{ marginTop: 8 }}>Fotos werden auf max. 1080px / ~70 KB komprimiert. Supabase Free: 1 GB.</div>
+            </div>
+          </>)}
           <div className="stcard">
             <h3><span>{isAdmin ? t("acc.users") : t("acc.members")}</span><span className="r">{accounts.length}</span></h3>
             {accounts.map(a => { const arch = isArchivedAcc(a, routes, today); return (
