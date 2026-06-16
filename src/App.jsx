@@ -722,6 +722,7 @@ const CSS = `
   .rc .rbanner { height:160px; object-fit:cover; }
   .hkpi-grid { grid-template-columns:repeat(4,1fr); }
   .stcard { break-inside:avoid; }
+  .brand-logo { height:44px !important; }
 }
 @media (min-width: 1100px) {
   .bld { max-width:1100px; }
@@ -761,7 +762,7 @@ const CSS = `
 .topbar { padding:6px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; background-size:cover; background-position:center 40%; height:72px; min-height:72px; max-height:72px; border-bottom:1px solid rgba(255,255,255,.08); background-color:#252830; }
 .topbar-overlay { position:absolute; inset:0; background:linear-gradient(90deg, #13141a 0%, #13141a 33%, rgba(19,20,26,.6) 55%, rgba(19,20,26,0) 90%); pointer-events:none; }
 .brand { display:flex; align-items:center; position:relative; z-index:2; padding-left:0; }
-.brand-logo { height:50px; width:auto; object-fit:contain; display:block; }
+.brand-logo { height:36px; width:auto; object-fit:contain; display:block; }
 .brand h1 { font-family:'Barlow Condensed'; font-weight:300; font-size:27px; margin:0; line-height:1; letter-spacing:.05em; color:var(--chalk); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .uchip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); border-radius:22px; padding:4px 5px 4px 10px; flex:none; position:relative; z-index:1; }
 .uchip .un { font-size:12.5px; font-weight:600; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -2406,8 +2407,10 @@ export default function App() {
       </div>
 
       {editing && (
+        <RouteSheetBoundary onClose={() => setEditing(null)}>
         <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} screwDates={screwDates}
           onClose={() => setEditing(null)} onSave={(r) => { upsertRoute(r); setEditing(null); }} onDelete={(id) => { deleteRoute(id); setEditing(null); }} />
+        </RouteSheetBoundary>
       )}
       {tipsRoute && (
         <TipsSheet route={tipsRoute} me={me} isAdmin={isAdmin} onClose={() => setTipsRouteId(null)} onAdd={(t) => addTip(tipsRoute.id, t)} onDelete={(id) => delTip(tipsRoute.id, id)} />
@@ -2759,6 +2762,27 @@ function GroupSheet({ group, me, accById, boardMode, isMember, isCreator, reques
     </div>
   );
 }
+
+class RouteSheetBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  componentDidCatch(e, info) { console.error("RouteSheet crash:", e, info); }
+  render() {
+    if (this.state.error) return (
+      <div className="scrim" onClick={this.props.onClose}>
+        <div className="sheet" onClick={e => e.stopPropagation()} style={{padding:24}}>
+          <div className="shead"><h2>Fehler</h2><button className="x" onClick={this.props.onClose}>✕</button></div>
+          <div className="sbody">
+            <div className="note" style={{color:"#e98b7d"}}>Route konnte nicht geladen werden: {this.state.error.message}</div>
+            <button className="miniaction" style={{marginTop:16}} onClick={this.props.onClose}>Schließen</button>
+          </div>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screwDates }) {
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
@@ -2780,7 +2804,7 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
   const valid = !!wall && nick.trim().length > 0;
   const myStatus = results[me.name] || null;
 
-  useEffect(() => { let on = true; (async () => { if (!route?.photos?.length) return; const out = []; for (const id of route.photos) { if (typeof id === "string" && id.startsWith("data:")) { out.push({ id, dataUrl: id }); } else { const b = await loadPhotoBlob(id); if (b) out.push({ id, dataUrl: b }); } } if (on) setPhotos(out); })(); return () => { on = false; }; }, []);
+  useEffect(() => { let on = true; (async () => { try { if (!route?.photos?.length) return; const out = []; for (const id of route.photos) { if (!id) continue; if (typeof id === "string" && id.startsWith("data:")) { out.push({ id, dataUrl: id }); } else { try { const b = await loadPhotoBlob(id); if (b) out.push({ id, dataUrl: b }); } catch(_){} } } if (on) setPhotos(out); } catch(e) { console.error("photo load error", e); } })(); return () => { on = false; }; }, []);
   async function onPickFiles(e) { const files = Array.from(e.target.files || []); e.target.value = ""; if (!files.length) return; setPhotoBusy(true); const add = []; for (const f of files) { try { add.push({ id: uid(), dataUrl: await downscale(f) }); } catch (_) {} } setPhotos(p => [...p, ...add]); setPhotoBusy(false); }
   function removePhoto(id) { setPhotos(p => p.filter(x => x.id !== id)); }
   function setMine(s) { setResults(r => ({ ...r, [me.name]: r[me.name] === s ? null : s })); }
@@ -2798,19 +2822,12 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
         <div className="grip" />
         <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
         <div className="sbody">
-          {!wall ? (
-            isNew ? (
+          {(!wall && isNew) ? (
             <div className="planpick">
               <div className="planpick-ttl">Wo hängt die Route?</div>
               <div className="planpick-sub">Tippe auf den Bereich im Hallenplan</div>
               <div className="planpick-wrap"><FloorPlan value={wall} onChange={changeWall} /></div>
             </div>
-            ) : (
-            <div style={{padding:"16px"}}>
-              <div style={{fontSize:13,color:"rgba(255,255,255,.7)",marginBottom:10}}>Welche Wand?</div>
-              <div className="fpwrap"><FloorPlan value={wall} onChange={changeWall} /></div>
-            </div>
-            )
           ) : (<>
           <div className="wallbar">
             <span className="wallbar-ic"><WallIcon code={wall} size={20} /></span>
