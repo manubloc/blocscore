@@ -560,10 +560,10 @@ function ActivityChart({ results, routeDate, label, color="#b8ff00" }) {
 function IntroModal({ me, onClose, onDismiss }) {
   const en = LANG === "en";
   return (
-    <div className="scrim" onClick={onClose} style={{zIndex:200, alignItems:"center", padding:"20px 16px"}}>
+    <div className="scrim" onClick={onClose} style={{zIndex:200, alignItems:"center", padding:"20px 16px", backgroundImage:`url(${BG_LOGIN})`, backgroundSize:"cover", backgroundPosition:"center"}}>
       <div className="intro-modal" onClick={e=>e.stopPropagation()}>
         <div className="intro-header">
-          <div className="intro-logo">🧗</div>
+          <img src={LOGIN_LOGO} alt="blocscore" style={{width:72,height:72,objectFit:"contain",borderRadius:12,marginBottom:8,display:"block",margin:"0 auto 10px"}} />
           <h2 className="intro-ttl">{en?"Welcome to blocscore":"Willkommen bei blocscore"}</h2>
           <p className="intro-sub">{en?"Track your sends, earn achievements, compete with friends.":"Trage deine Begehungen ein, sammle Erfolge und vergleich dich."}</p>
         </div>
@@ -619,6 +619,252 @@ function IntroModal({ me, onClose, onDismiss }) {
   );
 }
 
+
+// ── Day Summary Share Card ────────────────────────────
+function ShareCard({ me, routes, today, onClose, logoSrc }) {
+  const canvasRef = useRef(null);
+  const [generated, setGenerated] = useState(false);
+  const [shareUrl, setShareUrl] = useState(null);
+
+  const todayRoutes = routes.filter(r => r.date === today && r.results?.[me?.name]);
+  const todayTops = todayRoutes.filter(r => r.results[me.name] === "top").length;
+  const todayFlashes = todayRoutes.filter(r => r.results[me.name] === "flash").length;
+  const todayPts = todayRoutes.reduce((s,r) => s + pointsFor(r.grade, r.results[me.name]), 0);
+  const todayMeters = todayRoutes.length * WALL_HEIGHT;
+  const gradeMap = {};
+  todayRoutes.forEach(r => { gradeMap[r.grade] = (gradeMap[r.grade]||0)+1; });
+  const bestGrade = todayRoutes.length ? Math.max(...todayRoutes.map(r=>r.grade)) : 0;
+  const en = LANG === "en";
+
+  const COLOR_MAP = {
+    blau:"#4a90d9",gelb:"#f5c800",rot:"#d93025",grün:"#2ecc6a",
+    lila:"#9b59b6",schwarz:"#555566",weiß:"#dddddd",pink:"#e5477d"
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || todayRoutes.length === 0) return;
+    const ctx = canvas.getContext("2d");
+    const W = 400, H = 520;
+    canvas.width = W * 2; canvas.height = H * 2;
+    ctx.scale(2, 2);
+
+    // Background
+    ctx.fillStyle = "#13141a";
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle lime gradient top
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, "rgba(184,255,0,0.08)");
+    grad.addColorStop(1, "rgba(184,255,0,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Border
+    ctx.strokeStyle = "rgba(184,255,0,0.3)";
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, 1, 1, W-2, H-2, 16);
+    ctx.stroke();
+
+    // Logo
+    if (logoSrc) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 18, 18, 32, 32);
+        drawText(ctx, W, H);
+      };
+      img.src = logoSrc;
+    } else { drawText(ctx, W, H); }
+
+    function roundRect(c, x, y, w, h, r) {
+      c.beginPath(); c.moveTo(x+r,y);
+      c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r);
+      c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r);
+      c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r);
+      c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r); c.closePath();
+    }
+
+    function drawText(ctx, W, H) {
+      // blocscore label
+      ctx.fillStyle = "#b8ff00";
+      ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+      ctx.fillText("blocscore", 58, 36);
+
+      // Date
+      const dateStr = new Date(today+"T12:00:00").toLocaleDateString(en?"en-GB":"de-DE",{weekday:"long",day:"numeric",month:"long"});
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillText(dateStr, 18, 60);
+
+      // User name
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 22px system-ui, sans-serif";
+      ctx.fillText(me?.name || "?", 18, 90);
+
+      // Divider
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(18, 104); ctx.lineTo(W-18, 104); ctx.stroke();
+
+      // Big KPIs
+      const kpis = [
+        { label: en?"Tops":"Tops", value: todayTops, sub: "" },
+        { label: "Flashes", value: todayFlashes, sub: "" },
+        { label: en?"Points":"Punkte", value: fmtPts(todayPts), sub: "" },
+        { label: en?"Meters":"Meter", value: Math.round(todayMeters)+"m", sub: "" },
+      ];
+      const colW = (W-36) / kpis.length;
+      kpis.forEach((k, i) => {
+        const x = 18 + i * colW + colW/2;
+        ctx.fillStyle = "#b8ff00";
+        ctx.font = "bold 28px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(k.value, x, 145);
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.font = "10px system-ui, sans-serif";
+        ctx.fillText(k.label.toUpperCase(), x, 160);
+      });
+      ctx.textAlign = "left";
+
+      // Divider
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.beginPath(); ctx.moveTo(18, 174); ctx.lineTo(W-18, 174); ctx.stroke();
+
+      // Grade breakdown
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.fillText(en?"BY GRADE":"NACH GRAD", 18, 192);
+
+      const grades = [1,2,3,4,5,6,7,8];
+      const maxCount = Math.max(1, ...grades.map(g => gradeMap[g]||0));
+      const bW = (W-36)/grades.length;
+      const bMaxH = 60;
+      grades.forEach((g, i) => {
+        const cnt = gradeMap[g] || 0;
+        const x = 18 + i*bW;
+        const bH = cnt > 0 ? Math.max(4, (cnt/maxCount)*bMaxH) : 2;
+        const y = 200 + bMaxH - bH;
+        ctx.fillStyle = cnt > 0 ? "rgba(184,255,0,0.85)" : "rgba(255,255,255,0.08)";
+        roundRect(ctx, x+2, y, bW-4, bH, 2);
+        ctx.fill();
+        if (cnt > 0) {
+          ctx.fillStyle = "#b8ff00";
+          ctx.font = "bold 11px system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(cnt, x + bW/2, y-4);
+        }
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.font = "10px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(g, x + bW/2, 274);
+      });
+      ctx.textAlign = "left";
+
+      // Color dots
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.fillText(en?"COLORS":"FARBEN", 18, 300);
+      const colorMap2 = {};
+      todayRoutes.forEach(r => { const c = (r.name||"").toLowerCase(); colorMap2[c] = (colorMap2[c]||0)+1; });
+      let cx = 18, cy = 316;
+      Object.entries(colorMap2).sort((a,b)=>b[1]-a[1]).forEach(([c, cnt]) => {
+        ctx.fillStyle = COLOR_MAP[c] || "#888";
+        ctx.beginPath(); ctx.arc(cx+8, cy+8, 8, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.fillText("×"+cnt, cx+20, cy+13);
+        cx += 48;
+        if (cx > W-60) { cx = 18; cy += 26; }
+      });
+
+      // Best grade badge
+      if (bestGrade > 0) {
+        cy = Math.max(cy + 30, 370);
+        ctx.strokeStyle = "rgba(184,255,0,0.4)";
+        ctx.lineWidth = 1;
+        ctx.fillStyle = "rgba(184,255,0,0.08)";
+        roundRect(ctx, 18, cy, W-36, 44, 10);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#b8ff00";
+        ctx.font = "bold 14px system-ui, sans-serif";
+        ctx.fillText(en?"Best grade today:":"Bester Grad heute:", 32, cy+17);
+        ctx.font = "bold 22px system-ui, sans-serif";
+        ctx.fillText(bestGrade+"er", 32, cy+36);
+      }
+
+      // Footer
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.font = "10px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("blocscore.de  ·  elevate. score. repeat.", W/2, H-14);
+      ctx.textAlign = "left";
+
+      // Done!
+      const url = canvas.toDataURL("image/png");
+      setShareUrl(url);
+      setGenerated(true);
+    }
+  }, []);
+
+  const handleShare = async () => {
+    if (!shareUrl) return;
+    const blob = await (await fetch(shareUrl)).blob();
+    const file = new File([blob], `blocscore-${today}.png`, { type: "image/png" });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      navigator.share({ files: [file], title: "blocscore Day Summary" });
+    } else {
+      const a = document.createElement("a");
+      a.href = shareUrl; a.download = `blocscore-${today}.png`;
+      a.click();
+    }
+  };
+
+  return (
+    <div className="scrim" onClick={onClose} style={{zIndex:190, alignItems:"center", padding:"20px 16px"}}>
+      <div className="share-card-modal" onClick={e=>e.stopPropagation()}>
+        <div className="shead">
+          <h2>{en?"Day Summary":"Tages-Zusammenfassung"}</h2>
+          <button className="x" onClick={onClose}><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+        </div>
+        {todayRoutes.length === 0 ? (
+          <div className="sbody" style={{padding:24, textAlign:"center", color:"var(--muted)"}}>
+            {en?"No routes logged today yet.":"Noch keine Routen heute eingetragen."}
+          </div>
+        ) : (
+          <div className="sbody" style={{padding:"12px 16px 20px"}}>
+            <canvas ref={canvasRef} style={{ width:"100%", borderRadius:8, display:"block", border:"1px solid rgba(255,255,255,.1)" }} />
+            <div style={{display:"flex", gap:10, marginTop:14}}>
+              <button className="btn" style={{marginTop:0}} onClick={handleShare}>
+                {en?"Share / Download":"Teilen / Herunterladen"} ↗
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function AchIcon({ icon }) {
+  const svgs = {
+    "↑": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg>,
+    "◆": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M8 1L15 8 8 15 1 8z"/></svg>,
+    "●": <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#b8ff00"/></svg>,
+    "⚡": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M9.5 1L3 9.5h4.5L6.5 15 13 6.5H8.5z"/></svg>,
+    "▲": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M8 2L15 14H1z"/></svg>,
+    "◉": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5" fill="#b8ff00"/></svg>,
+    "≡": <svg viewBox="0 0 16 16" stroke="#b8ff00" strokeWidth="2" strokeLinecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>,
+    "→": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 8h12M9 4l5 4-5 4"/></svg>,
+    "✦": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M8 1l1.5 5.5H15l-4.5 3.3 1.7 5.2L8 12l-4.2 3 1.7-5.2L1 6.5h5.5z"/></svg>,
+    "◻": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="2"><rect x="2" y="2" width="12" height="12" rx="1"/></svg>,
+    "◷": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 2" strokeLinecap="round"/></svg>,
+    "▣": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><rect x="5" y="5" width="6" height="6" rx="0.5" fill="#b8ff00" stroke="none"/></svg>,
+    "◈": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><path d="M8 1L15 8 8 15 1 8z"/><circle cx="8" cy="8" r="2.5" fill="#b8ff00" stroke="none"/></svg>,
+  };
+  return <div className="ach-icon">{svgs[icon] || <span>{icon}</span>}</div>;
+}
+
 function buildAchievements(lang) {
   const en = lang === "en";
   const A = []; let id = 0;
@@ -633,61 +879,61 @@ function buildAchievements(lang) {
   const L = {Gesamt:en?"Total":"Gesamt",Flash:"Flash",Punkte:en?"Points":"Punkte",Kombi:en?"Combo":"Kombi",Tagesform:en?"Day form":"Tagesform",Spezial:en?"Special":"Spezial",Treue:en?"Loyalty":"Treue",Straßen:en?"Straights":"Straßen",Mehrling:en?"Multiples":"Mehrling",Ausdauer:en?"Endurance":"Ausdauer"};
 
   // GESAMT TOPS — Anfänger 14/sess→~1000 nach 70 sess; Gut 19/sess; Pro 32/sess
-  const TOPS=[1,3,5,10,20,35,50,75,100,150,200,300,500,750,1000,2000,3000,5000];
+  const TOPS=[5,15,30,60,100,200,400,600,1000,1500,2500,4000,7000,10000,15000];
   const TNAMES_DE=["Erster Zug","Handflächen warm","Dabei","Stammgast","Fleißig","Ehrgeizig","Halbhundert","Hartnäckig","Hundert!","Obsessiv","Zweihundert","Dreihundert","Fünfhundert","Dreiviertel-Tausend","Tausendsassa","Zweitausend","Dreitausend","Boulder-Gott"];
   const TNAMES_EN=["First Move","Palms Warm","On Board","Regular","Diligent","Ambitious","Half Century","Persistent","Hundred!","Obsessed","Two Hundred","Three Hundred","Five Hundred","Three-Quarter K","Jack of All","Two Thousand","Three Thousand","Boulder God"];
-  TOPS.forEach((n,i)=>push(L.Gesamt,"🧗",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
+  TOPS.forEach((n,i)=>push(L.Gesamt,"↑",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
 
   // FLASH — harder, Anfänger flasst selten, Pro flasht ~6/sess
-  const FLASHES=[1,3,5,10,25,50,100,250,500,1000];
+  const FLASHES=[5,15,30,75,150,300,750,1500];
   const FDE=["Erster Flash","Flash-Trio","Flash-Fünf","Flash-Zehn","Flash-Profi","Flash-Meister","Flash-Legende","Flash-Elite","Flash-Gott","Flash-Mythos"];
   const FEN=["First Flash","Flash Trio","Flash Five","Flash Ten","Flash Pro","Flash Master","Flash Legend","Flash Elite","Flash God","Flash Myth"];
   FLASHES.forEach((n,i)=>push("Flash","⚡",tier(en?FEN:FDE,i,""),en?`Flash ${n} routes`:`Flashe ${n} Routen`,n,"flashes",Math.round(pts(n)*2.2)));
 
   // PUNKTE — Anfänger: 7pts/sess→100pts nach 14 sess; Gut: 22.5; Pro: 51.5
-  const PTS_V=[25,75,200,500,1000,2000,4000,7500,15000,30000,60000];
+  const PTS_V=[50,150,400,1000,2500,5000,10000,25000,50000,100000];
   const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott"];
   const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God"];
-  PTS_V.forEach((n,i)=>push(L.Punkte,"💎",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
+  PTS_V.forEach((n,i)=>push(L.Punkte,"◆",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
 
   // GRADE — kalibriert: 1er/2er/3er Anfänger, 4er/5er Gut, 6er/7er Fortgeschritten, 8er Pro
   const gScale=[0,1,1.2,1.5,2,3,5,8,15];
   GRADES.forEach(g=>{
-    const tC=g<=2?[5,15,30,60,100,200,400]:g<=4?[3,10,25,50,100,200,400]:g<=6?[1,5,15,30,75,150]:g===7?[1,3,10,25,50]:[1,3,5,15,30];
+    const tC=g<=2?[10,30,60,120,250,500,1000]:g<=4?[5,15,40,80,150,300,600]:g<=6?[2,8,20,50,100,200]:g===7?[1,5,15,35,75]:[1,3,10,25,50];
     tC.forEach((n)=>push(`${g}`,"🪨",en?`${n}× Grade ${g}`:`${n}× ${g}er`,en?`Climb ${n} grade-${g} routes`:`Klettere ${n} ${g}er-Routen`,n,`grade:${g}:t`,Math.round(pts(n)*gScale[g])));
-    const fC=g<=3?[5,15,30]:g<=5?[3,10,25,50,100]:g<=7?[1,5,15,30,60]:[1,3,10,25];
+    const fC=g<=3?[10,30,75]:g<=5?[5,20,50,100,200]:g<=7?[2,10,25,60,120]:[1,5,15,40];
     fC.forEach((n)=>push(`${g}`,"⚡",en?`Flash ${n}× Grade ${g}`:`Flash ${n}× ${g}er`,en?`Flash ${n} grade-${g} routes`:`Flashe ${n} ${g}er-Routen`,n,`grade:${g}:f`,Math.round(pts(n)*gScale[g]*2)));
   });
 
   // FARBE
   COLORS.forEach(c=>{
-    [3,10,25,50,100,200,500].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
+    [3,10,25,50,100,200,500].forEach(n=>push(cName(c),"●",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
     [5,15,30,75,150].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
-  [10,15,20,25,30,40,50].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  [10,15,20,25,30,40,50].forEach(n=>push(L.Tagesform,"▲",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
   [5,8,12,15,20,25,30].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
 
   // KOMBI / SPEZIAL
-  [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
-  [1,2,3,5].forEach((n,i)=>push(L.Spezial,"📊",en?`All grades in one day (${n}×)`:`Alle Grade an einem Tag (${n}×)`,en?`On ${n} day(s) climb all grades 1–8`:`An ${n} Tag(en) alle Grade 1–8`,n,"allGradeDays",60+i*25));
+  [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"◉",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
+  [1,2,3,5].forEach((n,i)=>push(L.Spezial,"≡",en?`All grades in one day (${n}×)`:`Alle Grade an einem Tag (${n}×)`,en?`On ${n} day(s) climb all grades 1–8`:`An ${n} Tag(en) alle Grade 1–8`,n,"allGradeDays",60+i*25));
 
   // STRASSEN
-  [[4,50],[5,70],[6,100],[7,135],[8,175]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`Grades 1–${k} in one day`:`Grade 1–${k} an einem Tag`,en?`Climb grades 1–${k} in one day`:`Schaffe Grade 1–${k} an einem Tag`,k,"maxFrom1",p));
-  [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
+  [[4,50],[5,70],[6,100],[7,135],[8,175]].forEach(([k,p])=>push(L.Straßen,"→",en?`Grades 1–${k} in one day`:`Grade 1–${k} an einem Tag`,en?`Climb grades 1–${k} in one day`:`Schaffe Grade 1–${k} an einem Tag`,k,"maxFrom1",p));
+  [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"→",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
 
   // MEHRLING
-  [[5,50],[8,90],[10,130],[12,175],[15,230],[20,320]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+  [[5,50],[8,90],[10,130],[12,175],[15,230],[20,320]].forEach(([k,p])=>push(L.Mehrling,"✦",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
 
   // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
-  [[1,8],[3,14],[5,20],[10,30],[20,42],[35,55],[50,68],[75,85],[100,105],[150,135],[200,168],[300,220],[365,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
+  [[1,8],[3,14],[5,20],[10,30],[20,42],[35,55],[50,68],[75,85],[100,105],[150,135],[200,168],[300,220],[365,300]].forEach(([n,p])=>push(L.Treue,"◻",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
 
   // AUSDAUER
-  [1,2,3,4,5,6,8,10,12,16,20,26,52].forEach(n=>push(L.Ausdauer,"⏳",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
-  [2,3,4,6,8,12,16,26].forEach(n=>push(L.Ausdauer,"⏳",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
-  [10,20,30,50,75,100].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
-  [20,50,75,100,150,200,250,300].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
+  [1,2,3,4,5,6,8,10,12,16,20,26,52].forEach(n=>push(L.Ausdauer,"◷",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
+  [2,3,4,6,8,12,16,26].forEach(n=>push(L.Ausdauer,"◷",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
+  [10,20,30,50,75,100].forEach(n=>push(L.Ausdauer,"▣",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
+  [20,50,75,100,150,200,250,300].forEach(n=>push(L.Ausdauer,"▣",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
 
   // BERGE — totalRoutes × wallHeight(3.5m default)
   [
@@ -704,7 +950,7 @@ function buildAchievements(lang) {
     [1989,"Aconcagua (6961m) 🏔",en?"Stone Sentinel — highest in the Americas":"Steinerner Wächter — höchster Berg der Amerikas",310],
     [2460,"K2 (8611m) ☠️",en?"The Savage Mountain — world's second highest":"The Savage Mountain — zweithöchster der Welt",410],
     [2528,"Mount Everest (8849m) 🏆",en?"MOUNT EVEREST — THE ULTIMATE!":"MOUNT EVEREST — DIE ULTIMATIVE LEISTUNG!",500],
-  ].forEach(([n,name,desc,p])=>push("Berge","🏔",name,desc,n,"totalRoutes",p));
+  ].forEach(([n,name,desc,p])=>push("Berge","▲",name,desc,n,"totalRoutes",p));
 
   // KLETTERKLASSIKER — kumulierte Höhenmeter entsprechen der Länge legendärer Routen
   // Jede Route in der Halle = WALL_HEIGHT Meter (Standard 3.5m)
@@ -724,7 +970,7 @@ function buildAchievements(lang) {
            en?"2400m — like the classic Mont Blanc massif granite route":"2400m — wie die klassische Granit-Route am Mont-Blanc-Massiv",210],
     [857,  en?"Yosemite Triple Crown (3000m) 👑":"Yosemite Triple Crown (3000m) 👑",
            en?"3000m — like climbing El Capitan, Half Dome & Mt Watkins in a day":"3000m — wie El Capitan, Half Dome & Mt Watkins an einem Tag",280],
-  ].forEach(([n,name,desc,p])=>push(KLETTERR,"🧗",name,desc,n,"totalRoutes",p));
+  ].forEach(([n,name,desc,p])=>push(KLETTERR,"↑",name,desc,n,"totalRoutes",p));
 
   // ZEIT-CHALLENGES (Routen an einem Tag = maxDayTops)
   const ZEIT = en?"Speed":"Speed";
@@ -741,7 +987,7 @@ function buildAchievements(lang) {
       en?"40 routes in one day — no mercy":"40 an einem Tag — gnadenlos",360],
     [50,en?"Project Moonboard (50 in 1 day) 🌙":"Project Moonboard (50 an 1 Tag) 🌙",
       en?"50 routes in one day — you are on another level":"50 an einem Tag — du bist auf einem anderen Level",500],
-  ].forEach(([n,name,desc,p])=>push(ZEIT,"⏱",name,desc,n,"maxDayTops",p));
+  ].forEach(([n,name,desc,p])=>push(ZEIT,"◈",name,desc,n,"maxDayTops",p));
 
   return A;
 }
@@ -1049,7 +1295,7 @@ const CSS = `
   .rc .rbanner { height:160px; object-fit:cover; }
   .hkpi-grid { grid-template-columns:repeat(4,1fr); }
   .stcard { break-inside:avoid; }
-  .brand-logo { height:44px !important; }
+  .brand-logo { height:30px !important; max-height:30px !important; }
   .tab svg { width:24px !important; height:24px !important; }
   .tabbar { min-height:62px !important; height:62px !important; }
 }
@@ -1088,10 +1334,10 @@ const CSS = `
 .roleseg button.on { background:var(--chalk); color:var(--bg); border-color:var(--chalk); }
 
 /* top bar */
-.topbar { padding:6px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; background-size:cover; background-position:center 40%; height:72px; min-height:72px; max-height:72px; border-bottom:1px solid rgba(255,255,255,.08); background-color:#252830; }
+.topbar { padding:6px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; background-size:cover; background-position:center 40%; height:60px; min-height:60px; max-height:60px; border-bottom:1px solid rgba(255,255,255,.08); background-color:#252830; overflow:hidden; }
 .topbar-overlay { position:absolute; inset:0; background:linear-gradient(90deg, #13141a 0%, #13141a 33%, rgba(19,20,26,.6) 55%, rgba(19,20,26,0) 90%); pointer-events:none; }
 .brand { display:flex; align-items:center; position:relative; z-index:2; padding-left:0; }
-.brand-logo { height:36px; width:auto; object-fit:contain; display:block; }
+.brand-logo { height:24px; width:auto; object-fit:contain; display:block; max-height:24px; }
 .brand h1 { font-family:'Barlow Condensed'; font-weight:300; font-size:27px; margin:0; line-height:1; letter-spacing:.05em; color:var(--chalk); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .uchip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); border-radius:22px; padding:4px 5px 4px 10px; flex:none; position:relative; z-index:1; }
 .uchip .un { font-size:12.5px; font-weight:600; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1487,6 +1733,11 @@ const CSS = `
 .intro-card-ttl { font-weight:700; font-size:14px; color:#fff; margin-bottom:2px; }
 .intro-card-txt { font-size:12.5px; color:rgba(255,255,255,.65); line-height:1.45; }
 .intro-actions { padding:12px 16px 20px; display:flex; flex-direction:column; gap:0; }
+.share-card-modal { background:var(--panel); border-radius:20px; border:1.5px solid rgba(255,255,255,.12); width:100%; max-width:480px; overflow:hidden; animation:up .22s ease; max-height:90dvh; display:flex; flex-direction:column; }
+.share-card-modal .sbody { overflow-y:auto; flex:1; }
+.ach-icon { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:rgba(184,255,0,0.1); border:1px solid rgba(184,255,0,0.2); flex:none; }
+.ach-icon svg { width:16px; height:16px; }
+.ach-icon span { font-size:14px; line-height:1; color:#b8ff00; }
 .archbadge { display:inline-block; font-size:10.5px; font-weight:700; color:#cdd4dc; background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; }
 /* Hall stats */
 .hkpi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -1694,6 +1945,7 @@ export default function App() {
   const [community, setCommunity] = useState(null);
   const [session, setSession] = useState(null);
   const [showIntro, setShowIntro] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState("routes");
   const [boardMode, setBoardMode] = useState("aktuell");
@@ -1785,7 +2037,7 @@ export default function App() {
   }), [groups, accById, totals, boardMode, me]);
   const groupsRanked = useMemo(() => [...groupStats].sort((a, b) => (b[boardMode] || 0) - (a[boardMode] || 0)), [groupStats, boardMode]);
   const myGroups = groupStats.filter(g => (g.members || []).includes(me?.id));
-  const otherGroups = groupStats.filter(g => !(g.members || []).includes(me?.id));
+  const otherGroups = groupStats.filter(g => !(g.members || []).includes(me?.id) && !g.private);
 
   const filteredSessions = useMemo(() => {
     const scope = canSetRoutes ? filterScope : "aktuell";
@@ -1896,7 +2148,8 @@ export default function App() {
     return { activeRoutes, todaySends, weekSends, monthSends, totalSends, totalFlashes, popularRoutes, activeClimbers, wallStats, sessionList, creators, totalComments, mostCommented, communityKB, archivedWithPhoto, topSendsId, topFlashId2 };
   }, [routes, accounts, today]);
   function groupOf(accId) { return groups.find(g => (g.members || []).includes(accId)); }
-  function createGroup(name, emoji) { if (myGroupsList.length >= maxGroupsAllowed) return; const g = { id: uid(), name, emoji, members: [me.id], requests: [], createdBy: me.id }; setCommunity(c => ({ ...c, groups: [...(c.groups || []), g] })); }
+  function createGroup(name, emoji, isPrivate=false) { if (myGroupsList.length >= maxGroupsAllowed) return; const g = { id: uid(), name, emoji, private: !!isPrivate, members: [me.id], requests: [], createdBy: me.id }; setCommunity(c => ({ ...c, groups: [...(c.groups || []), g] })); }
+  function setGroupPrivate(gId, val) { setCommunity(c => ({ ...c, groups: c.groups.map(g => g.id === gId ? { ...g, private: val } : g) })); }
   function requestJoin(id) {
     if (myGroupsList.length >= maxGroupsAllowed) return;
     setCommunity(c => ({ ...c, groups: (c.groups || []).map(g => g.id === id && !(g.requests || []).includes(me.id) && !g.members.includes(me.id) ? { ...g, requests: [...(g.requests || []), me.id] } : g) }));
@@ -1930,6 +2183,25 @@ export default function App() {
   }
   function deleteGroup(id) { setCommunity(c => ({ ...c, groups: (c.groups || []).filter(g => g.id !== id) })); }
   function setPrivate(v) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, private: v } : a) })); }
+  function renameAccount(newName) {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === me.name) return { ok: false, err: "same" };
+    const exists = accounts.some(a => a.id !== me.id && a.name.toLowerCase() === trimmed.toLowerCase());
+    if (exists) return { ok: false, err: "taken" };
+    const oldName = me.name;
+    setCommunity(c => ({
+      ...c,
+      accounts: c.accounts.map(a => a.id === me.id ? { ...a, name: trimmed } : a),
+      routes: c.routes.map(r => {
+        if (!r.results?.[oldName]) return r;
+        const results = { ...r.results };
+        results[trimmed] = results[oldName];
+        delete results[oldName];
+        return { ...r, results };
+      }),
+    }));
+    return { ok: true };
+  }
   function setMyEmoji(e) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, emoji: e } : a) })); }
 
   // ── Sendly Sync ──
@@ -2101,6 +2373,7 @@ export default function App() {
   return (
     <div className="bld">
       {introEl}
+      {showShare && <ShareCard me={me} routes={routes} today={today} logoSrc={LOGO_IMG} onClose={() => setShowShare(false)} />}
       <style>{CSS}</style>
       <div className="topbar" style={{ backgroundImage: `url(${HEADER_BG})` }}>
         <div className="topbar-overlay" />
@@ -2304,7 +2577,7 @@ export default function App() {
               <>
                 <h3 className="ssec">{t("ach.done")} 🏅 <span className="ssecn">{done.length}</span></h3>
                 <div className="achstrip">{done.slice(0, 16).map(a => (
-                  <div className="achbadge" key={a.id} title={a.desc}><span className="abic">{a.icon}</span><span className="abn">{a.name}</span><span className="abp">+{a.pts}</span></div>
+                  <div className="achbadge" key={a.id} title={a.desc}><AchIcon icon={a.icon} /><span className="abn">{a.name}</span><span className="abp">+{a.pts}</span></div>
                 ))}</div>
               </>
             ) : null; })()}
@@ -2312,9 +2585,9 @@ export default function App() {
             <h3 className="ssec">{t("ach.next")}</h3>
             {nextUp.map(a => (
               <div key={a.id} className="achrow">
-                <span className="achic">{a.icon}</span>
+                <AchIcon icon={a.icon} />
                 <div className="achinfo"><div className="achn">{a.name}</div><div className="achd">{a.desc}</div><div className="achbar"><i style={{ width: `${a.ratio * 100}%` }} /></div></div>
-                <div className="achprog">{a.cur}/{a.target}</div>
+                <div className="achprog">{Math.min(a.cur, a.target)}/{a.target}</div>
               </div>
             ))}
 
@@ -2427,6 +2700,121 @@ export default function App() {
               })}
             </div>
           </>)}
+
+
+          {/* ── Gruppen-Stats ── */}
+          {hallTab.startsWith("grp:") && (() => {
+            const gId = hallTab.slice(4);
+            const grp = groups.find(g => g.id === gId);
+            if (!grp) return <div className="note">{LANG==="en"?"Group not found.":"Gruppe nicht gefunden."}</div>;
+            const members = (grp.members || []).map(id => accounts.find(a => a.id === id)).filter(Boolean);
+
+            const memberStats = members.map(m => {
+              const mRoutes = routes.filter(r => r.results?.[m.name]);
+              const mFlashes = mRoutes.filter(r => r.results[m.name] === "flash").length;
+              const mPts = mRoutes.reduce((sum,r) => sum + pointsFor(r.grade, r.results[m.name]), 0);
+              const mMeters = mRoutes.length * WALL_HEIGHT;
+              return { acc: m, tops: mRoutes.length, flashes: mFlashes, pts: mPts, meters: mMeters };
+            }).sort((a,b) => b.pts - a.pts);
+
+            const isMe = a => a.id === me.id;
+            const maxTops = Math.max(1, ...memberStats.map(x => x.tops));
+
+            return (<div className="scroll"><div className="stats">
+              {/* Header */}
+              <div className="stcard">
+                <h3><span>{grp.emoji||"👥"} {grp.name}</span><span className="r">{members.length} {LANG==="en"?"members":"Mitglieder"}</span></h3>
+                {(grp.createdBy === me.id || isAdmin) && (
+                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"var(--panel2)",borderRadius:10,border:"1px solid var(--line)",marginBottom:10,marginTop:8}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:600,color:"var(--chalk)"}}>{LANG==="en"?"Private group":"Private Gruppe"}</div>
+                      <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{LANG==="en"?"Hidden from community ranking":"Nicht im Community-Ranking sichtbar"}</div>
+                    </div>
+                    <button type="button" onClick={()=>setGroupPrivate(gId, !grp.private)} style={{width:44,height:24,borderRadius:12,background:grp.private?"#b8ff00":"var(--line)",border:"none",cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+                      <span style={{position:"absolute",top:3,left:grp.private?22:3,width:18,height:18,borderRadius:9,background:grp.private?"#13141a":"var(--chalk)",transition:"left .2s",display:"block"}}/>
+                    </button>
+                  </div>
+                )}
+                <div className="hkpi-grid" style={{gridTemplateColumns:"repeat(2,1fr)",marginTop:8}}>
+                  <div className="hkpi"><div className="hkv">{memberStats.reduce((s,m)=>s+m.tops,0)}</div><div className="hku">{LANG==="en"?"Total tops":"Tops gesamt"}</div></div>
+                  <div className="hkpi"><div className="hkv">{memberStats.reduce((s,m)=>s+m.flashes,0)}</div><div className="hku">Flashes gesamt</div></div>
+                  <div className="hkpi"><div className="hkv">{fmtPts(memberStats.reduce((s,m)=>s+m.pts,0))}</div><div className="hku">{LANG==="en"?"Total points":"Punkte gesamt"}</div></div>
+                  <div className="hkpi"><div className="hkv">{Math.round(memberStats.reduce((s,m)=>s+m.meters,0))} m</div><div className="hku">{LANG==="en"?"Total meters":"Höhenmeter gesamt"}</div></div>
+                </div>
+              </div>
+
+              {/* Ranking */}
+              <div className="stcard">
+                <h3><span>🏆 {LANG==="en"?"Ranking":"Ranking"}</span></h3>
+                {memberStats.map((ms, i) => (
+                  <div key={ms.acc.id} className={"lbrow" + (isMe(ms.acc) ? " lead" : "")} style={{marginBottom:6}}>
+                    <span className="lbn">{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</span>
+                    <Avatar name={ms.acc.name} emoji={ms.acc.emoji} size={32} />
+                    <div style={{flex:1,minWidth:0}}>
+                      <div className="lbname" style={{color:isMe(ms.acc)?"#b8ff00":"inherit"}}>{ms.acc.name}</div>
+                      <div style={{fontSize:11,color:"var(--muted)"}}>{ms.tops} Tops · {ms.flashes} Flashes · {Math.round(ms.meters)}m</div>
+                    </div>
+                    <span className="lbscore">{fmtPts(ms.pts)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Vergleichsbalken mit Metrik-Toggle */}
+              {(() => {
+                const [cmpMetric, setCmpMetric] = useState("pts");
+                const metrics = [
+                  { key:"pts", label:LANG==="en"?"Points":"Punkte", val: ms => ms.pts, fmt: v => fmtPts(v) },
+                  { key:"tops", label:"Tops", val: ms => ms.tops, fmt: v => v },
+                  { key:"flashes", label:"Flashes", val: ms => ms.flashes, fmt: v => v },
+                  { key:"meters", label: LANG==="en"?"Meters":"Meter", val: ms => Math.round(ms.meters), fmt: v => v+"m" },
+                ];
+                const curMetric = metrics.find(m => m.key === cmpMetric) || metrics[0];
+                const sorted = [...memberStats].sort((a,b) => curMetric.val(b) - curMetric.val(a));
+                const maxVal = Math.max(1, ...sorted.map(ms => curMetric.val(ms)));
+                return (
+                  <div className="stcard">
+                    <h3><span>{LANG==="en"?"Comparison":"Vergleich"}</span></h3>
+                    <div className="seg" style={{marginBottom:14}}>
+                      {metrics.map(m => <button key={m.key} className={cmpMetric===m.key?"on":""} onClick={()=>setCmpMetric(m.key)}>{m.label}</button>)}
+                    </div>
+                    {sorted.map(ms => {
+                      const v = curMetric.val(ms);
+                      const pct = Math.round((v / maxVal) * 100);
+                      return (
+                        <div key={ms.acc.id} style={{marginBottom:14}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,marginBottom:5}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <Avatar name={ms.acc.name} emoji={ms.acc.emoji} size={20} />
+                              <span style={{color:isMe(ms.acc)?"#b8ff00":"var(--chalk)",fontWeight:isMe(ms.acc)?700:400}}>{ms.acc.name}</span>
+                            </div>
+                            <span style={{color:isMe(ms.acc)?"#b8ff00":"var(--muted)",fontWeight:isMe(ms.acc)?700:400}}>{curMetric.fmt(v)}</span>
+                          </div>
+                          <div style={{height:8,background:"var(--panel2)",borderRadius:4,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${pct}%`,background:isMe(ms.acc)?"#b8ff00":"rgba(255,255,255,0.2)",borderRadius:4,transition:"width .5s"}}/>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* Meine Aktivität */}
+              <div className="stcard">
+                <h3><span>{LANG==="en"?"My activity":"Meine Aktivität"}</span></h3>
+                <ActivityChart
+                  results={(() => {
+                    const r = [];
+                    routes.forEach(rt => {
+                      const st = rt.results?.[me.name];
+                      if (st) r.push({ date: rt.date, status: st, grade: rt.grade });
+                    });
+                    return r;
+                  })()}
+                />
+              </div>
+            </div></div>);
+          })()}
 
           {/* ── Route Creator Auswertung (nur Admin) ── */}
           {hallTab === "creator" && isAdmin && (<>
@@ -2922,7 +3310,7 @@ function CategorySheet({ cat, items, onClose }) {
             <div key={a.id} className={"achrow" + (a.done ? " done" : "")}>
               <span className="achic">{a.done ? "🏅" : a.icon}</span>
               <div className="achinfo"><div className="achn">{a.name}{a.done && <span className="achchk">✓</span>}</div><div className="achd">{a.desc}</div>{!a.done && <div className="achbar"><i style={{ width: `${a.ratio * 100}%` }} /></div>}</div>
-              <div className="achprog">{a.cur}/{a.target}<div className="achpts">+{a.pts}</div></div>
+              <div className="achprog">{Math.min(a.cur, a.target)}/{a.target}<div className="achpts">+{a.pts}</div></div>
             </div>
           ))}
           {items.length > 150 && <div className="note" style={{ textAlign: "center", marginTop: 10 }}>… +{items.length - 150}</div>}
@@ -3000,6 +3388,15 @@ function ScoringSheet({ step, flash, onClose, onSave }) {
               <span key={g+"f"} className="pv">{valid ? fmtPts(g * sv + fv) : "—"}</span>
             ])}
           </div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 12px",background:"var(--panel2)",borderRadius:10,border:"1px solid var(--line)"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600,color:"var(--chalk)"}}>{LANG==="en"?"Private group":"Private Gruppe"}</div>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{LANG==="en"?"Results not visible in community ranking":"Ergebnisse nicht im Community-Ranking sichtbar"}</div>
+            </div>
+            <button type="button" onClick={()=>setIsPrivate(v=>!v)} style={{width:44,height:24,borderRadius:12,background:isPrivate?"#b8ff00":"var(--line)",border:"none",cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+              <span style={{position:"absolute",top:3,left:isPrivate?22:3,width:18,height:18,borderRadius:9,background:isPrivate?"#13141a":"var(--chalk)",transition:"left .2s",display:"block"}}/>
+            </button>
+          </div>
           <button className={"save" + (valid ? "" : " disabled")} style={{ marginTop: 16 }} onClick={() => valid && onSave(sv, fv)}>Speichern</button>
         </div>
       </div>
@@ -3034,6 +3431,7 @@ function ChangePinSheet({ me, onClose, onSave }) {
 
 /* ============================ Gruppen-Dialoge ============================ */
 function NewGroupSheet({ onClose, onCreate, achScore, isAdmin }) {
+  const [isPrivate, setIsPrivate] = useState(false);
   const [name, setName] = useState(() => genGroupName(LANG));
   const unlocked = getUnlockedEmojis(achScore || 0, isAdmin);
   const [emoji, setEmoji] = useState(unlocked[0]);
@@ -3054,7 +3452,7 @@ function NewGroupSheet({ onClose, onCreate, achScore, isAdmin }) {
             {next && <div className="emoji-info-next" style={{ marginBottom: 8 }}>Nächste <b>{next.count}</b> bei <b>{next.at} Skillpoints</b></div>}
             <div className="emojipick big">{unlocked.map((e, i) => <button key={i} className={"epick" + (emoji === e ? " on" : "")} onClick={() => setEmoji(e)}>{e}</button>)}</div>
           </div>
-          <button className={"save" + (valid ? "" : " disabled")} onClick={() => valid && onCreate(name.trim(), emoji)}>{t("grp.create")}</button>
+          <button className={"save" + (valid ? "" : " disabled")} onClick={() => valid && onCreate(name.trim(), emoji, isPrivate)}>{t("grp.create")}</button>
         </div>
       </div>
     </div>
