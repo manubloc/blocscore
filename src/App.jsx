@@ -837,8 +837,7 @@ const CSS = `
 .routebadge { position:absolute; top:8px; right:8px; display:flex; gap:4px; z-index:4; }
 .rbadge { font-size:13px; line-height:1; opacity:.85; }
 .rpills { display:flex; gap:5px; align-items:center; flex:none; margin-left:auto; }
-.rschip { font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:.04em; }
-.rschip { background:transparent; color:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.12); }
+.rschip { font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:.04em; background:transparent; color:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.12); display:inline-flex; align-items:center; }
 .rschip.has { color:#b8ff00; border-color:rgba(184,255,0,.35); background:rgba(184,255,0,.06); }
 
 /* stats */
@@ -992,9 +991,9 @@ const CSS = `
 .wallacchead.open { background:#2a3545; border-bottom:1px solid #4a6080; }
 .waname { flex:1; font-weight:600; font-size:13px; letter-spacing:.01em; }
 .waic { display:flex; align-items:center; color:var(--muted); }
-.wadone { font-family:'Barlow Condensed'; font-weight:700; font-size:12px; color:#5cc97e; }
+.wadone { font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:.04em; color:#b8ff00; border:1px solid rgba(184,255,0,.35); background:rgba(184,255,0,.06); display:inline-flex; align-items:center; }
 .wacount { font-family:'Barlow Condensed'; font-weight:700; font-size:12px; color:var(--muted); }
-.waflash { font-family:'Barlow Condensed'; font-weight:700; font-size:12px; color:#b8ff00; }
+.waflash { font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:.04em; color:#b8ff00; border:1px solid rgba(184,255,0,.35); background:rgba(184,255,0,.06); display:inline-flex; align-items:center; }
 .wachevron { font-size:11px; color:var(--muted); }
 .wallbody { padding:10px 12px 14px; background:var(--panel); }
 .lhsub { font-size:11.5px; color:var(--muted); margin-bottom:8px; }
@@ -1652,7 +1651,7 @@ export default function App() {
                   {newestWall === s.wall && <span className="freshbadge">{t("plan.fresh")}</span>}
                   {nextWall === s.wall && <span className="nextbadge">{t("plan.next")}</span>}
                   {myWallDone[s.wall] > 0 && <span className="wadone"><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{myWallDone[s.wall]}</span>}
-                  {(() => { const flN = s.items.filter(r => r.results?.[me.name] === "flash").length; return flN > 0 ? <span className="waflash">⚡{flN}</span> : null; })()}
+                  {(() => { const flN = s.items.filter(r => r.results?.[me.name] === "flash").length; return flN > 0 ? <span className="waflash"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flN}</span> : null; })()}
                   <span className="wacount">{s.items.length} Routen</span>
                   <span className="wachevron">{isOpen ? "▲" : "▼"}</span>
                 </button>
@@ -1686,7 +1685,7 @@ export default function App() {
                                 <span className={"rschip top" + (topN > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
                                 <span className={"rschip flash" + (flashN > 0 ? " has" : "")}><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flashN}</span>
                               </div>
-                              {canSetRoutes && <button className="edit" onClick={() => setEditing(r)}>✎</button>}
+                              {canSetRoutes && <button className="edit" onClick={(e) => { e.stopPropagation(); setEditing(r); }} title="Route bearbeiten"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l3.5-1L17 5.5 14.5 3 4 13.5 3 17z"/></svg></button>}
                             </div>
                             <div className="rfoot">
                               <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
@@ -2585,7 +2584,7 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
     <div className={"scrim" + (!wall && isNew ? " full" : "")} onClick={onClose}>
       <div className={"sheet" + (!wall && isNew ? " planmode" : "")} onClick={e => e.stopPropagation()}>
         <div className="grip" />
-        <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose}>✕</button></div>
+        <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
         <div className="sbody">
           {!wall ? (
             <div className="planpick">
