@@ -2798,17 +2798,24 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
         <div className="grip" />
         <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
         <div className="sbody">
-          {(!wall && isNew) ? (
+          {!wall ? (
+            isNew ? (
             <div className="planpick">
               <div className="planpick-ttl">Wo hängt die Route?</div>
               <div className="planpick-sub">Tippe auf den Bereich im Hallenplan</div>
               <div className="planpick-wrap"><FloorPlan value={wall} onChange={changeWall} /></div>
             </div>
+            ) : (
+            <div style={{padding:"16px"}}>
+              <div style={{fontSize:13,color:"rgba(255,255,255,.7)",marginBottom:10}}>Welche Wand?</div>
+              <div className="fpwrap"><FloorPlan value={wall} onChange={changeWall} /></div>
+            </div>
+            )
           ) : (<>
           <div className="wallbar">
             <span className="wallbar-ic"><WallIcon code={wall} size={20} /></span>
             <span className="wb-name">{wallName(wall)}</span>
-            <button className="wb-change" onClick={() => setWall(null)}>Plan ▾</button>
+            {isNew && <button className="wb-change" onClick={() => setWall(null)}>Plan ▾</button>}
           </div>
 
           <div className="field"><label>Grad</label>
