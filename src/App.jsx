@@ -25,11 +25,11 @@ function topPts(g) { return g * _STEP; }
 function pointsFor(grade, status) { if (!status) return 0; return grade * _STEP + (status === "flash" ? _FLASH_BONUS : 0); }
 /* ============================ Wände ============================ */
 const WALLS = [
-  { code: "v", name: "Block vorne", short: "V", aliases: ["bv"] },
-  { code: "h", name: "Block hinten", short: "H", aliases: ["bh"] },
-  { code: "tb", name: "Training & Bug", short: "TB", aliases: [] },
-  { code: "pl", name: "Platte", short: "PL", aliases: ["pt", "pp"] },
-  { code: "wkw", name: "Wettkampfwand", short: "WKW", aliases: ["ww", "bw"] },
+  { code: "v", name: "Block vorne", short: "V", aliases: ["bv", "block vorne", "block_vorne"] },
+  { code: "h", name: "Block hinten", short: "H", aliases: ["bh", "block hinten", "block_hinten"] },
+  { code: "tb", name: "Training & Bug", short: "TB", aliases: ["training & bug", "training und bug", "trainingsbereich", "training"] },
+  { code: "pl", name: "Platte & Bug", short: "PL", aliases: ["pt", "pp", "platte", "platte & bug"] },
+  { code: "wkw", name: "Wettkampfwand", short: "WKW", aliases: ["ww", "bw", "wettkampfwand"] },
 ];
 const WALL_BY = {};
 WALLS.forEach(w => { WALL_BY[w.code] = w; (w.aliases || []).forEach(a => WALL_BY[a] = w); });
@@ -2172,7 +2172,7 @@ export default function App() {
                   <div key={label} className="hwall-row">
                     <span className="hwn">{label}</span>
                     <span className="hws">{rs.length} Begehungen</span>
-                    <span className="hwf">⚡{rs.filter(r=>r.results[me.name]==="flash").length}</span>
+                    <span className="hwf"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{rs.filter(r=>r.results[me.name]==="flash").length}</span>
                     <span style={{fontSize:12,color:"var(--muted)"}}>{Math.round(rs.length*WALL_HEIGHT)} m</span>
                   </div>
                 ))}
@@ -2187,7 +2187,7 @@ export default function App() {
                   const pct = Math.min(100, (myMeters/mn.m)*100);
                   return (
                     <div key={mn.name} className="hwall-row" style={{opacity: done ? 1 : 0.6}}>
-                      <span className="hwn">{done?"✅":"🔒"} {mn.name}</span>
+                      <span className="hwn">{done ? <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#b8ff00" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><polyline points="1.5,6.5 4.5,9.5 10.5,2.5"/></svg> : <svg width="11" height="13" viewBox="0 0 12 14" fill="none" stroke="#b8ff00" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><rect x="2" y="6" width="8" height="7" rx="1.5"/><path d="M4 6V4a2 2 0 0 1 4 0v2"/></svg>}{mn.name}</span>
                       <span className="hws" style={{color:done?"var(--amber)":"var(--muted)"}}>{mn.m} m</span>
                       {!done && <div style={{flex:1,height:4,background:"var(--panel2)",borderRadius:2,overflow:"hidden",marginLeft:8}}>
                         <div style={{height:"100%",width:`${pct}%`,background:"var(--amber)",borderRadius:2}}/>
@@ -2762,7 +2762,7 @@ function GroupSheet({ group, me, accById, boardMode, isMember, isCreator, reques
 function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screwDates }) {
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
-  const [wall, setWall] = useState(route ? (wallCanon(route.gym) || route.gym || gyms?.[0] || null) : null);
+  const [wall, setWall] = useState(route ? (wallOf(route.gym) ? wallCanon(route.gym) : (gyms?.[0] || null)) : null);
   const defaultDate = isNew ? (wall && screwDates?.[wall] ? screwDates[wall] : todayISO()) : (route?.date || todayISO());
   const [date, setDate] = useState(defaultDate);
   // Update date when wall changes (only for new routes)
@@ -2798,7 +2798,7 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
         <div className="grip" />
         <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
         <div className="sbody">
-          {!wall && isNew ? (
+          {(!wall && isNew) ? (
             <div className="planpick">
               <div className="planpick-ttl">Wo hängt die Route?</div>
               <div className="planpick-sub">Tippe auf den Bereich im Hallenplan</div>
