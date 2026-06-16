@@ -2408,7 +2408,7 @@ export default function App() {
 
       {editing && (
         <RouteSheetBoundary onClose={() => setEditing(null)}>
-        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} screwDates={screwDates}
+        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} screwDates={screwDates}
           onClose={() => setEditing(null)} onSave={(r) => { upsertRoute(r); setEditing(null); }} onDelete={(id) => { deleteRoute(id); setEditing(null); }} />
         </RouteSheetBoundary>
       )}
@@ -2783,7 +2783,7 @@ class RouteSheetBoundary extends React.Component {
   }
 }
 
-function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screwDates }) {
+function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, onDelete, screwDates }) {
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
   const [wall, setWall] = useState(route ? (wallOf(route.gym) ? wallCanon(route.gym) : (gyms?.[0] || null)) : null);
