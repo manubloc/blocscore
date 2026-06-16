@@ -1368,7 +1368,7 @@ export default function App() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [statsView, setStatsView] = useState("erfolge");
   const [achCat, setAchCat] = useState(null);
-  const [hallTab, setHallTab] = useState("halle"); // halle | meine | creator
+  const [hallTab, setHallTab] = useState("meine"); // meine | halle | creator
   const [lang, setLang] = useState("de");
   setLangG(lang);
   function changeLang(l) { setLang(l); setLangG(l); try { window.storage.set("blocscore:lang", l, false); } catch (e) {} }
@@ -1845,8 +1845,8 @@ export default function App() {
           {/* Umschalter: Halle / Route Creator (nur Admin) */}
           <div className="segwrap" style={{ marginBottom: 4 }}>
             <div className="seg" style={{ flexWrap:"wrap" }}>
+              <button className={hallTab === "meine" ? "on" : ""} onClick={() => setHallTab("meine")}>{LANG==="en"?"My Stats":"Meine Stats"}</button>
               <button className={hallTab === "halle" ? "on" : ""} onClick={() => setHallTab("halle")}>{t("hall.activity")}</button>
-              <button className={hallTab === "meine" ? "on" : ""} onClick={() => setHallTab("meine")}>👤 {LANG==="en"?"My Stats":"Meine Stats"}</button>
               {isAdmin && <button className={hallTab === "creator" ? "on" : ""} onClick={() => setHallTab("creator")}>{t("hall.creator")}</button>}
             </div>
           </div>
@@ -2146,8 +2146,11 @@ export default function App() {
             </div>
           </>)}
           <div className="stcard">
-            <h3><span>{isAdmin ? t("acc.users") : t("acc.members")}</span><span className="r">{accounts.filter(a => a.role !== "admin").length}</span></h3>
-            {accounts.filter(a => a.role !== "admin").map(a => { const arch = isArchivedAcc(a, routes, today); return (
+            <h3><span>{isAdmin ? t("acc.users") : t("acc.members")}</span><span className="r">{isAdmin ? accounts.length : accounts.filter(a => a.role !== "admin").length}</span></h3>
+            {(() => {
+              const list = isAdmin ? accounts : accounts.filter(a => a.role !== "admin");
+              if (list.length === 0) return <div className="phint" style={{ padding: "12px 0", textAlign: "center" }}>Noch keine Mitglieder registriert. Sobald sich jemand über den Login mit „Registrieren" anmeldet, taucht er hier auf.</div>;
+              return list.map(a => { const arch = isArchivedAcc(a, routes, today); return (
               <div className="prow" key={a.id}>
                 <div className="pinfo"><Avatar name={a.name} emoji={a.emoji} size={34} /><div style={{ minWidth: 0 }}><div className="pn">{a.name}{a.id === me.id ? " · Du" : ""}{a.private ? " · 🔒" : ""}</div><div className="prole">{arch ? <span className="archbadge">{t("acc.archived")}</span> : roleLabel(a.role)}{a.roleRequest === "schrauber" && !arch ? <span className="reqbadge">🔔 {t("acc.wantsCreator")}</span> : null}{a.reactivateRequest ? <span className="reqbadge">🔔 {t("acc.reqReactivate")}</span> : null}</div></div></div>
                 {isAdmin && a.id !== me.id && (
@@ -2162,7 +2165,8 @@ export default function App() {
                   </div>
                 )}
               </div>
-            ); })}
+            ); });
+            })()}
             {isAdmin && <div className="phint" style={{ marginTop: 4 }}>Route Creator & Admins dürfen Routen anlegen und bearbeiten. Climber tragen nur eigene Ergebnisse ein und bilden Gruppen. Konten ohne Aktivität über 1 Jahr werden automatisch archiviert.</div>}
           </div>
           {isAdmin && (
