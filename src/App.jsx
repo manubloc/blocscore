@@ -1671,12 +1671,6 @@ export default function App() {
                       const tipsN = (r.tips || []).length;
                       return (
                         <div key={r.id} id={"r-" + r.id} className={"rc" + (col ? " rccol" : "") + (r.archived ? " arch" : "") + (flashId === r.id ? " flash" : "")} style={col ? { "--rcol": col } : undefined}>
-                          {(hallStats.topSendsId === r.id || hallStats.topFlashId2 === r.id) && (
-                            <div className="routebadge">
-                              {hallStats.topSendsId === r.id && <span className="rbadge hot" title="Beliebteste Route">🔥</span>}
-                              {hallStats.topFlashId2 === r.id && <span className="rbadge zap" title="Meiste Flashes">⚡</span>}
-                            </div>
-                          )}
                           {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const inline = r.photos[0].startsWith("data:"); const src = inline ? r.photos[0] : await loadPhotoBlob(r.photos[0]); setLightbox(src); }} />}
                           <div className="rbody">
                             <div className="rchead">
