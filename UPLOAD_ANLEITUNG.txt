@@ -1,0 +1,44 @@
+========================================
+  BLOCSCORE — UPLOAD ANLEITUNG
+========================================
+
+DAMIT KEINE DUPLIKATE ENTSTEHEN:
+
+1. Diese ZIP entpacken (Rechtsklick → "Entpacken nach…")
+   Du bekommst einen Ordner namens "blocscore" mit allen Dateien drin.
+
+2. Auf github.com/manubloc/blocscore gehen.
+
+3. Grünen "Add file" Button oben rechts klicken → "Upload files".
+
+4. WICHTIG — KORREKTER DRAG&DROP:
+   - Öffne den entpackten "blocscore" Ordner.
+   - Drücke Strg+A um ALLE Inhalte zu markieren.
+   - Ziehe ALLES auf einmal in das große Upload-Feld auf GitHub.
+   - GitHub erkennt automatisch die Unterordner (src/, public/, etc.)
+     und legt sie korrekt ab.
+
+5. Commit message eintragen: "neuer stand"
+
+6. Auf "Commit changes" klicken.
+
+7. Im Actions-Tab prüfen ob der Build durchgeht (grüner Haken).
+
+8. Nach ~2 Minuten ist blocscore.de aktualisiert.
+
+
+WAS DU NIE TUN SOLLTEST:
+- Einzelne Dateien aus den Unterordnern in den Upload ziehen
+  (sonst landen z.B. App.jsx, main.jsx im Root als Duplikate)
+- Die "public" und "src" Ordner aufmachen und nur die Dateien
+  daraus uploaden
+- Die ZIP NICHT entpacken und nur einzelne Dateien hochladen
+
+
+ZUM AKTUALISIEREN NUR DER REACT-KOMPONENTE:
+Wenn du nur src/App.jsx ändern willst (z.B. nach Code-Update),
+musst du das nicht nochmal alles hochladen:
+- Auf GitHub zu src/App.jsx navigieren
+- Stift-Icon (Edit) klicken
+- Strg+A → Inhalt löschen → neuen Inhalt einfügen
+- Commit
