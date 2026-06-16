@@ -743,8 +743,8 @@ const CSS = `
 /* top bar */
 .topbar { padding:6px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; background-size:cover; background-position:center 40%; height:72px; min-height:72px; max-height:72px; border-bottom:1px solid rgba(255,255,255,.08); background-color:#252830; }
 .topbar-overlay { position:absolute; inset:0; background:linear-gradient(90deg, #13141a 0%, #13141a 33%, rgba(19,20,26,.6) 55%, rgba(19,20,26,0) 90%); pointer-events:none; }
-.brand { display:flex; align-items:center; position:relative; z-index:2; padding-left:16px; }
-.brand-logo { height:48px; width:auto; object-fit:contain; display:block; }
+.brand { display:flex; align-items:center; position:relative; z-index:2; padding-left:0; }
+.brand-logo { height:50px; width:auto; object-fit:contain; display:block; }
 .brand h1 { font-family:'Barlow Condensed'; font-weight:300; font-size:27px; margin:0; line-height:1; letter-spacing:.05em; color:var(--chalk); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .uchip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); border-radius:22px; padding:4px 5px 4px 10px; flex:none; position:relative; z-index:1; }
 .uchip .un { font-size:12.5px; font-weight:600; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -805,7 +805,8 @@ const CSS = `
 .rname .t1 .txt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .rname .t2 { font-size:11px; color:var(--muted); margin-top:1px; }
 .rname .rnote { font-size:11.5px; color:#c4ccd6; margin-top:2px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.edit { color:var(--muted); padding:2px 4px; font-size:16px; flex:none; }
+.edit { color:rgba(255,255,255,.5); padding:5px 8px; font-size:14px; flex:none; background:transparent; border:1.5px solid rgba(255,255,255,.15); border-radius:7px; transition:all .12s; }
+.edit:hover { border-color:#b8ff00; color:#b8ff00; }
 .archtag { font-size:9px; letter-spacing:.12em; color:var(--muted); border:1px solid var(--line); padding:2px 6px; border-radius:5px; text-transform:uppercase; }
 
 .rfoot { display:flex; align-items:center; gap:8px; margin-top:8px; }
@@ -837,8 +838,8 @@ const CSS = `
 .rbadge { font-size:13px; line-height:1; opacity:.85; }
 .rpills { display:flex; gap:5px; align-items:center; flex:none; margin-left:auto; }
 .rschip { font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:.04em; }
-.rschip.top { background:rgba(184,255,0,.08); color:#b8ff00; border:1px solid rgba(184,255,0,.25); }
-.rschip.flash { background:rgba(184,255,0,.08); color:#b8ff00; border:1px solid rgba(184,255,0,.25); }
+.rschip { background:transparent; color:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.12); }
+.rschip.has { color:#b8ff00; border-color:rgba(184,255,0,.35); background:rgba(184,255,0,.06); }
 
 /* stats */
 .stats { padding:8px 14px 120px; }
@@ -911,6 +912,14 @@ const CSS = `
 .wtile .wl { font-size:11px; font-weight:600; text-align:center; line-height:1.2; }
 .fpttl { font-size:13px; color:var(--muted); text-align:center; line-height:1.5; margin:2px 6px 12px; }
 .fpwrap { padding:6px 0; }
+.scrim.full { align-items:stretch; }
+.sheet.planmode { max-height:100dvh; height:100dvh; border-radius:0; display:flex; flex-direction:column; }
+.sheet.planmode .sbody { flex:1; display:flex; flex-direction:column; padding:0; }
+.planpick { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 16px; min-height:0; }
+.planpick-ttl { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:26px; text-align:center; color:#fff; letter-spacing:.02em; }
+.planpick-sub { font-size:14px; color:rgba(255,255,255,.6); text-align:center; margin-top:6px; margin-bottom:24px; }
+.planpick-wrap { flex:1; width:100%; max-width:560px; display:flex; align-items:center; justify-content:center; min-height:0; }
+.planpick-wrap > * { width:100%; height:auto; max-height:100%; }
 .fp { width:100%; max-width:420px; display:block; margin:0 auto; }
 .fp text { user-select:none; }
 .wallbar { display:flex; align-items:center; gap:11px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:11px 12px; margin-bottom:16px; }
@@ -1079,9 +1088,10 @@ const CSS = `
 .lwordmark span { color:var(--amber); }
 .ltagline { font-family:'Figtree',sans-serif; font-weight:300; font-size:13px; letter-spacing:.36em; text-transform:uppercase; color:rgba(255,255,255,.84); margin-top:13px; padding-left:.36em; text-shadow:0 1px 12px rgba(0,0,0,.7); }
 .logincard { background:rgba(22,26,32,.65); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1.5px solid rgba(255,255,255,.12); border-radius:18px; margin:16px 18px 0; padding:18px; max-width:440px; width:calc(100% - 36px); align-self:center; }
-.authtabs { display:flex; background:var(--bg); border:1px solid var(--line); border-radius:11px; padding:3px; margin-bottom:18px; }
-.authtabs button { flex:1; padding:10px; border-radius:8px; font-weight:700; font-size:14px; color:var(--muted); }
-.authtabs button.on { background:var(--panel2); color:var(--chalk); }
+.authtabs { display:flex; background:transparent; border:1.5px solid rgba(255,255,255,.15); border-radius:10px; padding:3px; margin-bottom:18px; gap:2px; }
+.authtabs button { flex:1; padding:10px; border-radius:7px; font-weight:700; font-size:14px; color:rgba(255,255,255,.55); background:transparent; border:none; transition:color .12s, background .12s; }
+.authtabs button:hover { color:rgba(255,255,255,.9); }
+.authtabs button.on { background:rgba(184,255,0,.1); color:#b8ff00; }
 .flbl { display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:7px; }
 .privtoggle { display:flex; align-items:flex-start; gap:11px; width:100%; text-align:left; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:14px; }
 .switch { width:42px; height:25px; border-radius:13px; background:var(--line); flex:none; position:relative; transition:background .15s; margin-top:1px; }
@@ -1679,8 +1689,8 @@ export default function App() {
                                 <div className="t2">{colorWord(r.name) ? colorWord(r.name) + " · " : ""}{r.grade}er · {wallName(r.gym)}</div>
                               </div>
                               <div className="rpills">
-                                <span className="rschip top"><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
-                                <span className="rschip flash"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flashN}</span>
+                                <span className={"rschip top" + (topN > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
+                                <span className={"rschip flash" + (flashN > 0 ? " has" : "")}><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flashN}</span>
                               </div>
                               {canSetRoutes && <button className="edit" onClick={() => setEditing(r)}>✎</button>}
                             </div>
@@ -1849,8 +1859,8 @@ export default function App() {
                     <div className="t2">{colorWord(r.name) || ""}{colorWord(r.name) ? " · " : ""}{wallName(r.gym)} · 🛠 {fmtDate(r.date)}</div>
                   </div>
                   <div className="hrstat">
-                    <span className="rschip top"><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{r.sendCount - Object.values(r.results || {}).filter(s => s === "flash").length}</span>
-                    <span className="rschip flash"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{Object.values(r.results || {}).filter(s => s === "flash").length}</span>
+                    <span className={"rschip top" + ((r.sendCount - Object.values(r.results || {}).filter(s => s === "flash").length) > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{r.sendCount - Object.values(r.results || {}).filter(s => s === "flash").length}</span>
+                    <span className={"rschip flash" + (Object.values(r.results || {}).filter(s => s === "flash").length > 0 ? " has" : "")}><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{Object.values(r.results || {}).filter(s => s === "flash").length}</span>
                   </div>
                 </div>
               ))}
@@ -2578,15 +2588,16 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
   }
 
   return (
-    <div className="scrim" onClick={onClose}>
-      <div className="sheet" onClick={e => e.stopPropagation()}>
+    <div className={"scrim" + (!wall && isNew ? " full" : "")} onClick={onClose}>
+      <div className={"sheet" + (!wall && isNew ? " planmode" : "")} onClick={e => e.stopPropagation()}>
         <div className="grip" />
         <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose}>✕</button></div>
         <div className="sbody">
           {!wall ? (
-            <div className="field">
-              <div className="fpttl">Auf welchem Bereich hängt die Route? Tippe ihn auf dem Hallenplan an.</div>
-              <div className="fpwrap"><FloorPlan value={wall} onChange={changeWall} /></div>
+            <div className="planpick">
+              <div className="planpick-ttl">Wo hängt die Route?</div>
+              <div className="planpick-sub">Tippe auf den Bereich im Hallenplan</div>
+              <div className="planpick-wrap"><FloorPlan value={wall} onChange={changeWall} /></div>
             </div>
           ) : (<>
           <div className="wallbar">
