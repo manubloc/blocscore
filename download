@@ -1,0 +1,4 @@
+# Copy this file to .env for local development
+# For production (GitHub Pages) add these as GitHub Secrets instead
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_KEY=your-anon-key-here

@@ -1,31 +1,39 @@
-<!doctype html>
-<html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#13141a" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="blocscore" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <title>blocscore · elevate. score. repeat.</title>
-    <meta name="description" content="blocscore — track your sends, unlock achievements and compete with your crew. the bouldering app for your gym." />
-    <meta property="og:title" content="blocscore · elevate. score. repeat." />
-    <meta property="og:description" content="track your sends, unlock achievements and compete with your crew." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
-    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="manifest" href="manifest.json" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800&family=Figtree:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <style>html,body{height:100%;margin:0;background:#13141a;}#root{height:100%;}</style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+# Contributing to blocscore
+
+Thanks for your interest in improving blocscore! 🧗
+
+## Development setup
+
+Requires Node.js 18+.
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+
+Before opening a pull request, make sure the production build passes:
+
+```bash
+npm run build
+```
+
+## How to contribute
+
+1. **Fork** the repository and create a feature branch:
+   `git checkout -b feature/my-change`
+2. Make your change. The whole app lives in `src/App.jsx`; gym/demo data is in `src/seed.js`.
+3. Keep the style consistent with the surrounding code (plain React, no extra dependencies unless discussed first).
+4. Run `npm run build` to confirm everything compiles.
+5. **Commit** with a clear message and open a **pull request** describing what and why.
+
+## Reporting bugs / ideas
+
+Open an issue with steps to reproduce (for bugs) or a short description of the feature/idea.
+Screenshots help a lot for UI topics.
+
+## Notes
+
+- The app is bilingual (DE/EN). If you add user-facing text, add both languages to the `STR` dictionary in `src/App.jsx`.
+- Persistence goes through `src/storage.js`. If you build a backend adapter (e.g. Supabase), keep the same `get / set / delete / list` interface so the rest of the app stays unchanged.
+
+By contributing, you agree that your contributions will be licensed under the GNU GPLv3.
