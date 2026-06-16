@@ -1390,13 +1390,13 @@ export default function App() {
   const today = todayISO();
   const archivedSet = useMemo(() => { const s = new Set(); accounts.forEach(a => { if (isArchivedAcc(a, routes, today)) s.add(a.name); }); return s; }, [accounts, routes, today]);
   accounts.forEach(a => { AVATAR_EMOJI[a.name] = a.emoji || ""; });
-  const players = useMemo(() => accounts.filter(a => !archivedSet.has(a.name)).map(a => a.name), [accounts, archivedSet]);
+  const players = useMemo(() => accounts.filter(a => !archivedSet.has(a.name) && a.role !== "superadmin").map(a => a.name), [accounts, archivedSet]);
   const me = accounts.find(a => a.id === session?.accountId) || null;
   const isSuperAdmin = me?.role === "superadmin";
   const isAdmin = me?.role === "admin" || isSuperAdmin;
   const canSetRoutes = isAdmin || me?.role === "schrauber";
   useEffect(() => { if (!canSetRoutes && filterScope === "archiv") setFilterScope("aktuell"); }, [canSetRoutes]);
-  const visName = useMemo(() => new Set(accounts.filter(a => !a.staff && !archivedSet.has(a.name) && (!a.private || a.id === me?.id)).map(a => a.name)), [accounts, me, archivedSet]);
+  const visName = useMemo(() => new Set(accounts.filter(a => !a.staff && a.role !== "superadmin" && !archivedSet.has(a.name) && (!a.private || a.id === me?.id)).map(a => a.name)), [accounts, me, archivedSet]);
 
   const totals = useMemo(() => {
     const t = {}; players.forEach(p => t[p] = { aktuell: 0, gesamt: 0, sends: 0, flashes: 0, erfolge: 0 });
@@ -1515,7 +1515,7 @@ export default function App() {
       return { ...w, routeCount: wr.length, sendCount: ws.length, flashCount: ws.filter(r => r.status === "flash").length };
     }).filter(w => w.routeCount > 0);
     // ── Route Creator Auswertung (nur Admin) ─────────────────────────────
-    const creators = accounts.filter(a => a.role === "schrauber" || a.role === "admin");
+    const creators = accounts.filter(a => a.role === "schrauber" || a.role === "admin");  // superadmin excluded by staff flag
     // group routes by screwSession (wall + date)
     const sessions = {};
     routes.forEach(r => {
@@ -1741,7 +1741,7 @@ export default function App() {
         </div>
         {tab === "routes" && canSetRoutes && <button className="addtop-tb" onClick={() => setEditing("new")}><span className="plus">+</span>{t("routes.add")}</button>}
         <button className="uchip" onClick={() => setTab("account")}>
-          {me.role !== "community" && <span className="adminpill">{me.role === "superadmin" ? "Super Admin" : me.role === "admin" ? "Admin" : "Route Creator"}</span>}
+          {me.role !== "community" && me.role !== "superadmin" && <span className="adminpill">{me.role === "admin" ? "Admin" : "Route Creator"}</span>}
           <span className="un">{me.name}</span>
           <Avatar name={me.name} size={28} emoji={me.emoji} />
         </button>
@@ -2001,7 +2001,7 @@ export default function App() {
                 <div className="hkpi"><div className="hkv">{hallStats.activeRoutes.length}</div><div className="hku">{t("hall.routes")}</div></div>
                 <div className="hkpi"><div className="hkv">{hallStats.totalSends}</div><div className="hku">{t("hall.sends")}</div></div>
                 <div className="hkpi"><div className="hkv">{hallStats.totalFlashes}</div><div className="hku">{t("hall.flashes")}</div></div>
-                <div className="hkpi"><div className="hkv">{accounts.filter(a => !a.staff).length}</div><div className="hku">{t("acc.members")}</div></div>
+                <div className="hkpi"><div className="hkv">{accounts.filter(a => !a.staff && a.role !== "superadmin").length}</div><div className="hku">{t("acc.members")}</div></div>
               </div>
             </div>
 
@@ -2287,9 +2287,9 @@ export default function App() {
             </div>
           </>)}
           <div className="stcard">
-            <h3><span>{isAdmin ? t("acc.users") : t("acc.members")}</span><span className="r">{isAdmin ? accounts.length : accounts.filter(a => a.role !== "admin").length}</span></h3>
+            <h3><span>{isAdmin ? t("acc.users") : t("acc.members")}</span><span className="r">{isAdmin ? accounts.filter(a => a.role !== "superadmin").length : accounts.filter(a => a.role !== "admin" && a.role !== "superadmin").length}</span></h3>
             {(() => {
-              const list = isAdmin ? accounts : accounts.filter(a => a.role !== "admin");
+              const list = isAdmin ? accounts.filter(a => a.role !== "superadmin") : accounts.filter(a => a.role !== "admin" && a.role !== "superadmin");
               if (list.length === 0) return <div className="phint" style={{ padding: "12px 0", textAlign: "center" }}>Noch keine Mitglieder registriert. Sobald sich jemand über den Login mit „Registrieren" anmeldet, taucht er hier auf.</div>;
               return list.map(a => { const arch = isArchivedAcc(a, routes, today); return (
               <div className="prow" key={a.id}>
@@ -2437,7 +2437,7 @@ export default function App() {
         const isCreator = g.createdBy === me.id;
         const requested = (g.requests || []).includes(me.id);
         const full = (g.members || []).length >= MAX_MEMBERS;
-        const inviteables = accounts.filter(a => !groupOf(a.id) && a.id !== me.id);
+        const inviteables = accounts.filter(a => !groupOf(a.id) && a.id !== me.id && a.role !== "superadmin");
         return (
           <GroupSheet group={g} me={me} accById={accById} boardMode={boardMode}
             isMember={isMember} isCreator={isCreator} requested={requested} full={full} meHasGroup={!!myGroup} inviteables={inviteables}
