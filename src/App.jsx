@@ -1083,7 +1083,7 @@ const CSS = `
 .login { display:flex; flex-direction:column; background-size:cover; background-position:center top; background-repeat:no-repeat; }
 .loginhero { padding:62px 26px 24px; text-align:center; display:flex; flex-direction:column; align-items:center; }
 .lmark { width:50px; height:50px; border-radius:14px; background:#b8ff00; color:#0d0e0f; display:flex; align-items:center; justify-content:center; flex:none; }
-.login-logo { width:min(320px, 78vw); height:auto; object-fit:contain; margin-top:24px; filter:drop-shadow(0 4px 16px rgba(0,0,0,.6)); }
+.login-logo { width:125px; height:auto; object-fit:contain; margin-top:24px; filter:drop-shadow(0 4px 16px rgba(0,0,0,.6)); }
 .lwordmark { font-family:'Barlow Condensed',sans-serif; font-weight:300; font-size:56px; letter-spacing:.04em; line-height:.9; margin:20px 0 0; color:#fff; text-shadow:0 2px 22px rgba(0,0,0,.55); }
 .lwordmark span { color:var(--amber); }
 .ltagline { font-family:'Figtree',sans-serif; font-weight:300; font-size:13px; letter-spacing:.36em; text-transform:uppercase; color:rgba(255,255,255,.84); margin-top:13px; padding-left:.36em; text-shadow:0 1px 12px rgba(0,0,0,.7); }
