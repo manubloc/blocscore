@@ -379,9 +379,29 @@ const EMOJI_WAVE6 = [
   "🏹","🗡","⚔️","🛡","🪃","🔱","⚜️","🎯","💣","🎪",
 ];
 
+// Gesamter Emoji-Pool (deduplicated)
+const EMOJI_POOL_ALL = [...new Set([
+  ...EMOJI_STARTER, ...EMOJI_WAVE1, ...EMOJI_WAVE2,
+  ...EMOJI_WAVE3, ...EMOJI_WAVE4, ...EMOJI_WAVE5, ...EMOJI_WAVE6,
+])];
+// Starter ohne Duplikate
+const EMOJI_BASE = [...new Set(EMOJI_STARTER)];
+// Restlicher Pool — wird linear freigeschaltet
+const EMOJI_LOCKABLE = EMOJI_POOL_ALL.filter(e => !EMOJI_BASE.includes(e));
+
+const EMOJI_STEP = 5;           // Alle 5 Ach-Pts...
+const EMOJI_BATCH = 5;          // ...gibt es 5 neue Emojis
+
 function getUnlockedEmojis(achScore, isAdmin = false) {
+  if (isAdmin) return EMOJI_POOL_ALL;
+  const extraSlots = Math.floor((achScore || 0) / EMOJI_STEP) * EMOJI_BATCH;
+  const extras = EMOJI_LOCKABLE.slice(0, extraSlots);
+  return [...EMOJI_BASE, ...extras];
+}
+
+// (Legacy-Funktion bleibt für Kompatibilität, wird nicht mehr genutzt)
+function _legacyEmojis(achScore, isAdmin = false) {
   if (isAdmin) {
-    // Admin bekommt immer alles
     return [...new Set([...EMOJI_STARTER,...EMOJI_WAVE1,...EMOJI_WAVE2,...EMOJI_WAVE3,...EMOJI_WAVE4,...EMOJI_WAVE5,...EMOJI_WAVE6])];
   }
   return [...new Set([
@@ -395,15 +415,11 @@ function getUnlockedEmojis(achScore, isAdmin = false) {
   ])];
 }
 function getNextEmojiUnlock(achScore) {
-  const waves = [
-    { at: 50,  label: "Wave 1", hint: "~6–12 Sessions" },
-    { at: 150, label: "Wave 2", hint: "~20–45 Sessions" },
-    { at: 300, label: "Wave 3", hint: "~35–90 Sessions" },
-    { at: 500, label: "Wave 4", hint: "~50–135 Sessions" },
-    { at: 700, label: "Wave 5", hint: "~70–180 Sessions" },
-    { at: 900, label: "Wave 6", hint: "~85–225 Sessions" },
-  ];
-  return waves.find(w => achScore < w.at) || null;
+  const score = achScore || 0;
+  const slotsUnlocked = Math.floor(score / EMOJI_STEP) * EMOJI_BATCH;
+  if (slotsUnlocked >= EMOJI_LOCKABLE.length) return null; // alles freigeschaltet
+  const nextSlotAt = (Math.floor(score / EMOJI_STEP) + 1) * EMOJI_STEP;
+  return { at: nextSlotAt, count: EMOJI_BATCH, total: EMOJI_POOL_ALL.length, unlocked: EMOJI_BASE.length + slotsUnlocked };
 }
 function buildAchievements(lang) {
   const en = lang === "en";
@@ -1014,6 +1030,12 @@ const CSS = `
 .emojipick.big .epick.on { border-color:var(--amber); background:rgba(184,255,0,.06); }
 .emojipick.big .epick.locked { opacity:.28; cursor:default; filter:grayscale(1); }
 .emojipick.big.locked { opacity:.5; pointer-events:none; }
+.emoji-info-card { background:transparent; border:1.5px solid rgba(184,255,0,.25); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.emoji-info-stats { display:flex; align-items:baseline; gap:6px; margin-bottom:4px; }
+.emoji-info-num { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:24px; color:#b8ff00; line-height:1; }
+.emoji-info-lbl { font-size:12px; color:rgba(255,255,255,.6); font-weight:500; }
+.emoji-info-next { font-size:12px; color:rgba(255,255,255,.7); }
+.emoji-info-next b { color:#b8ff00; font-weight:700; }
 .emojiunlock-hint { font-size:12px; color:var(--muted); background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:8px 12px; margin-bottom:10px; line-height:1.5; }
 .emojisep { font-size:11px; color:var(--muted); text-align:center; margin:14px 0 8px; letter-spacing:.06em; }
 .gtot { display:flex; gap:10px; margin-bottom:8px; }
@@ -1062,9 +1084,10 @@ const CSS = `
 .lb-img { max-width:100%; max-height:100%; object-fit:contain; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
 .lb-close { position:absolute; top:18px; right:18px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.2); z-index:201; }
 .colpicker { display:grid; grid-template-columns:repeat(auto-fill,minmax(44px,1fr)); gap:8px; padding:4px 0; }
-.colbtn { width:100%; aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:0; border:1.5px solid rgba(255,255,255,.15); transition:all .12s; background:transparent !important; }
-.colbtn:active { transform:scale(.9); }
-.colbtn.on { border:2.5px solid #b8ff00; box-shadow:none; }
+.colbtn { width:100%; aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:0; transition:all .12s; cursor:pointer; }
+.colbtn:hover { transform:scale(1.05); }
+.colbtn:active { transform:scale(.95); }
+.colbtn.on { box-shadow:0 0 0 2px #13141a, 0 0 0 4px #b8ff00; }
 .colcheck { font-size:20px; line-height:1; }
 .planrow .pld { font-family:'Barlow Condensed'; font-weight:700; flex:none; white-space:nowrap; color:var(--muted); font-variant-numeric:tabular-nums; }
 .pldInput { font-family:'Barlow Condensed'; font-weight:700; font-size:14px; color:var(--chalk); background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:4px 8px; flex:none; cursor:pointer; }
@@ -1187,6 +1210,13 @@ const CSS = `
 .roledd:focus, .roledd:hover { border-color:#b8ff00; color:#b8ff00; }
 
 /* achievements */
+.achintro { background:transparent; border:1.5px solid rgba(255,255,255,.1); border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+.achintro-ttl { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; color:#fff; margin-bottom:6px; letter-spacing:.01em; }
+.achintro-txt { font-size:13px; color:rgba(255,255,255,.7); line-height:1.5; margin-bottom:12px; }
+.achintro-txt b { color:#b8ff00; font-weight:700; }
+.achintro-unlocks { display:flex; flex-direction:column; gap:6px; }
+.achunl { font-size:12.5px; color:rgba(255,255,255,.75); display:flex; align-items:center; gap:8px; }
+.achunl-num { display:inline-block; min-width:36px; text-align:center; padding:2px 7px; border:1.5px solid rgba(184,255,0,.35); border-radius:6px; color:#b8ff00; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; }
 .achhero { display:flex; align-items:center; gap:16px; background:transparent; border:1.5px solid rgba(184,255,0,.25); border-radius:16px; padding:18px; margin-bottom:16px; }
 .achring { width:74px; height:74px; position:relative; flex:none; }
 .achring svg { width:100%; height:100%; }
@@ -1536,6 +1566,7 @@ export default function App() {
   }
   function deleteGroup(id) { setCommunity(c => ({ ...c, groups: (c.groups || []).filter(g => g.id !== id) })); }
   function setPrivate(v) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, private: v } : a) })); }
+  function setMyEmoji(e) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, emoji: e } : a) })); }
   function setMyPin(p) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, pin: p } : a) })); }
   function setScrewDate(wall, date) {
     setCommunity(c => ({ ...c, screwDates: { ...c.screwDates, [wall]: date } }));
@@ -1740,6 +1771,15 @@ export default function App() {
 
         {statsView === "erfolge" && (
           <div className="scroll"><div className="stats">
+            <div className="achintro">
+              <div className="achintro-ttl">Wie funktionieren Erfolge?</div>
+              <div className="achintro-txt">Jede Route bringt dir Punkte. Erfolge bekommst du für Meilensteine — z.B. erste 10 Tops, 25 Flashes, alle Farben einer Wand. Sie zählen als <b>Erfolgspunkte</b>, mit denen du weitere App-Features freischaltest:</div>
+              <div className="achintro-unlocks">
+                <div className="achunl"><span className="achunl-num">5</span> Pts &rarr; 5 neue Profil-Emojis</div>
+                <div className="achunl"><span className="achunl-num">100</span> Pts &rarr; Kommentare zu Routen</div>
+                <div className="achunl"><span className="achunl-num">200</span> Pts &rarr; Eigene Gruppe erstellen</div>
+              </div>
+            </div>
             <div className="achhero">
               <div className="achring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" fill="none" stroke="#2c313a" strokeWidth="3" /><circle cx="18" cy="18" r="15.9" fill="none" stroke="#f2b441" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${(achState.unlocked / Math.max(1, achState.total)) * 100} 100`} transform="rotate(-90 18 18)" /></svg><div className="achpct">{Math.round((achState.unlocked / Math.max(1, achState.total)) * 100)}%</div></div>
               <div className="achmeta">
@@ -2369,12 +2409,17 @@ function ProfileEmojiSheet({ me, achScore, isAdmin, onClose, onPick }) {
         <div className="grip" />
         <div className="shead"><h2>{t("acc.pickEmoji")}</h2><button className="x" onClick={onClose}>✕</button></div>
         <div className="sbody">
-          {next && (
-            <div className="emojiunlock-hint">
-              🔒 {next.count} weitere bei <b>{next.at} Ach-Pts</b> · du hast {Math.round(achScore)} · noch {Math.max(0, next.at - Math.round(achScore))} fehlen
+          <div className="emoji-info-card">
+            <div className="emoji-info-stats">
+              <div><span className="emoji-info-num">{unlocked.length}</span> <span className="emoji-info-lbl">/ {next ? next.total : unlocked.length} freigeschaltet</span></div>
             </div>
-          )}
-          {!next && <div className="emojiunlock-hint" style={{ color: "var(--amber)" }}>🏆 Alle Emojis freigeschaltet!</div>}
+            {next && (
+              <div className="emoji-info-next">
+                Nächste <b>{next.count}</b> bei <b>{next.at} Ach-Punkten</b> · du hast {Math.round(achScore)} · noch {Math.max(0, next.at - Math.round(achScore))} fehlen
+              </div>
+            )}
+            {!next && <div className="emoji-info-next" style={{ color: "#b8ff00" }}>🏆 Alle Emojis freigeschaltet!</div>}
+          </div>
           <div className="emojipick big">
             {unlocked.map((e, i) => (
               <button key={i} className={"epick" + (me.emoji === e ? " on" : "")} onClick={() => onPick(e)}>{e}</button>
@@ -2471,7 +2516,7 @@ function NewGroupSheet({ onClose, onCreate, achScore, isAdmin }) {
             <div className="phint">{t("grp.nameHint")}</div>
           </div>
           <div className="field"><label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>{t("grp.symbol")} <span className="bigpick" style={{ fontSize: 22 }}>{emoji}</span></label>
-            {next && <div className="emojiunlock-hint" style={{ marginBottom: 8 }}>🔒 +50 bei {next.at} Ach-Pts</div>}
+            {next && <div className="emoji-info-next" style={{ marginBottom: 8 }}>Nächste <b>{next.count}</b> bei <b>{next.at} Ach-Pts</b></div>}
             <div className="emojipick big">{unlocked.map((e, i) => <button key={i} className={"epick" + (emoji === e ? " on" : "")} onClick={() => setEmoji(e)}>{e}</button>)}</div>
           </div>
           <button className={"save" + (valid ? "" : " disabled")} onClick={() => valid && onCreate(name.trim(), emoji)}>{t("grp.create")}</button>
@@ -2610,7 +2655,7 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
                 const active = (name || "").toLowerCase().trim() === cname;
                 const isLight = cname === "gelb" || cname === "weiß";
                 return (
-                  <button key={cname} type="button" className={"colbtn" + (active ? " on" : "")} style={{ background: hex, color: isLight ? "#111" : "#fff", outline: active ? "2px solid var(--chalk)" : "none", outlineOffset: "2px" }} onClick={() => setName(cname)} title={cname}>
+                  <button key={cname} type="button" className={"colbtn" + (active ? " on" : "")} style={{ background: hex, color: isLight ? "#111" : "#fff", border: cname === "weiß" || cname === "gelb" ? "1.5px solid rgba(0,0,0,.2)" : "none" }} onClick={() => setName(cname)} title={cname}>
                     {active && <span className="colcheck">✓</span>}
                   </button>
                 );
