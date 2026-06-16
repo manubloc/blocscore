@@ -72,7 +72,7 @@ function fmtPts(n) { return (Math.round(n * 100) / 100).toLocaleString("de-DE", 
 function avColor(name) { let h = 0; for (let i = 0; i < (name || "").length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return `hsl(${h} 45% 62%)`; }
 function ago(ts) { const s = (Date.now() - ts) / 1000; if (s < 60) return "gerade eben"; if (s < 3600) return Math.floor(s / 60) + " min"; if (s < 86400) return Math.floor(s / 3600) + " h"; return Math.floor(s / 86400) + " d"; }
 function medal(i) { return null; } // always use numbers
-function roleLabel(r) { return r === "admin" ? "Admin" : r === "schrauber" ? "Route Creator" : r === "archived" ? "Archived" : "Climber"; }
+function roleLabel(r) { return r === "superadmin" ? "Super Admin" : r === "admin" ? "Admin" : r === "schrauber" ? "Route Creator" : r === "archived" ? "Archived" : "Climber"; }
 const YEAR_MS = 365 * 24 * 3600 * 1000;
 function lastActiveISO(acc, routes) { if (acc.lastSeen) return acc.lastSeen; let m = null; for (const r of (routes || [])) { if (r.results && r.results[acc.name] && r.date && (!m || r.date > m)) m = r.date; } return m; }
 function isArchivedAcc(acc, routes, todayISO) { if (!acc || acc.staff) return false; if (acc.archived) return true; const la = lastActiveISO(acc, routes); if (!la) return false; return (new Date(todayISO) - new Date(la)) > YEAR_MS; }
@@ -670,6 +670,7 @@ function downscale(file, maxDim = 1080, targetKB = 70) {
 const SEED_COMMUNITY = {
   accounts: [
     { id: "acc-admin", name: "admin", role: "admin", pin: "12345", staff: true },
+    { id: "acc-superadmin", name: "superadmin", role: "superadmin", pin: "einsalamibrotbitte", staff: true },
   ],
   routes: SEED.routes.map(r => ({ ...r, results: {} })),
   groups: [],
@@ -1130,6 +1131,12 @@ const CSS = `
 .reqnote span { display:block; color:var(--muted); font-size:11.5px; margin-top:2px; }
 .reqnote.warn { border-color:rgba(184,255,0,.3); background:#2a230f; }
 .reqbadge { display:inline-block; margin-left:7px; font-size:10.5px; font-weight:700; color:var(--amber); background:#21240a; border:1px solid #3a4010; border-radius:6px; padding:1px 6px; }
+.synclog { margin-top:14px; padding:10px 12px; background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.08); border-radius:8px; font-family:ui-monospace,Menlo,monospace; font-size:11.5px; line-height:1.55; max-height:280px; overflow-y:auto; }
+.synclog-ttl { font-weight:700; color:#b8ff00; margin-bottom:4px; font-family:'Figtree',sans-serif; font-size:12px; }
+.synclog-line { color:rgba(255,255,255,.8); }
+.synclog-line.warn { color:#f5c25c; }
+.synclog-line.err { color:#e98b7d; }
+.synclog-line.ok { color:#b8ff00; font-weight:600; }
 .archbadge { display:inline-block; font-size:10.5px; font-weight:700; color:#cdd4dc; background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; }
 /* Hall stats */
 .hkpi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -1385,8 +1392,9 @@ export default function App() {
   accounts.forEach(a => { AVATAR_EMOJI[a.name] = a.emoji || ""; });
   const players = useMemo(() => accounts.filter(a => !archivedSet.has(a.name)).map(a => a.name), [accounts, archivedSet]);
   const me = accounts.find(a => a.id === session?.accountId) || null;
-  const isAdmin = me?.role === "admin";
-  const canSetRoutes = me?.role === "admin" || me?.role === "schrauber";
+  const isSuperAdmin = me?.role === "superadmin";
+  const isAdmin = me?.role === "admin" || isSuperAdmin;
+  const canSetRoutes = isAdmin || me?.role === "schrauber";
   useEffect(() => { if (!canSetRoutes && filterScope === "archiv") setFilterScope("aktuell"); }, [canSetRoutes]);
   const visName = useMemo(() => new Set(accounts.filter(a => !a.staff && !archivedSet.has(a.name) && (!a.private || a.id === me?.id)).map(a => a.name)), [accounts, me, archivedSet]);
 
@@ -1567,6 +1575,139 @@ export default function App() {
   function deleteGroup(id) { setCommunity(c => ({ ...c, groups: (c.groups || []).filter(g => g.id !== id) })); }
   function setPrivate(v) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, private: v } : a) })); }
   function setMyEmoji(e) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, emoji: e } : a) })); }
+
+  // ── Sendly Sync ──
+  const [syncLog, setSyncLog] = useState([]);
+  function pushSyncLog(text, kind = "") { setSyncLog(s => [...s, { text, kind }]); }
+
+  async function handleSendlySync(file, fullReset) {
+    if (!file) return;
+    setSyncLog([]);
+    pushSyncLog(`📂 Datei: ${file.name} (${Math.round(file.size/1024)} KB)`);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const incoming = Array.isArray(data) ? data : (data.routes || []);
+      if (!incoming.length) { pushSyncLog("⚠️ Keine Routen in der Datei gefunden.", "warn"); return; }
+      pushSyncLog(`✅ ${incoming.length} Routen in Import-Datei`);
+
+      // Sektor-Mapping sendly → blocscore
+      const SECTOR_MAP = { BH: "h", BV: "v", PL: "pl", TB: "tb", WK: "wkw", "Block Hinten": "h", "Block Vorne": "v", Platte: "pl", "Training & Bug": "tb", "Wettkampfwand": "wkw", Trainingsbereich: "tb" };
+      const COLOR_MAP = { Pink: "pink", Gelb: "gelb", Blau: "blau", Weiss: "weiß", Weiß: "weiß", Rot: "rot", Grün: "grün", Gruen: "grün", Orange: "orange", Lila: "lila", Violett: "lila", Schwarz: "schwarz", Türkis: "türkis", Tuerkis: "türkis", Mint: "mint", Braun: "braun", Grau: "grau" };
+
+      // Normalisiere eingehende Routen
+      const normalized = incoming.map((r, idx) => ({
+        _idx: idx,
+        color: COLOR_MAP[r.color] || (r.color || "").toLowerCase().trim(),
+        grade: Number(r.grade) || 0,
+        sector: SECTOR_MAP[r.sector] || SECTOR_MAP[r.gym] || r.sector || r.gym,
+        date: r.date || todayISO(),
+        imageUrl: r.imageUrl || r.image || null,
+        sourceName: r.name || null,
+      })).filter(r => r.color && r.grade && r.sector);
+
+      pushSyncLog(`🔍 ${normalized.length} valide Routen (Farbe + Grade + Sektor vorhanden)`);
+
+      let matched = 0, created = 0, archived = 0, imageAdded = 0;
+      const today = todayISO();
+
+      setCommunity(c => {
+        let newRoutes = [...(c.routes || [])];
+        let newAccounts = c.accounts;
+        const usedIds = new Set();
+
+        // FULL RESET: alle bisherigen Routen entfernen (Ergebnisse werden mit Route weggeschmissen)
+        if (fullReset) {
+          archived = newRoutes.filter(r => !r.archived).length;
+          newRoutes = [];
+          pushSyncLog(`🗑️ Hard-Reset: ${archived} alte Routen entfernt`, "warn");
+        }
+
+        for (const inc of normalized) {
+          // Suche Match: gleiche Farbe + Sektor + Schwierigkeit, nicht archiviert
+          const matchIdx = newRoutes.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && !usedIds.has(r.id));
+          if (matchIdx >= 0) {
+            // MATCH: Bild übertragen falls vorhanden
+            usedIds.add(newRoutes[matchIdx].id);
+            matched++;
+            if (inc.imageUrl && (!newRoutes[matchIdx].photos || newRoutes[matchIdx].photos.length === 0)) {
+              // Bild später async laden
+              newRoutes[matchIdx] = { ...newRoutes[matchIdx], _pendingImageUrl: inc.imageUrl };
+            }
+          } else if (fullReset || (inc.date && inc.date >= today)) {
+            // Kein Match aber aktuelles Datum → neue Route
+            const nick = genName(uid() + "|" + inc.color, inc.grade);
+            const newRoute = {
+              id: uid(),
+              date: inc.date || today,
+              gym: inc.sector,
+              grade: inc.grade,
+              name: inc.color,
+              nick: nick,
+              note: "",
+              archived: false,
+              results: {},
+              photos: [],
+              tips: [],
+            };
+            if (inc.imageUrl) newRoute._pendingImageUrl = inc.imageUrl;
+            newRoutes.push(newRoute);
+            created++;
+          }
+        }
+
+        // Archiviere alte Routen die nicht gematcht wurden (nur bei Additivem Sync mit gleichem Sektor)
+        if (!fullReset) {
+          const sectorsInSync = new Set(normalized.map(n => n.sector));
+          newRoutes = newRoutes.map(r => {
+            if (!r.archived && sectorsInSync.has(r.gym) && !usedIds.has(r.id)) {
+              archived++;
+              return { ...r, archived: true };
+            }
+            return r;
+          });
+        }
+
+        return { ...c, routes: newRoutes };
+      });
+
+      pushSyncLog(`✓ ${matched} bestehende Routen aktualisiert`);
+      pushSyncLog(`✓ ${created} neue Routen angelegt`);
+      if (archived > 0) pushSyncLog(`⏸ ${archived} alte Routen archiviert`, "warn");
+
+      // Async: Bilder nachladen + komprimieren
+      pushSyncLog("⏳ Lade Bilder im Hintergrund (komprimiert auf max. 1080px)...");
+      setTimeout(async () => {
+        const community = JSON.parse(JSON.stringify(await loadCommunity() || {}));
+        if (!community.routes) return;
+        let imgOk = 0, imgFail = 0;
+        for (const r of community.routes) {
+          if (r._pendingImageUrl && (!r.photos || r.photos.length === 0)) {
+            try {
+              const resp = await fetch(r._pendingImageUrl, { mode: "cors" });
+              const blob = await resp.blob();
+              const f = new File([blob], "img.jpg", { type: blob.type });
+              const dataUrl = await downscale(f);
+              const photoId = uid();
+              await savePhotoBlob(photoId, dataUrl);
+              r.photos = [photoId];
+              delete r._pendingImageUrl;
+              imgOk++;
+            } catch (err) {
+              imgFail++;
+              delete r._pendingImageUrl;
+            }
+          }
+        }
+        setCommunity(c => ({ ...c, routes: community.routes }));
+        pushSyncLog(`📸 ${imgOk} Bilder geladen` + (imgFail ? ` (${imgFail} fehlgeschlagen — vermutlich CORS-Block)` : ""), imgFail ? "warn" : "");
+        pushSyncLog("✅ Sync abgeschlossen.", "ok");
+      }, 200);
+
+    } catch (err) {
+      pushSyncLog("❌ Fehler beim Sync: " + (err.message || err), "err");
+    }
+  }
   function setMyPin(p) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, pin: p } : a) })); }
   function setScrewDate(wall, date) {
     setCommunity(c => ({ ...c, screwDates: { ...c.screwDates, [wall]: date } }));
@@ -1600,7 +1741,7 @@ export default function App() {
         </div>
         {tab === "routes" && canSetRoutes && <button className="addtop-tb" onClick={() => setEditing("new")}><span className="plus">+</span>{t("routes.add")}</button>}
         <button className="uchip" onClick={() => setTab("account")}>
-          {me.role !== "community" && <span className="adminpill">{me.role === "admin" ? "Admin" : "Route Creator"}</span>}
+          {me.role !== "community" && <span className="adminpill">{me.role === "superadmin" ? "Super Admin" : me.role === "admin" ? "Admin" : "Route Creator"}</span>}
           <span className="un">{me.name}</span>
           <Avatar name={me.name} size={28} emoji={me.emoji} />
         </button>
@@ -2160,6 +2301,7 @@ export default function App() {
                       <option value="community">Climber</option>
                       <option value="schrauber">Route Creator</option>
                       <option value="admin">Admin</option>
+                      {isSuperAdmin && <option value="superadmin">Super Admin</option>}
                     </select>
                     <button className="removex danger" onClick={() => { if (confirm(`${a.name} entfernen? Eingetragene Ergebnisse bleiben erhalten.`)) removeAccount(a.id); }}>✕</button>
                   </div>
@@ -2169,11 +2311,32 @@ export default function App() {
             })()}
             {isAdmin && <div className="phint" style={{ marginTop: 4 }}>Route Creator & Admins dürfen Routen anlegen und bearbeiten. Climber tragen nur eigene Ergebnisse ein und bilden Gruppen. Konten ohne Aktivität über 1 Jahr werden automatisch archiviert.</div>}
           </div>
-          {isAdmin && (
-            <div className="stcard"><h3><span>Verwaltung</span></h3>
-              <div className="note">Vorsicht: setzt das Board auf die importierten Original-Daten zurück.</div>
-              <button className="miniaction danger" onClick={() => { const pw = prompt("Sicherheitspasswort eingeben:"); if (pw === "1234567890") { if (confirm("Board wirklich zurücksetzen? Alle Daten gehen verloren.")) setCommunity(SEED_COMMUNITY); } else if (pw !== null) alert("Falsches Passwort."); }}>Board zurücksetzen</button>
-            </div>
+          {isSuperAdmin && (
+            <>
+              <div className="stcard"><h3><span>🔄 Sendly-Sync</span></h3>
+                <div className="note">Importiere Routen von <b>sendly.diezunddaz.xyz</b>. Matching erfolgt über Farbe + Sektor + Schwierigkeit. Bei Match wird das Bild übernommen, bei neuen Routen werden sie angelegt — alte werden archiviert.</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                  <label className="miniaction" style={{ marginTop: 0, cursor: "pointer" }}>
+                    <input type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => handleSendlySync(e.target.files?.[0], false)} />
+                    📥 Sync-Import (additiv & matchend)
+                  </label>
+                  <label className="miniaction danger" style={{ marginTop: 0, cursor: "pointer" }}>
+                    <input type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => handleSendlySync(e.target.files?.[0], true)} />
+                    🆕 Initial-Reset + Komplett-Import
+                  </label>
+                </div>
+                {syncLog.length > 0 && (
+                  <div className="synclog">
+                    <div className="synclog-ttl">Sync-Protokoll:</div>
+                    {syncLog.map((line, i) => <div key={i} className={"synclog-line " + (line.kind || "")}>{line.text}</div>)}
+                  </div>
+                )}
+              </div>
+              <div className="stcard"><h3><span>⚠️ Hard Reset</span></h3>
+                <div className="note">Vorsicht: setzt das Board auf die importierten Original-Daten zurück.</div>
+                <button className="miniaction danger" onClick={() => { const pw = prompt("Sicherheitspasswort eingeben:"); if (pw === "1234567890") { if (confirm("Board wirklich zurücksetzen? Alle Daten gehen verloren.")) setCommunity(SEED_COMMUNITY); } else if (pw !== null) alert("Falsches Passwort."); }}>Board zurücksetzen</button>
+              </div>
+            </>
           )}
         </div></div>
       )}
