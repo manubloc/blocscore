@@ -152,7 +152,7 @@ const STR = {
     "routes.done": "geschafft", "routes.search": "Route suchen (Name, Farbe, Wand…)", "routes.allWalls": "alle Wände",
     "routes.scope.aktuell": "Aktuell", "routes.scope.archiv": "Archiv", "routes.scope.alle": "Alle", "routes.allGrades": "Alle Grade",
     "routes.empty": "Keine Routen in dieser Ansicht.", "routes.add": "Route", "routes.rescrewed": "umgeschraubt",
-    "ach.unlocked": "Erfolge freigeschaltet", "ach.points": "Erfolgspunkte", "ach.done": "Geschafft", "ach.next": "Als Nächstes", "ach.cats": "Kategorien", "ach.view.ach": "Erfolge", "ach.view.grade": "Grade",
+    "ach.unlocked": "Erfolge freigeschaltet", "ach.points": "Punkte", "ach.done": "Geschafft", "ach.next": "Als Nächstes", "ach.cats": "Kategorien", "ach.view.ach": "Erfolge", "ach.view.grade": "Grade",
     "groups.intro": "Eine Gruppe = dein Team. Die Punkte aller Mitglieder zählen zusammen. Max. 10 Mitglieder, du kannst nur in einer Gruppe sein. Beitritt per Anfrage an den Ersteller oder per Einladung.",
     "groups.yours": "Deine Gruppe", "groups.create": "+ Eigene Gruppe erstellen", "groups.discover": "Gruppen entdecken",
     "groups.request": "Anfragen", "groups.requested": "Angefragt ✕", "groups.full": "voll", "groups.manageHint": "Tippe deine Gruppe an, um Mitglieder, Anfragen und Einladungen zu verwalten.",
@@ -170,7 +170,7 @@ const STR = {
     "grp.create": "Gruppe erstellen", "grp.name": "Gruppenname", "grp.symbol": "Symbol", "grp.roll": "🎲 neu würfeln", "grp.pickMore": "Mehr Symbole", "grp.nameHint": "Teamname mit Mehrzahl-Nomen — frei änderbar.",
     "prof.nameHint": "Wird automatisch erzeugt — frei änderbar.",
     "route.note": "Beschreibung (optional)", "route.notePh": "z. B. große Griffe · Route am Fenster", "route.noteHint": "Nur nötig, um Routen mit gleicher Farbe & Grad zu unterscheiden.",
-    "lock.comments": "Kommentare werden ab 100 Erfolgspunkten freigeschaltet (du hast {n}).", "lock.group": "Gruppen erstellen wird ab 1000 Erfolgspunkten freigeschaltet (du hast {n}).", "lock.creator": "Route Creator kannst du ab 10000 Erfolgspunkten anfragen (du hast {n}).",
+    "lock.comments": "Kommentare werden ab 100 Punkten freigeschaltet (du hast {n}).", "lock.group": "Gruppen erstellen wird ab 1000 Punkten freigeschaltet (du hast {n}).", "lock.creator": "Route Creator kannst du ab 10000 Punkten anfragen (du hast {n}).",
     "cf.title": "Route Creator werden?", "cf.body": "Bist du sicher, dass du das Zeug zum Route Creator hast? Du übernimmst Verantwortung fürs Schrauben und Pflegen der Routen — ein Admin muss die Anfrage noch bestätigen.", "cf.yes": "Ja, anfragen", "cf.cancel": "Abbrechen", "lock.label": "🔒 gesperrt",
     "lang.de": "Deutsch", "lang.en": "English",
     "nav.hall": "Stats",
@@ -203,7 +203,7 @@ const STR = {
     "routes.done": "done", "routes.search": "Search routes (name, color, wall…)",
     "routes.allWalls": "all walls", "routes.scope.aktuell": "Current", "routes.scope.archiv": "Archive", "routes.scope.alle": "All",
     "routes.allGrades": "All grades", "routes.empty": "No routes in this view.", "routes.add": "Route", "routes.rescrewed": "reset",
-    "ach.unlocked": "Achievements unlocked", "ach.points": "Achievement points", "ach.done": "Unlocked", "ach.next": "Up next",
+    "ach.unlocked": "Achievements unlocked", "ach.points": "Points", "ach.done": "Unlocked", "ach.next": "Up next",
     "ach.cats": "Categories", "ach.view.ach": "Achievements", "ach.view.grade": "Grades",
     "groups.intro": "One group = your team. All members' points count together. Max 10 members, you can only be in one group. Join by requesting or by invitation.",
     "groups.yours": "Your group", "groups.create": "+ Create your group", "groups.discover": "Discover groups",
@@ -1215,8 +1215,8 @@ const CSS = `
 .achintro-txt { font-size:13px; color:rgba(255,255,255,.7); line-height:1.5; margin-bottom:12px; }
 .achintro-txt b { color:#b8ff00; font-weight:700; }
 .achintro-unlocks { display:flex; flex-direction:column; gap:6px; }
-.achunl { font-size:12.5px; color:rgba(255,255,255,.75); display:flex; align-items:center; gap:8px; }
-.achunl-num { display:inline-block; min-width:36px; text-align:center; padding:2px 7px; border:1.5px solid rgba(184,255,0,.35); border-radius:6px; color:#b8ff00; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; }
+.achunl { font-size:12.5px; color:rgba(255,255,255,.75); display:flex; align-items:center; gap:8px; line-height:1.4; }
+.achunl-num { display:inline-block; min-width:34px; text-align:center; padding:2px 7px; border:1.5px solid rgba(184,255,0,.35); border-radius:6px; color:#b8ff00; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; flex:none; }
 .achhero { display:flex; align-items:center; gap:16px; background:transparent; border:1.5px solid rgba(184,255,0,.25); border-radius:16px; padding:18px; margin-bottom:16px; }
 .achring { width:74px; height:74px; position:relative; flex:none; }
 .achring svg { width:100%; height:100%; }
@@ -1773,11 +1773,11 @@ export default function App() {
           <div className="scroll"><div className="stats">
             <div className="achintro">
               <div className="achintro-ttl">Wie funktionieren Erfolge?</div>
-              <div className="achintro-txt">Jede Route bringt dir Punkte. Erfolge bekommst du für Meilensteine — z.B. erste 10 Tops, 25 Flashes, alle Farben einer Wand. Sie zählen als <b>Erfolgspunkte</b>, mit denen du weitere App-Features freischaltest:</div>
+              <div className="achintro-txt">Jede Route bringt dir Skillpoints. Zusätzliche Skillpoints sammelst du durch Erfolge — Meilensteine wie z.B. erste 10 Tops, 25 Flashes oder alle Farben einer Wand. Mit deinen <b>Skillpoints</b> schaltest du weitere App-Features frei:</div>
               <div className="achintro-unlocks">
-                <div className="achunl"><span className="achunl-num">5</span> Pts &rarr; 5 neue Profil-Emojis</div>
-                <div className="achunl"><span className="achunl-num">100</span> Pts &rarr; Kommentare zu Routen</div>
-                <div className="achunl"><span className="achunl-num">200</span> Pts &rarr; Eigene Gruppe erstellen</div>
+                <div className="achunl"><span className="achunl-num">5</span> Skillpoints &rarr; 5 neue Profil-Emojis</div>
+                <div className="achunl"><span className="achunl-num">100</span> Skillpoints &rarr; Kommentare zu Routen</div>
+                <div className="achunl"><span className="achunl-num">200</span> Skillpoints &rarr; Eigene Gruppe erstellen</div>
               </div>
             </div>
             <div className="achhero">
@@ -2419,7 +2419,7 @@ function ProfileEmojiSheet({ me, achScore, isAdmin, onClose, onPick }) {
             </div>
             {next && (
               <div className="emoji-info-next">
-                Nächste <b>{next.count}</b> bei <b>{next.at} Ach-Punkten</b> · du hast {Math.round(achScore)} · noch {Math.max(0, next.at - Math.round(achScore))} fehlen
+                Nächste <b>{next.count}</b> bei <b>{next.at} Skillpoints</b> · du hast {Math.round(achScore)} · noch {Math.max(0, next.at - Math.round(achScore))} fehlen
               </div>
             )}
             {!next && <div className="emoji-info-next" style={{ color: "#b8ff00" }}>🏆 Alle Emojis freigeschaltet!</div>}
@@ -2520,7 +2520,7 @@ function NewGroupSheet({ onClose, onCreate, achScore, isAdmin }) {
             <div className="phint">{t("grp.nameHint")}</div>
           </div>
           <div className="field"><label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>{t("grp.symbol")} <span className="bigpick" style={{ fontSize: 22 }}>{emoji}</span></label>
-            {next && <div className="emoji-info-next" style={{ marginBottom: 8 }}>Nächste <b>{next.count}</b> bei <b>{next.at} Ach-Pts</b></div>}
+            {next && <div className="emoji-info-next" style={{ marginBottom: 8 }}>Nächste <b>{next.count}</b> bei <b>{next.at} Skillpoints</b></div>}
             <div className="emojipick big">{unlocked.map((e, i) => <button key={i} className={"epick" + (emoji === e ? " on" : "")} onClick={() => setEmoji(e)}>{e}</button>)}</div>
           </div>
           <button className={"save" + (valid ? "" : " disabled")} onClick={() => valid && onCreate(name.trim(), emoji)}>{t("grp.create")}</button>
@@ -2599,7 +2599,7 @@ function GroupSheet({ group, me, accById, boardMode, isMember, isCreator, reques
 function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screwDates }) {
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
-  const [wall, setWall] = useState(route ? (wallCanon(route.gym) || route.gym || null) : null);
+  const [wall, setWall] = useState(route ? (wallCanon(route.gym) || route.gym || gyms?.[0] || null) : null);
   const defaultDate = isNew ? (wall && screwDates?.[wall] ? screwDates[wall] : todayISO()) : (route?.date || todayISO());
   const [date, setDate] = useState(defaultDate);
   // Update date when wall changes (only for new routes)
@@ -2630,12 +2630,12 @@ function RouteSheet({ route, me, gyms, isAdmin, onClose, onSave, onDelete, screw
   }
 
   return (
-    <div className={"scrim" + (!wall && isNew ? " full" : "")} onClick={onClose}>
-      <div className={"sheet" + (!wall && isNew ? " planmode" : "")} onClick={e => e.stopPropagation()}>
+    <div className={"scrim" + (isNew && !wall ? " full" : "")} onClick={onClose}>
+      <div className={"sheet" + (isNew && !wall ? " planmode" : "")} onClick={e => e.stopPropagation()}>
         <div className="grip" />
         <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
         <div className="sbody">
-          {!wall ? (
+          {!wall && isNew ? (
             <div className="planpick">
               <div className="planpick-ttl">Wo hängt die Route?</div>
               <div className="planpick-sub">Tippe auf den Bereich im Hallenplan</div>
