@@ -203,7 +203,7 @@ const STR = {
     "routes.done": "done", "routes.search": "Search routes (name, color, wall…)",
     "routes.allWalls": "all walls", "routes.scope.aktuell": "Current", "routes.scope.archiv": "Archive", "routes.scope.alle": "All",
     "routes.allGrades": "All grades", "routes.empty": "No routes in this view.", "routes.add": "Route", "routes.rescrewed": "reset",
-    "ach.unlocked": "Achievements unlocked", "ach.points": "Points", "ach.done": "Unlocked", "ach.next": "Up next",
+    "ach.unlocked": "Achievements unlocked", "ach.points": "Points", "ach.done": "Unlocked", "ach.next": "Up next", "ach.intro.title": "How do achievements work?", "ach.intro.body": "Every route earns you Skillpoints. Additional Skillpoints come from achievements — milestones like first 10 tops, 25 flashes or all colors on a wall. Use your Skillpoints to unlock more app features:",
     "ach.cats": "Categories", "ach.view.ach": "Achievements", "ach.view.grade": "Grades",
     "groups.intro": "One group = your team. All members' points count together. Max 10 members, you can only be in one group. Join by requesting or by invitation.",
     "groups.yours": "Your group", "groups.create": "+ Create your group", "groups.discover": "Discover groups",
@@ -421,12 +421,210 @@ function getNextEmojiUnlock(achScore) {
   const nextSlotAt = (Math.floor(score / EMOJI_STEP) + 1) * EMOJI_STEP;
   return { at: nextSlotAt, count: EMOJI_BATCH, total: EMOJI_POOL_ALL.length, unlocked: EMOJI_BASE.length + slotsUnlocked };
 }
+
+// ── Garmin-style Activity Chart ──────────────────────
+function ActivityChart({ results, routeDate, label, color="#b8ff00" }) {
+  const [mode, setMode] = useState("week"); // week | month | year
+  const [metric, setMetric] = useState("tops"); // tops | flashes | both
+
+  const today = new Date();
+  const todayISO = today.toISOString().slice(0,10);
+
+  // Berechne Buckets
+  const buckets = useMemo(() => {
+    const map = {};
+    const myR = results || [];
+    myR.forEach(r => {
+      const d = r.date;
+      if (!d) return;
+      let key;
+      if (mode === "week") {
+        // Last 8 weeks
+        const dt = new Date(d);
+        const diffMs = today - dt;
+        const diffW = Math.floor(diffMs / (7*86400000));
+        if (diffW < 0 || diffW >= 8) return;
+        // ISO week key
+        const weekStart = new Date(today);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay() - diffW*7);
+        key = weekStart.toISOString().slice(0,10);
+      } else if (mode === "month") {
+        // Last 6 months
+        const dt = new Date(d);
+        const diffM = (today.getFullYear() - dt.getFullYear())*12 + (today.getMonth() - dt.getMonth());
+        if (diffM < 0 || diffM >= 6) return;
+        key = d.slice(0,7); // YYYY-MM
+      } else {
+        // Last 12 months
+        const dt = new Date(d);
+        const diffM = (today.getFullYear() - dt.getFullYear())*12 + (today.getMonth() - dt.getMonth());
+        if (diffM < 0 || diffM >= 12) return;
+        key = d.slice(0,7);
+      }
+      if (!map[key]) map[key] = { tops:0, flashes:0 };
+      if (r.status === "flash") { map[key].flashes++; map[key].tops++; }
+      else { map[key].tops++; }
+    });
+    return map;
+  }, [results, mode]);
+
+  // Erzeuge geordnete Buckets
+  const keys = useMemo(() => {
+    const arr = [];
+    if (mode === "week") {
+      for (let i=7; i>=0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - d.getDay() - i*7);
+        arr.push(d.toISOString().slice(0,10));
+      }
+    } else if (mode === "month") {
+      for (let i=5; i>=0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
+        arr.push(d.toISOString().slice(0,7));
+      }
+    } else {
+      for (let i=11; i>=0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
+        arr.push(d.toISOString().slice(0,7));
+      }
+    }
+    return arr;
+  }, [mode]);
+
+  const vals = keys.map(k => buckets[k] || {tops:0, flashes:0});
+  const maxVal = Math.max(1, ...vals.map(v => metric==="flashes" ? v.flashes : v.tops));
+
+  const BAR_H = 120;
+  const BAR_W = 100 / keys.length;
+  const GAP = 0.4;
+
+  const labels = keys.map(k => {
+    if (mode === "week") {
+      const d = new Date(k);
+      const weekDays = LANG==="en" ? ["Su","Mo","Tu","We","Th","Fr","Sa","Su"] : ["So","Mo","Di","Mi","Do","Fr","Sa","So"];
+      return weekDays[d.getDay()] + " " + d.getDate() + ".";
+    } else {
+      const parts = k.split("-");
+      const months = LANG==="en" ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] : ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+      return months[parseInt(parts[1])-1];
+    }
+  });
+
+  return (
+    <div className="achart">
+      <div className="achart-controls">
+        <div className="seg" style={{marginBottom:0}}>
+          {["week","month","year"].map(m => <button key={m} className={mode===m?"on":""} onClick={()=>setMode(m)}>{m==="week"?"8W":m==="month"?"6M":"12M"}</button>)}
+        </div>
+        <div className="seg" style={{marginBottom:0}}>
+          <button className={metric==="tops"?"on":""} onClick={()=>setMetric("tops")}>Tops</button>
+          <button className={metric==="flashes"?"on":""} onClick={()=>setMetric("flashes")}>Flashes</button>
+          <button className={metric==="both"?"on":""} onClick={()=>setMetric("both")}>{LANG==="en"?"Both":"Beide"}</button>
+        </div>
+      </div>
+      <svg viewBox={"0 0 100 " + (BAR_H+20)} preserveAspectRatio="none" className="achart-svg">
+        {vals.map((v,i) => {
+          const x = i * BAR_W + GAP;
+          const w = BAR_W - GAP*2;
+          const topH = ((metric==="flashes" ? v.flashes : v.tops) / maxVal) * BAR_H;
+          const flashH = metric==="both" ? (v.flashes / maxVal) * BAR_H : 0;
+          return (
+            <g key={i}>
+              {/* Top bar */}
+              {(metric!=="flashes") && topH > 0 && <rect x={x} y={BAR_H-topH} width={w} height={topH} fill="rgba(184,255,0,0.25)" rx="0.5"/>}
+              {/* Flash overlay */}
+              {metric==="both" && flashH > 0 && <rect x={x} y={BAR_H-flashH} width={w} height={flashH} fill={color} rx="0.5"/>}
+              {/* Flash only */}
+              {metric==="flashes" && topH > 0 && <rect x={x} y={BAR_H-topH} width={w} height={topH} fill={color} rx="0.5"/>}
+            </g>
+          );
+        })}
+        {/* Baseline */}
+        <line x1="0" y1={BAR_H} x2="100" y2={BAR_H} stroke="rgba(255,255,255,0.1)" strokeWidth="0.3"/>
+        {/* Y max label */}
+        <text x="1" y="5" fontSize="4" fill="rgba(255,255,255,0.5)" fontFamily="Barlow Condensed">{maxVal}</text>
+      </svg>
+      <div className="achart-labels">
+        {labels.map((l,i) => <span key={i}>{l}</span>)}
+      </div>
+      {metric==="both" && <div className="achart-legend">
+        <span className="achart-dot" style={{background:"rgba(184,255,0,0.25)"}}/> Tops &nbsp;
+        <span className="achart-dot" style={{background:color}}/> Flashes
+      </div>}
+    </div>
+  );
+}
+
+
+// ── First-run Intro Modal ─────────────────────────────
+function IntroModal({ me, onClose, onDismiss }) {
+  const en = LANG === "en";
+  return (
+    <div className="scrim" onClick={onClose} style={{zIndex:200, alignItems:"center", padding:"20px 16px"}}>
+      <div className="intro-modal" onClick={e=>e.stopPropagation()}>
+        <div className="intro-header">
+          <div className="intro-logo">🧗</div>
+          <h2 className="intro-ttl">{en?"Welcome to blocscore":"Willkommen bei blocscore"}</h2>
+          <p className="intro-sub">{en?"Track your sends, earn achievements, compete with friends.":"Trage deine Begehungen ein, sammle Erfolge und vergleich dich."}</p>
+        </div>
+
+        <div className="intro-cards">
+          <div className="intro-card">
+            <div className="intro-card-icon">
+              <svg width="22" height="22" viewBox="0 0 10 10" fill="none" stroke="#b8ff00" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,5.5 4,8 8.5,2"/></svg>
+            </div>
+            <div>
+              <div className="intro-card-ttl">Top</div>
+              <div className="intro-card-txt">{en?"You climbed the route — maybe not on the first try.":"Du hast die Route geschafft — vielleicht nicht beim ersten Versuch."}</div>
+            </div>
+          </div>
+
+          <div className="intro-card">
+            <div className="intro-card-icon">
+              <svg width="20" height="22" viewBox="0 0 10 12" fill="#b8ff00"><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>
+            </div>
+            <div>
+              <div className="intro-card-ttl">Flash ⚡</div>
+              <div className="intro-card-txt">{en?"First try, no falls, no beta — pure send!":"Erster Versuch, kein Sturz, kein Vorschauen — pure Begehung!"}</div>
+            </div>
+          </div>
+
+          <div className="intro-card">
+            <div className="intro-card-icon" style={{fontSize:20}}>📥</div>
+            <div>
+              <div className="intro-card-ttl">{en?"Log a route":"Route eintragen"}</div>
+              <div className="intro-card-txt">{en?"Tap any route → +Enter → choose Top or Flash.":"Tippe eine Route an → +Eintragen → Top oder Flash wählen."}</div>
+            </div>
+          </div>
+
+          <div className="intro-card">
+            <div className="intro-card-icon" style={{fontSize:20}}>🏆</div>
+            <div>
+              <div className="intro-card-ttl">{en?"Skillpoints & achievements":"Skillpoints & Erfolge"}</div>
+              <div className="intro-card-txt">{en?"Earn Skillpoints by climbing. Unlock emojis, comments and groups.":"Klettere für Skillpoints. Schalte Emojis, Kommentare und Gruppen frei."}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="intro-actions">
+          <button className="btn" style={{marginTop:0}} onClick={onClose}>
+            {en?"Let's go! 🚀":"Los geht's! 🚀"}
+          </button>
+          <button className="btn ghost" style={{marginTop:8, fontSize:13}} onClick={onDismiss}>
+            {en?"Got it — don't show again":"Verstanden — nicht mehr anzeigen"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function buildAchievements(lang) {
   const en = lang === "en";
   const A = []; let id = 0;
   const push = (cat, icon, name, desc, target, key, p) => A.push({ id: "a"+(id++), cat, icon, name, desc, target, key, pts: p });
-  const COLORS = ["blau","grün","rot","gelb","lila","schwarz","weiß","pink","orange","holz","violett","braun","türkis"];
-  const CEN = {blau:"blue",grün:"green",rot:"red",gelb:"yellow",lila:"purple",schwarz:"black",weiß:"white",pink:"pink",orange:"orange",holz:"wood",violett:"violet",braun:"brown",türkis:"turquoise"};
+  const COLORS = ["blau","grün","rot","gelb","lila","schwarz","weiß","pink"];
+  const CEN = {blau:"blue",grün:"green",rot:"red",gelb:"yellow",lila:"purple",schwarz:"black",weiß:"white",pink:"pink"};
   const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
   const cName = c => en ? cap(CEN[c]||c) : cap(c);
   const tier = (arr, i, f) => arr[i] || `${f} ${i+1}`;
@@ -447,7 +645,7 @@ function buildAchievements(lang) {
   FLASHES.forEach((n,i)=>push("Flash","⚡",tier(en?FEN:FDE,i,""),en?`Flash ${n} routes`:`Flashe ${n} Routen`,n,"flashes",Math.round(pts(n)*2.2)));
 
   // PUNKTE — Anfänger: 7pts/sess→100pts nach 14 sess; Gut: 22.5; Pro: 51.5
-  const PTS_V=[5,15,30,75,150,300,600,1000,2000,3500,5000];
+  const PTS_V=[25,75,200,500,1000,2000,4000,7500,15000,30000,60000];
   const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott"];
   const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God"];
   PTS_V.forEach((n,i)=>push(L.Punkte,"💎",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
@@ -455,21 +653,21 @@ function buildAchievements(lang) {
   // GRADE — kalibriert: 1er/2er/3er Anfänger, 4er/5er Gut, 6er/7er Fortgeschritten, 8er Pro
   const gScale=[0,1,1.2,1.5,2,3,5,8,15];
   GRADES.forEach(g=>{
-    const tC=g<=2?[1,3,5,10,25,50,100]:g<=4?[1,3,5,10,25,50,100,200]:g<=6?[1,3,5,10,25,50,100]:g===7?[1,3,5,10,25,50]:[1,3,5,10,20];
+    const tC=g<=2?[5,15,30,60,100,200,400]:g<=4?[3,10,25,50,100,200,400]:g<=6?[1,5,15,30,75,150]:g===7?[1,3,10,25,50]:[1,3,5,15,30];
     tC.forEach((n)=>push(`${g}`,"🪨",en?`${n}× Grade ${g}`:`${n}× ${g}er`,en?`Climb ${n} grade-${g} routes`:`Klettere ${n} ${g}er-Routen`,n,`grade:${g}:t`,Math.round(pts(n)*gScale[g])));
-    const fC=g<=3?[1,3,5]:g<=5?[1,3,5,10,25]:g<=7?[1,3,5,10,20]:[1,3,5,10];
+    const fC=g<=3?[5,15,30]:g<=5?[3,10,25,50,100]:g<=7?[1,5,15,30,60]:[1,3,10,25];
     fC.forEach((n)=>push(`${g}`,"⚡",en?`Flash ${n}× Grade ${g}`:`Flash ${n}× ${g}er`,en?`Flash ${n} grade-${g} routes`:`Flashe ${n} ${g}er-Routen`,n,`grade:${g}:f`,Math.round(pts(n)*gScale[g]*2)));
   });
 
   // FARBE
   COLORS.forEach(c=>{
-    [1,5,10,25,50,100].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
-    [1,3,5,10,25].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
+    [3,10,25,50,100,200,500].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
+    [5,15,30,75,150].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
-  [3,5,8,10,15,20,25,35].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
-  [1,2,3,5,8,12,15].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
+  [10,15,20,25,30,40,50].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  [5,8,12,15,20,25,30].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
 
   // KOMBI / SPEZIAL
   [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
@@ -480,7 +678,7 @@ function buildAchievements(lang) {
   [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
 
   // MEHRLING
-  [[3,30],[4,50],[5,75],[6,105],[7,145],[8,200]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+  [[5,50],[8,90],[10,130],[12,175],[15,230],[20,320]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
 
   // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
   [[1,8],[3,14],[5,20],[10,30],[20,42],[35,55],[50,68],[75,85],[100,105],[150,135],[200,168],[300,220],[365,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
@@ -531,24 +729,18 @@ function buildAchievements(lang) {
   // ZEIT-CHALLENGES (Routen an einem Tag = maxDayTops)
   const ZEIT = en?"Speed":"Speed";
   [
-    // Everest Speed Record: Pemba Dorje Sherpa 8h 10min — symbolically: flash 8 routes in a day
-    [8,en?"Everest Speed Record (8 routes in 1 day) ⏱":"Everest Speedrekord (8 Routen an 1 Tag) ⏱",
-      en?"Climb 8 routes in one day — like Pemba's 8h10m Everest record":"8 Routen an einem Tag — wie Pemdas 8h10m Everest-Rekord",55],
-    // Alex Honnold El Cap Free Solo 3h 56min — 12 routes in a day
-    [12,en?"El Cap Free Solo (12 in 1 day) 🎬":"El Cap Free Solo (12 an 1 Tag) 🎬",
-      en?"12 routes in one day — like Alex Honnold's 3h56m free solo":"12 an einem Tag — wie Alex Honnolds 3h56m Free Solo",90],
-    // Ueli Steck Eiger Nordwand 2h47m — 15 routes
-    [15,en?"Ueli Steck – Eiger (15 in 1 day) 💨":"Ueli Steck – Eiger (15 an 1 Tag) 💨",
-      en?"15 routes in one day — like Ueli Steck's 2h47m Eiger record":"15 an einem Tag — wie Ueli Stecks 2h47m Eiger-Rekord",120],
-    // Tommy Caldwell & Jorgeson 19 days on Dawn Wall — 20 routes
-    [20,en?"Dawn Wall (20 in 1 day) 🌅":"Dawn Wall (20 an 1 Tag) 🌅",
-      en?"20 routes in one day — legendary like Caldwell & Jorgeson's Dawn Wall":"20 an einem Tag — legendär wie Caldwell & Jorgesons Dawn Wall",170],
-    // Deep Water Solo record — 25 routes
-    [25,en?"Deep Water Solo Mode (25 in 1 day) 🌊":"Deep Water Solo Modus (25 an 1 Tag) 🌊",
-      en?"25 routes in one day — no rope, no fear, just sending":"25 an einem Tag — kein Seil, keine Angst, nur Klettern",230],
-    // Pure madness — 35 routes (Pro level max)
-    [35,en?"Project Moonboard (35 in 1 day) 🌙":"Project Moonboard (35 an 1 Tag) 🌙",
-      en?"35 routes in one day — you are on another level entirely":"35 an einem Tag — du bist auf einem völlig anderen Level",350],
+    [15,en?"Speed Rookie (15 in 1 day) ⏱":"Speed Rookie (15 an 1 Tag) ⏱",
+      en?"15 routes in one day — solid session!":"15 Routen an einem Tag — starke Session!",80],
+    [20,en?"El Cap Free Solo (20 in 1 day) 🎬":"El Cap Free Solo (20 an 1 Tag) 🎬",
+      en?"20 routes in one day — like Alex Honnold's free solo pace":"20 an einem Tag — wie Alex Honnolds Free Solo Tempo",130],
+    [25,en?"Ueli Steck – Eiger (25 in 1 day) 💨":"Ueli Steck – Eiger (25 an 1 Tag) 💨",
+      en?"25 routes in one day — like Ueli Steck's Eiger record pace":"25 an einem Tag — wie Ueli Stecks Eiger-Rekord Tempo",190],
+    [30,en?"Dawn Wall (30 in 1 day) 🌅":"Dawn Wall (30 an 1 Tag) 🌅",
+      en?"30 routes in one day — legendary like the Dawn Wall":"30 an einem Tag — legendär wie die Dawn Wall",260],
+    [40,en?"Deep Water Solo Mode (40 in 1 day) 🌊":"Deep Water Solo Modus (40 an 1 Tag) 🌊",
+      en?"40 routes in one day — no mercy":"40 an einem Tag — gnadenlos",360],
+    [50,en?"Project Moonboard (50 in 1 day) 🌙":"Project Moonboard (50 an 1 Tag) 🌙",
+      en?"50 routes in one day — you are on another level":"50 an einem Tag — du bist auf einem anderen Level",500],
   ].forEach(([n,name,desc,p])=>push(ZEIT,"⏱",name,desc,n,"maxDayTops",p));
 
   return A;
@@ -677,23 +869,158 @@ const SEED_COMMUNITY = {
   screwDates: { v: "2026-06-04", tb: "2026-06-11", h: "2026-06-18", pl: "2026-06-25", wkw: "2026-05-28" },
 };
 
+// ── Global in-memory photo cache (survives re-renders, gone on reload) ──
+const _PHOTO_CACHE = new Map();
+const _PHOTO_LOADING = new Map(); // promise deduplication
+
+async function cachedLoadPhoto(id) {
+  if (_PHOTO_CACHE.has(id)) return _PHOTO_CACHE.get(id);
+  if (_PHOTO_LOADING.has(id)) return _PHOTO_LOADING.get(id);
+  const p = loadPhotoBlob(id).then(b => { _PHOTO_CACHE.set(id, b); _PHOTO_LOADING.delete(id); return b; });
+  _PHOTO_LOADING.set(id, p);
+  return p;
+}
+
 function RoutePhoto({ photoId, className, style, onClick }) {
   const inline = typeof photoId === "string" && photoId.startsWith("data:");
-  const [src, setSrc] = useState(inline ? photoId : null);
-  useEffect(() => { if (inline) return; let on = true; (async () => { const b = await loadPhotoBlob(photoId); if (on) setSrc(b); })(); return () => { on = false; }; }, [photoId]);
-  if (!src) return null;
-  return <img className={className} style={{ ...style, cursor: "zoom-in" }} src={src} alt="" onClick={onClick} />;
+  const [src, setSrc] = useState(inline ? photoId : (_PHOTO_CACHE.get(photoId) || null));
+  const [visible, setVisible] = useState(false);
+  const ref = useRef(null);
+
+  // IntersectionObserver: nur laden wenn sichtbar
+  useEffect(() => {
+    if (inline || _PHOTO_CACHE.has(photoId)) { setVisible(true); return; }
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) { setVisible(true); obs.disconnect(); }
+    }, { rootMargin: "200px" }); // 200px Vorausladen
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [photoId]);
+
+  // Laden wenn sichtbar + noch nicht gecacht
+  useEffect(() => {
+    if (!visible || inline) return;
+    if (_PHOTO_CACHE.has(photoId)) { setSrc(_PHOTO_CACHE.get(photoId)); return; }
+    let on = true;
+    cachedLoadPhoto(photoId).then(b => { if (on) setSrc(b); });
+    return () => { on = false; };
+  }, [visible, photoId]);
+
+  // Placeholder während laden
+  if (!src) return (
+    <div
+      ref={ref}
+      className={className}
+      style={{ ...style, background: "var(--panel2)", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      {visible && <div style={{ width: 24, height: 24, border: "2px solid rgba(255,255,255,.15)", borderTopColor: "#b8ff00", borderRadius: "50%", animation: "spin .7s linear infinite" }} />}
+    </div>
+  );
+  return <img className={className} style={{ ...style, cursor: "zoom-in" }} src={src} alt="" onClick={onClick} loading="lazy" decoding="async" />;
 }
 function PhotoLightbox({ src, onClose }) {
+  const [scale, setScale] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
+  const lastTouchDist = useRef(null);
+  const imgRef = useRef(null);
+
   useEffect(() => {
     const fn = e => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
   }, []);
+
+  // Wheel zoom
+  function onWheel(e) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.85 : 1.18;
+    setScale(s => Math.min(6, Math.max(1, s * delta)));
+  }
+
+  // Double-tap / double-click to toggle zoom
+  const lastTap = useRef(0);
+  function onImgClick(e) {
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      // double tap
+      setScale(s => s > 1.5 ? 1 : 2.5);
+      setPos({ x: 0, y: 0 });
+    }
+    lastTap.current = now;
+  }
+
+  // Mouse drag
+  function onMouseDown(e) {
+    if (scale <= 1) return;
+    e.preventDefault();
+    setDragging(true);
+    setDragStart({ x: e.clientX - pos.x, y: e.clientY - pos.y });
+  }
+  function onMouseMove(e) {
+    if (!dragging || !dragStart) return;
+    setPos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  }
+  function onMouseUp() { setDragging(false); setDragStart(null); }
+
+  // Touch pinch zoom + pan
+  function onTouchStart(e) {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist.current = Math.sqrt(dx*dx + dy*dy);
+    } else if (e.touches.length === 1 && scale > 1) {
+      setDragging(true);
+      setDragStart({ x: e.touches[0].clientX - pos.x, y: e.touches[0].clientY - pos.y });
+    }
+  }
+  function onTouchMove(e) {
+    e.preventDefault();
+    if (e.touches.length === 2 && lastTouchDist.current) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const ratio = dist / lastTouchDist.current;
+      setScale(s => Math.min(6, Math.max(1, s * ratio)));
+      lastTouchDist.current = dist;
+    } else if (e.touches.length === 1 && dragging && dragStart) {
+      setPos({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
+    }
+  }
+  function onTouchEnd() { lastTouchDist.current = null; setDragging(false); }
+
   return (
-    <div className="lightbox" onClick={onClose}>
-      <button className="lb-close" onClick={onClose}>✕</button>
-      <img src={src} alt="" className="lb-img" onClick={e => e.stopPropagation()} />
+    <div className="lightbox"
+      onClick={scale <= 1 ? onClose : undefined}
+      onWheel={onWheel}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
+    >
+      <button className="lb-close" onClick={onClose} style={{zIndex:201}}>✕</button>
+      {scale > 1 && <div className="lb-hint">{LANG==="en"?"Double-tap to reset":"Doppeltippen zum Zurücksetzen"}</div>}
+      <img
+        ref={imgRef}
+        src={src}
+        alt=""
+        className="lb-img"
+        style={{
+          transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`,
+          cursor: scale > 1 ? (dragging ? "grabbing" : "grab") : "zoom-in",
+          transition: dragging ? "none" : "transform .15s ease",
+          userSelect: "none",
+        }}
+        onClick={onImgClick}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        draggable={false}
+      />
     </div>
   );
 }
@@ -723,6 +1050,8 @@ const CSS = `
   .hkpi-grid { grid-template-columns:repeat(4,1fr); }
   .stcard { break-inside:avoid; }
   .brand-logo { height:44px !important; }
+  .tab svg { width:24px !important; height:24px !important; }
+  .tabbar { min-height:62px !important; height:62px !important; }
 }
 @media (min-width: 1100px) {
   .bld { max-width:1100px; }
@@ -812,7 +1141,7 @@ const CSS = `
 
 .rc { background:var(--panel); border:1px solid var(--line); border-radius:14px; margin-bottom:8px; overflow:hidden; }
 .rc.arch { opacity:.6; }
-.rbanner { width:100%; height:150px; object-fit:cover; display:block; background:var(--panel2); }
+.rbanner { width:100%; height:150px; object-fit:cover; display:block; background:var(--panel2); will-change:opacity; transition:opacity .2s ease; }
 .rbody { padding:9px 11px 10px; }
 .rchead { display:flex; align-items:center; gap:10px; }
 .wicon { width:34px; height:34px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); color:var(--chalk); display:flex; align-items:center; justify-content:center; flex:none; }
@@ -896,10 +1225,10 @@ const CSS = `
 .miniaction .mi-ic { font-size:15px; line-height:1; }
 
 /* tabbar / fab */
-.tabbar { display:flex; background:#1e2028; border-top:1px solid rgba(255,255,255,.09); padding:4px 2px calc(4px + env(safe-area-inset-bottom)); gap:1px; height:55px; box-sizing:border-box; }
-.tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 2px 4px; border-radius:8px; color:var(--muted); border:none; font-size:11px; text-transform:uppercase; font-family:'Figtree',sans-serif; font-weight:700; }
+.tabbar { display:flex; background:#1e2028; border-top:1px solid rgba(255,255,255,.09); padding:4px 2px calc(4px + env(safe-area-inset-bottom)); gap:1px; min-height:55px; height:55px; box-sizing:border-box; flex-shrink:0; width:100%; position:relative; z-index:10; }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:5px 2px 4px; border-radius:8px; color:var(--muted); border:none; font-size:11px; text-transform:uppercase; font-family:'Figtree',sans-serif; font-weight:700; min-width:0; overflow:visible; }
 .tab span { font-size:9px; }
-.tab svg { width:26px; height:26px; stroke-width:1.6; }
+.tab svg { width:24px; height:24px; flex-shrink:0; display:block; }
 .tab.on { color:#b8ff00; }
 .tab.on svg { color:#b8ff00; }
 .tab.on svg { stroke-width:2; color:#b8ff00; }
@@ -914,6 +1243,7 @@ const CSS = `
 .scrim { position:fixed; inset:0; background:rgba(8,10,13,.72); z-index:50; display:flex; align-items:flex-end; backdrop-filter:blur(2px); }
 .sheet { background:var(--panel); width:100%; max-height:92dvh; border-radius:20px 20px 0 0; border-top:1px solid rgba(255,255,255,.15); display:flex; flex-direction:column; animation:up .22s ease; }
 @keyframes up { from { transform:translateY(100%);} to { transform:translateY(0);} }
+@keyframes spin { to { transform:rotate(360deg); } }
 .grip { width:38px; height:4px; background:var(--line); border-radius:3px; margin:10px auto 4px; }
 .shead { display:flex; align-items:center; justify-content:space-between; padding:8px 20px 12px; border-bottom:1px solid rgba(255,255,255,.07); }
 .shead h2 { font-family:'Barlow Condensed'; font-weight:700; font-size:22px; margin:0; }
@@ -1081,7 +1411,8 @@ const CSS = `
 .planrow .plwn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .planrow .plright { display:flex; align-items:center; gap:7px; flex:none; margin-left:auto; }
 .planrow .pld { font-family:'Barlow Condensed'; font-weight:700; white-space:nowrap; color:var(--muted); font-variant-numeric:tabular-nums; }
-.lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; animation:fadeIn .15s ease; }
+.lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; animation:fadeIn .15s ease; overflow:hidden; touch-action:none; }
+.lb-hint { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); font-size:12px; color:rgba(255,255,255,.5); background:rgba(0,0,0,.4); padding:4px 12px; border-radius:20px; pointer-events:none; z-index:202; white-space:nowrap; }
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 .lb-img { max-width:100%; max-height:100%; object-fit:contain; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
 .lb-close { position:absolute; top:18px; right:18px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.2); z-index:201; }
@@ -1138,6 +1469,24 @@ const CSS = `
 .synclog-line.warn { color:#f5c25c; }
 .synclog-line.err { color:#e98b7d; }
 .synclog-line.ok { color:#b8ff00; font-weight:600; }
+.achart { background:transparent; border:1.5px solid rgba(255,255,255,.1); border-radius:12px; padding:14px; margin-bottom:14px; }
+.achart-controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.achart-svg { width:100%; height:140px; display:block; }
+.achart-labels { display:flex; justify-content:space-between; margin-top:4px; }
+.achart-labels span { font-size:9px; color:rgba(255,255,255,.5); text-align:center; flex:1; }
+.achart-legend { font-size:11px; color:rgba(255,255,255,.6); margin-top:6px; display:flex; align-items:center; gap:4px; }
+.achart-dot { display:inline-block; width:10px; height:10px; border-radius:2px; }
+.intro-modal { background:var(--panel); border-radius:20px; border:1.5px solid rgba(255,255,255,.12); width:100%; max-width:480px; overflow:hidden; animation:up .22s ease; }
+.intro-header { padding:28px 24px 16px; text-align:center; background:linear-gradient(180deg,rgba(184,255,0,.05) 0%,transparent 100%); }
+.intro-logo { font-size:40px; margin-bottom:10px; }
+.intro-ttl { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:26px; margin:0 0 6px; color:#fff; }
+.intro-sub { font-size:13px; color:rgba(255,255,255,.65); margin:0; line-height:1.5; }
+.intro-cards { padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+.intro-card { display:flex; align-items:flex-start; gap:14px; background:transparent; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px 14px; }
+.intro-card-icon { width:36px; height:36px; flex:none; display:flex; align-items:center; justify-content:center; background:rgba(184,255,0,.08); border-radius:8px; border:1px solid rgba(184,255,0,.2); }
+.intro-card-ttl { font-weight:700; font-size:14px; color:#fff; margin-bottom:2px; }
+.intro-card-txt { font-size:12.5px; color:rgba(255,255,255,.65); line-height:1.45; }
+.intro-actions { padding:12px 16px 20px; display:flex; flex-direction:column; gap:0; }
 .archbadge { display:inline-block; font-size:10.5px; font-weight:700; color:#cdd4dc; background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; }
 /* Hall stats */
 .hkpi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -1344,6 +1693,7 @@ function LoginScreen({ accounts, onLogin, onSignup, lang, onLang }) {
 export default function App() {
   const [community, setCommunity] = useState(null);
   const [session, setSession] = useState(null);
+  const [showIntro, setShowIntro] = useState(false);
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState("routes");
   const [boardMode, setBoardMode] = useState("aktuell");
@@ -1465,6 +1815,7 @@ export default function App() {
   function deleteRoute(id) { setCommunity(c => ({ ...c, routes: c.routes.filter(r => r.id !== id) })); }
   const MAX_MEMBERS = 10;
   const myGroup = useMemo(() => groups.find(g => (g.members || []).includes(me?.id)) || null, [groups, me]);
+  const myGroupsList = useMemo(() => groups.filter(g => (g.members || []).includes(me?.id)), [groups, me]);
   const myAgg = useMemo(() => computeAgg(routes, me?.name || ""), [routes, me]);
   const achState = useMemo(() => {
     let unlocked = 0, score = 0; const cats = {}; const order = []; const icons = {};
@@ -1476,8 +1827,12 @@ export default function App() {
   const nextUp = useMemo(() => achState.evald.filter(a => !a.done).sort((a, b) => (b.ratio - a.ratio) || (a.target - b.target)).slice(0, 10), [achState]);
   const achScore = achState.score;
   const NEED_COMMENT = 100, NEED_GROUP = 200, NEED_CREATOR = 0;
+  // Max groups: 1 ab 200 Pts, 2 ab 500 Pts, 3 ab 1500 Pts
+  const maxGroupsAllowed = isAdmin ? 3 : achScore >= 1500 ? 3 : achScore >= 500 ? 2 : achScore >= 200 ? 1 : 0;
+  const myGroupIds = groups.filter(g => (g.members||[]).includes(me?.id)).map(g => g.id);
   const canComment = isAdmin || canSetRoutes || achScore >= NEED_COMMENT;
   const canCreateGroup = isAdmin || canSetRoutes || achScore >= NEED_GROUP;
+  const canJoinGroup = isAdmin || myGroupsList.length < maxGroupsAllowed;
   const canRequestCreator = achScore >= NEED_CREATOR;
 
   // ── Hallen-Statistiken ──────────────────────────────────────────────────
@@ -1541,9 +1896,9 @@ export default function App() {
     return { activeRoutes, todaySends, weekSends, monthSends, totalSends, totalFlashes, popularRoutes, activeClimbers, wallStats, sessionList, creators, totalComments, mostCommented, communityKB, archivedWithPhoto, topSendsId, topFlashId2 };
   }, [routes, accounts, today]);
   function groupOf(accId) { return groups.find(g => (g.members || []).includes(accId)); }
-  function createGroup(name, emoji) { if (myGroup) return; const g = { id: uid(), name, emoji, members: [me.id], requests: [], createdBy: me.id }; setCommunity(c => ({ ...c, groups: [...(c.groups || []), g] })); }
+  function createGroup(name, emoji) { if (myGroupsList.length >= maxGroupsAllowed) return; const g = { id: uid(), name, emoji, members: [me.id], requests: [], createdBy: me.id }; setCommunity(c => ({ ...c, groups: [...(c.groups || []), g] })); }
   function requestJoin(id) {
-    if (myGroup) return;
+    if (myGroupsList.length >= maxGroupsAllowed) return;
     setCommunity(c => ({ ...c, groups: (c.groups || []).map(g => g.id === id && !(g.requests || []).includes(me.id) && !g.members.includes(me.id) ? { ...g, requests: [...(g.requests || []), me.id] } : g) }));
   }
   function cancelRequest(id) { setCommunity(c => ({ ...c, groups: (c.groups || []).map(g => g.id === id ? { ...g, requests: (g.requests || []).filter(r => r !== me.id) } : g) })); }
@@ -1721,17 +2076,31 @@ export default function App() {
   function setAccRole(id, role) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === id ? { ...a, role, roleRequest: null } : a) })); }
   function removeAccount(id) { setCommunity(c => ({ ...c, accounts: c.accounts.filter(a => a.id !== id) })); }
   function deleteMyAccount() { if (confirm("Dein Konto wirklich löschen? Alle deine Ergebnisse bleiben erhalten, du kannst dich aber nicht mehr einloggen.")) { removeAccount(me.id); logout(); } }
-  function handleLogin(id) { const s = { accountId: id }; setSession(s); saveSession(s); setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === id ? { ...a, lastSeen: todayISO() } : a) })); }
+  function handleLogin(id) {
+    const s = { accountId: id };
+    setSession(s);
+    saveSession(s);
+    setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === id ? { ...a, lastSeen: todayISO() } : a) }));
+    // Show intro if not dismissed before
+    const acc = accounts.find(a => a.id === id);
+    if (!acc?.skipIntro) setShowIntro(true);
+  }
   function handleSignup({ name, pin, role, private: priv, emoji }) { const acc = { id: uid(), name, pin, role, private: !!priv, emoji: emoji || "", lastSeen: todayISO() }; setCommunity(c => ({ ...c, accounts: [...c.accounts, acc] })); handleLogin(acc.id); }
   function logout() { setSession(null); saveSession(null); setTab("routes"); }
+  function dismissIntro() {
+    setShowIntro(false);
+    if (me) setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, skipIntro: true } : a) }));
+  }
 
   if (!ready) return <div className="bld"><style>{CSS}</style><div className="empty" style={{ margin: "auto" }}>Lädt…</div></div>;
   if (!me) return <LoginScreen accounts={accounts} onLogin={handleLogin} onSignup={handleSignup} lang={lang} onLang={changeLang} />;
+  const introEl = showIntro && !me?.skipIntro ? <IntroModal me={me} onClose={() => setShowIntro(false)} onDismiss={dismissIntro} /> : null;
 
   const tipsRoute = routes.find(r => r.id === tipsRouteId) || null;
 
   return (
     <div className="bld">
+      {introEl}
       <style>{CSS}</style>
       <div className="topbar" style={{ backgroundImage: `url(${HEADER_BG})` }}>
         <div className="topbar-overlay" />
@@ -1858,7 +2227,7 @@ export default function App() {
                                 <span className={"rschip top" + (topN > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
                                 <span className={"rschip flash" + (flashN > 0 ? " has" : "")}><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flashN}</span>
                               </div>
-                              {canSetRoutes && <button className="edit" onClick={(e) => { e.stopPropagation(); setEditing(r); }} title="Route bearbeiten"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l3.5-1L17 5.5 14.5 3 4 13.5 3 17z"/></svg></button>}
+                              {canSetRoutes && <button className="edit" onClick={(e) => { e.stopPropagation(); setEditing(r); }} title={LANG==="en"?"Edit route":"Route bearbeiten"}><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l3.5-1L17 5.5 14.5 3 4 13.5 3 17z"/></svg></button>}
                             </div>
                             <div className="rfoot">
                               <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
@@ -1914,12 +2283,12 @@ export default function App() {
         {statsView === "erfolge" && (
           <div className="scroll"><div className="stats">
             <div className="achintro">
-              <div className="achintro-ttl">Wie funktionieren Erfolge?</div>
-              <div className="achintro-txt">Jede Route bringt dir Skillpoints. Zusätzliche Skillpoints sammelst du durch Erfolge — Meilensteine wie z.B. erste 10 Tops, 25 Flashes oder alle Farben einer Wand. Mit deinen <b>Skillpoints</b> schaltest du weitere App-Features frei:</div>
+              <div className="achintro-ttl">{LANG==="en"?"How do achievements work?":"Wie funktionieren Erfolge?"}</div>
+              <div className="achintro-txt">{LANG==="en"?<>Every route earns you <b>Skillpoints</b>. Additional Skillpoints come from achievements — milestones like first 10 tops, 25 flashes or all colors on a wall. Use your Skillpoints to unlock more app features:</>:<>Jede Route bringt dir Skillpoints. Zusätzliche Skillpoints sammelst du durch Erfolge — Meilensteine wie z.B. erste 10 Tops, 25 Flashes oder alle Farben einer Wand. Mit deinen <b>Skillpoints</b> schaltest du weitere App-Features frei:</>}</div>
               <div className="achintro-unlocks">
-                <div className="achunl"><span className="achunl-num">5</span> Skillpoints &rarr; 5 neue Profil-Emojis</div>
-                <div className="achunl"><span className="achunl-num">100</span> Skillpoints &rarr; Kommentare zu Routen</div>
-                <div className="achunl"><span className="achunl-num">200</span> Skillpoints &rarr; Eigene Gruppe erstellen</div>
+                <div className="achunl"><span className="achunl-num">5</span> Skillpoints &rarr; {LANG==="en"?"5 new profile emojis":"5 neue Profil-Emojis"}</div>
+                <div className="achunl"><span className="achunl-num">100</span> Skillpoints &rarr; {LANG==="en"?"Route comments":"Kommentare zu Routen"}</div>
+                <div className="achunl"><span className="achunl-num">200</span> Skillpoints &rarr; {LANG==="en"?"Create a group":"Eigene Gruppe erstellen"}</div>
               </div>
             </div>
             <div className="achhero">
@@ -1989,6 +2358,7 @@ export default function App() {
             <div className="seg" style={{ flexWrap:"wrap" }}>
               <button className={hallTab === "meine" ? "on" : ""} onClick={() => setHallTab("meine")}>{LANG==="en"?"My Stats":"Meine Stats"}</button>
               <button className={hallTab === "halle" ? "on" : ""} onClick={() => setHallTab("halle")}>{t("hall.activity")}</button>
+              {myGroupsList.map(g => <button key={g.id} className={hallTab === "grp:"+g.id ? "on" : ""} onClick={() => setHallTab("grp:"+g.id)}>{g.emoji||"👥"} {g.name}</button>)}
               {isAdmin && <button className={hallTab === "creator" ? "on" : ""} onClick={() => setHallTab("creator")}>{t("hall.creator")}</button>}
             </div>
           </div>
@@ -2157,10 +2527,10 @@ export default function App() {
               {/* Gesamt KPIs */}
               <div className="stcard" style={{ padding:12 }}>
                 <div className="hkpi-grid" style={{ gridTemplateColumns:"repeat(2,1fr)" }}>
-                  <div className="hkpi"><div className="hkv">{myRoutes.length}</div><div className="hku">Begehungen</div></div>
+                  <div className="hkpi"><div className="hkv">{myRoutes.length}</div><div className="hku">{LANG==="en"?"Sends":"Begehungen"}</div></div>
                   <div className="hkpi"><div className="hkv">{myFlashes}</div><div className="hku">Flashes ⚡</div></div>
-                  <div className="hkpi"><div className="hkv">{Math.round(myMeters)} m</div><div className="hku">Höhenmeter 🏔</div></div>
-                  <div className="hkpi"><div className="hkv">{fmtPts(myPts)}</div><div className="hku">Punkte</div></div>
+                  <div className="hkpi"><div className="hkv">{Math.round(myMeters)} m</div><div className="hku">{LANG==="en"?"Elevation 🏔":"Höhenmeter 🏔"}</div></div>
+                  <div className="hkpi"><div className="hkv">{fmtPts(myPts)}</div><div className="hku">{LANG==="en"?"Points":"Punkte"}</div></div>
                 </div>
               </div>
 
@@ -2181,8 +2551,8 @@ export default function App() {
 
               {/* Höhenmeter / Berge */}
               <div className="stcard">
-                <h3><span>🏔 Erklommene Berge</span></h3>
-                <div className="phint" style={{marginBottom:10}}>Jede Route = {WALL_HEIGHT} Höhenmeter · Gesamt: {Math.round(myMeters)} m</div>
+                <h3><span>🏔 {LANG==="en"?"Peaks Climbed":"Erklommene Berge"}</span></h3>
+                <div className="phint" style={{marginBottom:10}}>{LANG==="en"?`Each route = ${WALL_HEIGHT}m · Total: ${Math.round(myMeters)}m`:`Jede Route = ${WALL_HEIGHT} Höhenmeter · Gesamt: ${Math.round(myMeters)} m`}</div>
                 {MOUNTAINS.map(mn => {
                   const done = myMeters >= mn.m;
                   const pct = Math.min(100, (myMeters/mn.m)*100);
@@ -2196,8 +2566,8 @@ export default function App() {
                     </div>
                   );
                 })}
-                {nextMtn && <div className="note" style={{marginTop:10}}>Noch {Math.ceil(nextMtn.m - myMeters)} m bis zum <b>{nextMtn.name}</b> ({nextMtn.m} m)</div>}
-                {!nextMtn && <div className="note" style={{marginTop:10,color:"var(--amber)"}}>🏆 Du hast alle Berge erklommen — sogar den Mount Everest!</div>}
+                {nextMtn && <div className="note" style={{marginTop:10}}>{LANG==="en"?<>{Math.ceil(nextMtn.m - myMeters)}m to go until <b>{nextMtn.name}</b> ({nextMtn.m}m)</>:<>Noch {Math.ceil(nextMtn.m - myMeters)} m bis zum <b>{nextMtn.name}</b> ({nextMtn.m} m)</>}</div>}
+                {!nextMtn && <div className="note" style={{marginTop:10,color:"var(--amber)"}}>🏆 {LANG==="en"?"You've climbed them all — even Mount Everest!":"Du hast alle Berge erklommen — sogar den Mount Everest!"}</div>}
               </div>
             </>);
           })()}
@@ -2378,33 +2748,28 @@ export default function App() {
         </div></div>
       )}
 
-      <div className="tabbar">
-        {/* Routes */}
+      <nav className="tabbar">
         <button className={"tab" + (tab === "routes" ? " on" : "")} onClick={() => setTab("routes")}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l4-8 4 4 3-6 4 10"/><circle cx="19" cy="5" r="2"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l4-8 4 4 3-6 4 10"/><circle cx="19" cy="5" r="2"/></svg>
           <span>{t("nav.routes")}</span>
         </button>
-        {/* Achievements */}
         <button className={"tab" + (tab === "stats" ? " on" : "")} onClick={() => setTab("stats")}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 21h6M12 13v8M7.5 16.5l-2 2M16.5 16.5l2 2"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 21h6M12 13v8M7.5 16.5l-2 2M16.5 16.5l2 2"/></svg>
           <span>{t("nav.ach")}</span>
         </button>
-        {/* Groups */}
         <button className={"tab" + (tab === "gruppen" ? " on" : "")} onClick={() => setTab("gruppen")}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M22 20c0-2.2-2-4-4.5-4"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M22 20c0-2.2-2-4-4.5-4"/></svg>
           <span>{t("nav.groups")}</span>
         </button>
-        {/* Board */}
         <button className={"tab" + (tab === "board" ? " on" : "")} onClick={() => setTab("board")}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M6 20V10M12 20V4M18 20v-6"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 20V10M12 20V4M18 20v-6"/></svg>
           <span>{t("nav.board")}</span>
         </button>
-        {/* Stats */}
         <button className={"tab" + (tab === "hall" ? " on" : "")} onClick={() => setTab("hall")}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17h7M17.5 14v7"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17h7M17.5 14v7"/></svg>
           <span>{t("nav.hall")}</span>
         </button>
-      </div>
+      </nav>
 
       {editing && (
         <RouteSheetBoundary onClose={() => setEditing(null)}>
@@ -2581,14 +2946,14 @@ function ProfileEmojiSheet({ me, achScore, isAdmin, onClose, onPick }) {
         <div className="sbody">
           <div className="emoji-info-card">
             <div className="emoji-info-stats">
-              <div><span className="emoji-info-num">{unlocked.length}</span> <span className="emoji-info-lbl">/ {next ? next.total : unlocked.length} freigeschaltet</span></div>
+              <div><span className="emoji-info-num">{unlocked.length}</span> <span className="emoji-info-lbl">/ {next ? next.total : unlocked.length} {LANG==="en"?"unlocked":"freigeschaltet"}</span></div>
             </div>
             {next && (
               <div className="emoji-info-next">
-                Nächste <b>{next.count}</b> bei <b>{next.at} Skillpoints</b> · du hast {Math.round(achScore)} · noch {Math.max(0, next.at - Math.round(achScore))} fehlen
+                {LANG==="en"?<>Next <b>{next.count}</b> at <b>{next.at} Skillpoints</b> · you have {Math.round(achScore)} · {Math.max(0, next.at - Math.round(achScore))} to go</>:<>Nächste <b>{next.count}</b> bei <b>{next.at} Skillpoints</b> · du hast {Math.round(achScore)} · noch {Math.max(0, next.at - Math.round(achScore))} fehlen</>}
               </div>
             )}
-            {!next && <div className="emoji-info-next" style={{ color: "#b8ff00" }}>🏆 Alle Emojis freigeschaltet!</div>}
+            {!next && <div className="emoji-info-next" style={{ color: "#b8ff00" }}>{LANG==="en"?"🏆 All emojis unlocked!":"🏆 Alle Emojis freigeschaltet!"}</div>}
           </div>
           <div className="emojipick big">
             {unlocked.map((e, i) => (
@@ -2771,10 +3136,10 @@ class RouteSheetBoundary extends React.Component {
     if (this.state.error) return (
       <div className="scrim" onClick={this.props.onClose}>
         <div className="sheet" onClick={e => e.stopPropagation()} style={{padding:24}}>
-          <div className="shead"><h2>Fehler</h2><button className="x" onClick={this.props.onClose}>✕</button></div>
+          <div className="shead"><h2>{LANG==="en"?"Error":"Fehler"}</h2><button className="x" onClick={this.props.onClose}>✕</button></div>
           <div className="sbody">
-            <div className="note" style={{color:"#e98b7d"}}>Route konnte nicht geladen werden: {this.state.error.message}</div>
-            <button className="miniaction" style={{marginTop:16}} onClick={this.props.onClose}>Schließen</button>
+            <div className="note" style={{color:"#e98b7d"}}>{LANG==="en"?"Could not load route: ":"Route konnte nicht geladen werden: "}{this.state.error.message}</div>
+            <button className="miniaction" style={{marginTop:16}} onClick={this.props.onClose}>{LANG==="en"?"Close":"Schließen"}</button>
           </div>
         </div>
       </div>
@@ -2820,19 +3185,19 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
     <div className={"scrim" + (isNew && !wall ? " full" : "")} onClick={onClose}>
       <div className={"sheet" + (isNew && !wall ? " planmode" : "")} onClick={e => e.stopPropagation()}>
         <div className="grip" />
-        <div className="shead"><h2>{isNew ? "Route anlegen" : "Route bearbeiten"}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
+        <div className="shead"><h2>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Edit route":"Route bearbeiten")}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
         <div className="sbody">
           {(!wall && isNew) ? (
             <div className="planpick">
-              <div className="planpick-ttl">Wo hängt die Route?</div>
-              <div className="planpick-sub">Tippe auf den Bereich im Hallenplan</div>
+              <div className="planpick-ttl">{LANG==="en"?"Where is the route?":"Wo hängt die Route?"}</div>
+              <div className="planpick-sub">{LANG==="en"?"Tap the area on the gym map":"Tippe auf den Bereich im Hallenplan"}</div>
               <div className="planpick-wrap"><FloorPlan value={wall} onChange={changeWall} /></div>
             </div>
           ) : (<>
           <div className="wallbar">
             <span className="wallbar-ic"><WallIcon code={wall} size={20} /></span>
             <span className="wb-name">{wallName(wall)}</span>
-            {isNew && <button className="wb-change" onClick={() => setWall(null)}>Plan ▾</button>}
+            {isNew && <button className="wb-change" onClick={() => setWall(null)}>{LANG==="en"?"Map ▾":"Plan ▾"}</button>}
           </div>
 
           <div className="field"><label>Grad</label>
@@ -2893,9 +3258,9 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
             </div>
           )}
 
-          <button className={"save" + (valid ? "" : " disabled")} onClick={commit}>{isNew ? "Route anlegen" : "Speichern"}</button>
-          {!isNew && isAdmin && <button className="del" onClick={() => { if (confirm("Diese Route wirklich löschen? Alle Ergebnisse und Fotos gehen verloren.")) onDelete(route.id); }}>🗑 Route löschen</button>}
-          {!isNew && !isAdmin && !canSetRoutes && <div className="phint" style={{ textAlign: "center", marginTop: 12 }}>Archivieren und Löschen können nur Route Creator und Admins.</div>}
+          <button className={"save" + (valid ? "" : " disabled")} onClick={commit}>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Save":"Speichern")}</button>
+          {!isNew && isAdmin && <button className="del" onClick={() => { if (confirm(LANG==="en"?"Really delete this route? All results and photos will be lost.":"Diese Route wirklich löschen? Alle Ergebnisse und Fotos gehen verloren.")) onDelete(route.id); }}>🗑 {LANG==="en"?"Delete route":"Route löschen"}</button>}
+          {!isNew && !isAdmin && !canSetRoutes && <div className="phint" style={{ textAlign: "center", marginTop: 12 }}>{LANG==="en"?"Only Route Creators and Admins can archive or delete.":"Archivieren und Löschen können nur Route Creator und Admins."}</div>}
           </>)}
         </div>
       </div>
