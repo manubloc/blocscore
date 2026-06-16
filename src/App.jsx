@@ -846,25 +846,6 @@ function ShareCard({ me, routes, today, onClose, logoSrc }) {
 }
 
 
-function AchIcon({ icon }) {
-  const svgs = {
-    "↑": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg>,
-    "◆": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M8 1L15 8 8 15 1 8z"/></svg>,
-    "●": <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="#b8ff00"/></svg>,
-    "⚡": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M9.5 1L3 9.5h4.5L6.5 15 13 6.5H8.5z"/></svg>,
-    "▲": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M8 2L15 14H1z"/></svg>,
-    "◉": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5" fill="#b8ff00"/></svg>,
-    "≡": <svg viewBox="0 0 16 16" stroke="#b8ff00" strokeWidth="2" strokeLinecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>,
-    "→": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 8h12M9 4l5 4-5 4"/></svg>,
-    "✦": <svg viewBox="0 0 16 16" fill="#b8ff00"><path d="M8 1l1.5 5.5H15l-4.5 3.3 1.7 5.2L8 12l-4.2 3 1.7-5.2L1 6.5h5.5z"/></svg>,
-    "◻": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="2"><rect x="2" y="2" width="12" height="12" rx="1"/></svg>,
-    "◷": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 2" strokeLinecap="round"/></svg>,
-    "▣": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><rect x="5" y="5" width="6" height="6" rx="0.5" fill="#b8ff00" stroke="none"/></svg>,
-    "◈": <svg viewBox="0 0 16 16" fill="none" stroke="#b8ff00" strokeWidth="1.5"><path d="M8 1L15 8 8 15 1 8z"/><circle cx="8" cy="8" r="2.5" fill="#b8ff00" stroke="none"/></svg>,
-  };
-  return <div className="ach-icon">{svgs[icon] || <span>{icon}</span>}</div>;
-}
-
 function buildAchievements(lang) {
   const en = lang === "en";
   const A = []; let id = 0;
@@ -882,7 +863,7 @@ function buildAchievements(lang) {
   const TOPS=[5,15,30,60,100,200,400,600,1000,1500,2500,4000,7000,10000,15000];
   const TNAMES_DE=["Erster Zug","Handflächen warm","Dabei","Stammgast","Fleißig","Ehrgeizig","Halbhundert","Hartnäckig","Hundert!","Obsessiv","Zweihundert","Dreihundert","Fünfhundert","Dreiviertel-Tausend","Tausendsassa","Zweitausend","Dreitausend","Boulder-Gott"];
   const TNAMES_EN=["First Move","Palms Warm","On Board","Regular","Diligent","Ambitious","Half Century","Persistent","Hundred!","Obsessed","Two Hundred","Three Hundred","Five Hundred","Three-Quarter K","Jack of All","Two Thousand","Three Thousand","Boulder God"];
-  TOPS.forEach((n,i)=>push(L.Gesamt,"↑",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
+  TOPS.forEach((n,i)=>push(L.Gesamt,"🧗",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
 
   // FLASH — harder, Anfänger flasst selten, Pro flasht ~6/sess
   const FLASHES=[5,15,30,75,150,300,750,1500];
@@ -894,7 +875,7 @@ function buildAchievements(lang) {
   const PTS_V=[50,150,400,1000,2500,5000,10000,25000,50000,100000];
   const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott"];
   const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God"];
-  PTS_V.forEach((n,i)=>push(L.Punkte,"◆",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
+  PTS_V.forEach((n,i)=>push(L.Punkte,"💎",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
 
   // GRADE — kalibriert: 1er/2er/3er Anfänger, 4er/5er Gut, 6er/7er Fortgeschritten, 8er Pro
   const gScale=[0,1,1.2,1.5,2,3,5,8,15];
@@ -907,33 +888,33 @@ function buildAchievements(lang) {
 
   // FARBE
   COLORS.forEach(c=>{
-    [3,10,25,50,100,200,500].forEach(n=>push(cName(c),"●",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
+    [3,10,25,50,100,200,500].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
     [5,15,30,75,150].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
-  [10,15,20,25,30,40,50].forEach(n=>push(L.Tagesform,"▲",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  [10,15,20,25,30,40,50].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
   [5,8,12,15,20,25,30].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
 
   // KOMBI / SPEZIAL
-  [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"◉",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
-  [1,2,3,5].forEach((n,i)=>push(L.Spezial,"≡",en?`All grades in one day (${n}×)`:`Alle Grade an einem Tag (${n}×)`,en?`On ${n} day(s) climb all grades 1–8`:`An ${n} Tag(en) alle Grade 1–8`,n,"allGradeDays",60+i*25));
+  [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
+  [1,2,3,5].forEach((n,i)=>push(L.Spezial,"📊",en?`All grades in one day (${n}×)`:`Alle Grade an einem Tag (${n}×)`,en?`On ${n} day(s) climb all grades 1–8`:`An ${n} Tag(en) alle Grade 1–8`,n,"allGradeDays",60+i*25));
 
   // STRASSEN
-  [[4,50],[5,70],[6,100],[7,135],[8,175]].forEach(([k,p])=>push(L.Straßen,"→",en?`Grades 1–${k} in one day`:`Grade 1–${k} an einem Tag`,en?`Climb grades 1–${k} in one day`:`Schaffe Grade 1–${k} an einem Tag`,k,"maxFrom1",p));
-  [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"→",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
+  [[4,50],[5,70],[6,100],[7,135],[8,175]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`Grades 1–${k} in one day`:`Grade 1–${k} an einem Tag`,en?`Climb grades 1–${k} in one day`:`Schaffe Grade 1–${k} an einem Tag`,k,"maxFrom1",p));
+  [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
 
   // MEHRLING
-  [[5,50],[8,90],[10,130],[12,175],[15,230],[20,320]].forEach(([k,p])=>push(L.Mehrling,"✦",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+  [[5,50],[8,90],[10,130],[12,175],[15,230],[20,320]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
 
   // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
-  [[1,8],[3,14],[5,20],[10,30],[20,42],[35,55],[50,68],[75,85],[100,105],[150,135],[200,168],[300,220],[365,300]].forEach(([n,p])=>push(L.Treue,"◻",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
+  [[1,8],[3,14],[5,20],[10,30],[20,42],[35,55],[50,68],[75,85],[100,105],[150,135],[200,168],[300,220],[365,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
 
   // AUSDAUER
-  [1,2,3,4,5,6,8,10,12,16,20,26,52].forEach(n=>push(L.Ausdauer,"◷",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
-  [2,3,4,6,8,12,16,26].forEach(n=>push(L.Ausdauer,"◷",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
-  [10,20,30,50,75,100].forEach(n=>push(L.Ausdauer,"▣",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
-  [20,50,75,100,150,200,250,300].forEach(n=>push(L.Ausdauer,"▣",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
+  [1,2,3,4,5,6,8,10,12,16,20,26,52].forEach(n=>push(L.Ausdauer,"⏳",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
+  [2,3,4,6,8,12,16,26].forEach(n=>push(L.Ausdauer,"⏳",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
+  [10,20,30,50,75,100].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
+  [20,50,75,100,150,200,250,300].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
 
   // BERGE — totalRoutes × wallHeight(3.5m default)
   [
@@ -950,7 +931,7 @@ function buildAchievements(lang) {
     [1989,"Aconcagua (6961m) 🏔",en?"Stone Sentinel — highest in the Americas":"Steinerner Wächter — höchster Berg der Amerikas",310],
     [2460,"K2 (8611m) ☠️",en?"The Savage Mountain — world's second highest":"The Savage Mountain — zweithöchster der Welt",410],
     [2528,"Mount Everest (8849m) 🏆",en?"MOUNT EVEREST — THE ULTIMATE!":"MOUNT EVEREST — DIE ULTIMATIVE LEISTUNG!",500],
-  ].forEach(([n,name,desc,p])=>push("Berge","▲",name,desc,n,"totalRoutes",p));
+  ].forEach(([n,name,desc,p])=>push("Berge","🔥",name,desc,n,"totalRoutes",p));
 
   // KLETTERKLASSIKER — kumulierte Höhenmeter entsprechen der Länge legendärer Routen
   // Jede Route in der Halle = WALL_HEIGHT Meter (Standard 3.5m)
@@ -970,7 +951,7 @@ function buildAchievements(lang) {
            en?"2400m — like the classic Mont Blanc massif granite route":"2400m — wie die klassische Granit-Route am Mont-Blanc-Massiv",210],
     [857,  en?"Yosemite Triple Crown (3000m) 👑":"Yosemite Triple Crown (3000m) 👑",
            en?"3000m — like climbing El Capitan, Half Dome & Mt Watkins in a day":"3000m — wie El Capitan, Half Dome & Mt Watkins an einem Tag",280],
-  ].forEach(([n,name,desc,p])=>push(KLETTERR,"↑",name,desc,n,"totalRoutes",p));
+  ].forEach(([n,name,desc,p])=>push(KLETTERR,"🧗",name,desc,n,"totalRoutes",p));
 
   // ZEIT-CHALLENGES (Routen an einem Tag = maxDayTops)
   const ZEIT = en?"Speed":"Speed";
@@ -987,7 +968,7 @@ function buildAchievements(lang) {
       en?"40 routes in one day — no mercy":"40 an einem Tag — gnadenlos",360],
     [50,en?"Project Moonboard (50 in 1 day) 🌙":"Project Moonboard (50 an 1 Tag) 🌙",
       en?"50 routes in one day — you are on another level":"50 an einem Tag — du bist auf einem anderen Level",500],
-  ].forEach(([n,name,desc,p])=>push(ZEIT,"◈",name,desc,n,"maxDayTops",p));
+  ].forEach(([n,name,desc,p])=>push(ZEIT,"⏱",name,desc,n,"maxDayTops",p));
 
   return A;
 }
@@ -1735,9 +1716,6 @@ const CSS = `
 .intro-actions { padding:12px 16px 20px; display:flex; flex-direction:column; gap:0; }
 .share-card-modal { background:var(--panel); border-radius:20px; border:1.5px solid rgba(255,255,255,.12); width:100%; max-width:480px; overflow:hidden; animation:up .22s ease; max-height:90dvh; display:flex; flex-direction:column; }
 .share-card-modal .sbody { overflow-y:auto; flex:1; }
-.ach-icon { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:rgba(184,255,0,0.1); border:1px solid rgba(184,255,0,0.2); flex:none; }
-.ach-icon svg { width:16px; height:16px; }
-.ach-icon span { font-size:14px; line-height:1; color:#b8ff00; }
 .archbadge { display:inline-block; font-size:10.5px; font-weight:700; color:#cdd4dc; background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:1px 6px; }
 /* Hall stats */
 .hkpi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -2577,7 +2555,7 @@ export default function App() {
               <>
                 <h3 className="ssec">{t("ach.done")} 🏅 <span className="ssecn">{done.length}</span></h3>
                 <div className="achstrip">{done.slice(0, 16).map(a => (
-                  <div className="achbadge" key={a.id} title={a.desc}><AchIcon icon={a.icon} /><span className="abn">{a.name}</span><span className="abp">+{a.pts}</span></div>
+                  <div className="achbadge" key={a.id} title={a.desc}><span className="abic">{a.icon}</span><span className="abn">{a.name}</span><span className="abp">+{a.pts}</span></div>
                 ))}</div>
               </>
             ) : null; })()}
@@ -2585,7 +2563,7 @@ export default function App() {
             <h3 className="ssec">{t("ach.next")}</h3>
             {nextUp.map(a => (
               <div key={a.id} className="achrow">
-                <AchIcon icon={a.icon} />
+                <span className="achic">{a.icon}</span>
                 <div className="achinfo"><div className="achn">{a.name}</div><div className="achd">{a.desc}</div><div className="achbar"><i style={{ width: `${a.ratio * 100}%` }} /></div></div>
                 <div className="achprog">{Math.min(a.cur, a.target)}/{a.target}</div>
               </div>
@@ -2745,7 +2723,7 @@ export default function App() {
 
               {/* Ranking */}
               <div className="stcard">
-                <h3><span>🏆 {LANG==="en"?"Ranking":"Ranking"}</span></h3>
+                <h3><span>{LANG==="en"?"Ranking":"Ranking"}</span></h3>
                 {memberStats.map((ms, i) => (
                   <div key={ms.acc.id} className={"lbrow" + (isMe(ms.acc) ? " lead" : "")} style={{marginBottom:6}}>
                     <span className="lbn">{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</span>
@@ -2939,7 +2917,7 @@ export default function App() {
 
               {/* Höhenmeter / Berge */}
               <div className="stcard">
-                <h3><span>🏔 {LANG==="en"?"Peaks Climbed":"Erklommene Berge"}</span></h3>
+                <h3><span>{LANG==="en"?"Peaks Climbed":"Erklommene Berge"}</span></h3>
                 <div className="phint" style={{marginBottom:10}}>{LANG==="en"?`Each route = ${WALL_HEIGHT}m · Total: ${Math.round(myMeters)}m`:`Jede Route = ${WALL_HEIGHT} Höhenmeter · Gesamt: ${Math.round(myMeters)} m`}</div>
                 {MOUNTAINS.map(mn => {
                   const done = myMeters >= mn.m;
