@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useId } from "react";
 import { SEED, BG_LOGIN } from "./seed.js";
 
 
@@ -3228,57 +3228,84 @@ function TipsSheet({ route, me, isAdmin, onClose, onAdd, onDelete }) {
 }
 
 /* ============================ Draufsicht (Hallenplan) ============================ */
-function getFpSegs() {
+function getFpData() {
   const en = LANG === "en";
-  // Aufrechte, abgerundete Blöcke (keine rechten Winkel), locker angeordnet
-  return [
-    { code: "wkw", x: 6,  y: 9,  w: 30, h: 82, rx: 13, label: en ? "COMP\nWALL"   : "WETTKAMPF\nWAND" },
-    { code: "h",   x: 44, y: 9,  w: 31, h: 34, rx: 12, label: en ? "BACK\nBLOCK"   : "BLOCK\nHINTEN" },
-    { code: "v",   x: 44, y: 50, w: 34, h: 41, rx: 16, label: en ? "FRONT\nBLOCK"  : "BLOCK\nVORNE" },
-    { code: "tb",  x: 84, y: 9,  w: 28, h: 30, rx: 12, label: en ? "TRAINING"      : "TRAINING" },
-    { code: "pl",  x: 82, y: 46, w: 30, h: 45, rx: 14, label: en ? "SLAB &\nBUG"   : "PLATTE &\nBUG" },
+  // Kantige Wand-Silhouetten (Polygone) – wie im Hallenplan-Design
+  const walls = [
+    { code: "wkw", pts: "6,6 25,6 15,15 28,25 15,35 28,45 15,55 28,65 15,75 28,85 15,95 27,103 18,110 6,110", orient: "v", lx: 15.5, ly: 58, fs: 6.6, label: en ? "COMP WALL" : "WETTKAMPFWAND", acc: [21, 99] },
+    { code: "h",   pts: "60,9 71,10 79,19 81,30 75,42 64,47 54,43 52,31 54,18", orient: "h", lx: 66, ly: 25.5, fs: 6.2, label: en ? ["BACK", "BLOCK"] : ["BLOCK", "HINTEN"], acc: [76, 16] },
+    { code: "v",   pts: "61,52 73,55 80,66 80,82 72,96 60,101 50,93 48,78 51,62", orient: "h", lx: 64, ly: 74.5, fs: 6.2, label: en ? ["FRONT", "BLOCK"] : ["BLOCK", "VORNE"], acc: [56, 95] },
+    { code: "pl",  pts: "90,10 96,12 97,40 98,60 95,80 92,95 89,78 88,45 89,20", orient: "v", lx: 93, ly: 52, fs: 6.4, label: en ? "SLAB" : "PLATTE", acc: [92, 88] },
+    { code: "tb",  pts: "104,17 117,21 118,33 116,62 110,80 102,73 99,55 100,30", orient: "v", lx: 109, ly: 48, fs: 5.3, label: en ? "TRAINING AREA" : "TRAININGSBEREICH", acc: [103, 75] },
   ];
+  // Trainings-Boards & Kinderbereich (gestrichelt, nicht wählbar)
+  const boards = [
+    { code: "kilter", x: 122, y: 30,   w: 13, h: 14, rx: 3, fs: 3.1, label: ["KILTER", "BOARD"] },
+    { code: "moon",   x: 122, y: 50.5, w: 13, h: 14, rx: 3, fs: 3.1, label: ["MOON", "BOARD"] },
+    { code: "kids",   x: 118, y: 84,   w: 16, h: 22, rx: 3, fs: 3.4, label: en ? ["KIDS", "AREA"] : ["KINDER-", "BEREICH"] },
+  ];
+  const entrance = { x: 53, y: 105, w: 25, h: 5, label: en ? "ENTRANCE" : "EINGANG" };
+  return { walls, boards, entrance };
 }
-function FpLabel({ s, on }) {
-  const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-  const fill = on ? "#13141a" : "#cdd2c8";
-  if (s.label.includes("\n")) {
-    const [a, b] = s.label.split("\n");
-    const fs = Math.max(a.length, b.length) > 8 ? 3.0 : 3.6;
-    return (
-      <text textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={fs} fill={fill}>
-        <tspan x={cx} y={cy - 1.4}>{a}</tspan>
-        <tspan x={cx} dy="4.3">{b}</tspan>
-      </text>
-    );
-  }
-  const fs = s.label.length > 10 ? 3.0 : 3.6;
-  return <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={fs} fill={fill} letterSpacing="0.4">{s.label}</text>;
-}
-function FloorPlan({ value, onChange, counts, newest }) {
+function FloorPlan({ value, onChange, newest }) {
+  const rid = useId().replace(/[:]/g, "");
+  const { walls, boards, entrance } = getFpData();
+  const TEX = "/floorplan-tex.png";
+  const accent = (x, y) => (
+    <g opacity="0.5">{[0, 1, 2].map(i => <line key={i} x1={x + i * 2} y1={y} x2={x + i * 2 - 2.4} y2={y + 2.4} stroke="#b8ff00" strokeWidth="0.5" />)}</g>
+  );
   return (
-    <svg className="fp" viewBox="0 0 118 100">
-      {getFpSegs().map(s => {
-        const on = value === s.code;
-        const fresh = newest === s.code;
-        const cnt = counts ? (counts[s.code] || 0) : null;
+    <svg className="fp" viewBox="0 0 142 116">
+      <defs>
+        <filter id={`g${rid}`} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="1.15" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        {walls.map(w => <clipPath key={w.code} id={`c${rid}-${w.code}`}><polygon points={w.pts} /></clipPath>)}
+        {boards.map(b => <clipPath key={b.code} id={`c${rid}-${b.code}`}><rect x={b.x} y={b.y} width={b.w} height={b.h} rx={b.rx} /></clipPath>)}
+      </defs>
+
+      {walls.map(w => {
+        const on = value === w.code;
+        const fresh = newest === w.code;
+        const tcol = on ? "#0c0f14" : "#f2f4ef";
         return (
-          <g key={s.code} onClick={() => onChange(s.code)} style={{ cursor: "pointer" }}>
-            <rect
-              x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx} ry={s.rx}
-              fill={on ? "#b8ff00" : fresh ? "#23291f" : "#22262e"}
-              stroke={on ? "#b8ff00" : fresh ? "#b8ff00" : "rgba(184,255,0,.30)"}
-              strokeWidth={on ? 0 : fresh ? 1.7 : 1.1}
-            />
-            <FpLabel s={s} on={on} />
-            {cnt > 0 && (
-              <text x={s.x + s.w - 5} y={s.y + 7.6} textAnchor="end"
-                fontFamily="'Figtree',sans-serif" fontWeight="800" fontSize="3.4"
-                fill={on ? "#13141a" : "#b8ff00"}>{cnt}</text>
+          <g key={w.code} onClick={() => onChange(w.code)} style={{ cursor: "pointer" }}>
+            {on ? (
+              <polygon points={w.pts} fill="#b8ff00" filter={`url(#g${rid})`} />
+            ) : (<>
+              <image href={TEX} x="0" y="0" width="142" height="116" preserveAspectRatio="xMidYMid slice" clipPath={`url(#c${rid}-${w.code})`} />
+              <polygon points={w.pts} fill="none" stroke="#b8ff00" strokeWidth={fresh ? 1.5 : 1.05} strokeLinejoin="round" filter={`url(#g${rid})`} />
+              {accent(w.acc[0], w.acc[1])}
+            </>)}
+            {w.orient === "v" ? (
+              <text x={w.lx} y={w.ly} transform={`rotate(-90 ${w.lx} ${w.ly})`} textAnchor="middle" dominantBaseline="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={w.fs} letterSpacing="0.5" fill={tcol}>{w.label}</text>
+            ) : (
+              <text textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={w.fs} letterSpacing="0.4" fill={tcol}><tspan x={w.lx} y={w.ly}>{w.label[0]}</tspan><tspan x={w.lx} dy={w.fs + 0.6}>{w.label[1]}</tspan></text>
             )}
           </g>
         );
       })}
+
+      {boards.map(b => {
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        return (
+          <g key={b.code}>
+            <image href={TEX} x="0" y="0" width="142" height="116" preserveAspectRatio="xMidYMid slice" clipPath={`url(#c${rid}-${b.code})`} />
+            <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={b.rx} fill="none" stroke="#b8ff00" strokeWidth="0.8" strokeDasharray="2.8 2" opacity="0.9" />
+            <text textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={b.fs} fill="#e7eadf"><tspan x={cx} y={cy - 0.4}>{b.label[0]}</tspan><tspan x={cx} dy={b.fs + 0.4}>{b.label[1]}</tspan></text>
+          </g>
+        );
+      })}
+
+      {(() => { const e = entrance, cx = e.x + e.w / 2; return (
+        <g>
+          <text x={cx} y={e.y - 1.6} textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize="3.4" letterSpacing="1.2" fill="#b8ff00">{e.label}</text>
+          <rect x={e.x} y={e.y} width={e.w} height={e.h} rx="2.5" fill="rgba(184,255,0,0.05)" stroke="#b8ff00" strokeWidth="0.7" filter={`url(#g${rid})`} />
+          <line x1={cx - 1.2} y1={e.y + 1.4} x2={cx - 1.2} y2={e.y + e.h - 1.4} stroke="#b8ff00" strokeWidth="0.6" />
+          <line x1={cx + 1.2} y1={e.y + 1.4} x2={cx + 1.2} y2={e.y + e.h - 1.4} stroke="#b8ff00" strokeWidth="0.6" />
+        </g>
+      ); })()}
     </svg>
   );
 }
