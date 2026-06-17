@@ -27,7 +27,7 @@ function pointsFor(grade, status) { if (!status) return 0; return grade * _STEP 
 const WALLS = [
   { code: "v", name: "Block vorne", short: "V", aliases: ["bv", "block vorne", "block_vorne"] },
   { code: "h", name: "Block hinten", short: "H", aliases: ["bh", "block hinten", "block_hinten"] },
-  { code: "tb", name: "Training & Bug", short: "TB", aliases: ["training & bug", "training und bug", "trainingsbereich", "training"] },
+  { code: "tb", name: "Trainingsbereich", short: "TB", aliases: ["training & bug", "training und bug", "trainingsbereich", "training", "tb"] },
   { code: "pl", name: "Platte & Bug", short: "PL", aliases: ["pt", "pp", "platte", "platte & bug"] },
   { code: "wkw", name: "Wettkampfwand", short: "WKW", aliases: ["ww", "bw", "wettkampfwand"] },
 ];
@@ -551,10 +551,29 @@ const EMOJI_WAVE6 = [
   "🏹","🗡","⚔️","🛡","🪃","🔱","⚜️","🎯","💣","🎪",
 ];
 
+// Wave 7: +72 witzigere ab ~960 Ach-Pts — Grimassen, Affen, Hände, Spaß-Essen, Kletter-Gadgets
+const EMOJI_WAVE7 = [
+  // Grimassen & Gesichter (endlich welche!)
+  "🤪","😎","🤓","🥳","😤","😮‍💨","🫠","🥵","🥶","😵‍💫",
+  "🤯","🤠","🥸","🧐","🙃","😬","🤤","😈","🤡","💩",
+  "👽","👹","🥹","🤩",
+  // Affen = Kletterer & lustige Tiere
+  "🦍","🦧","🐒","🙈","🙉","🙊","🐸","🦫","🦨","🦡",
+  "🐹","🐰","🐢","🐾",
+  // Hände & Gesten (Shaka, Rock, Pinch, Crimp…)
+  "🤙","🤘","🖖","🫰","🤌","🤏","🫳","🫴","🙌","🤞",
+  "🤟","🫵",
+  // Spaß-Essen & Feierabend
+  "🥨","🥖","🧀","🥓","🌭","🥪","🍟","🍺","🍻","🍷",
+  "🥂","🧉","🍿","🍪",
+  // Kletter-Gadgets & Spaß
+  "🪜","🪝","🩹","🧘","🤹","🚵","🎈","🪀",
+];
+
 // Gesamter Emoji-Pool (deduplicated)
 const EMOJI_POOL_ALL = [...new Set([
   ...EMOJI_STARTER, ...EMOJI_WAVE1, ...EMOJI_WAVE2,
-  ...EMOJI_WAVE3, ...EMOJI_WAVE4, ...EMOJI_WAVE5, ...EMOJI_WAVE6,
+  ...EMOJI_WAVE3, ...EMOJI_WAVE4, ...EMOJI_WAVE5, ...EMOJI_WAVE6, ...EMOJI_WAVE7,
 ])];
 // Starter ohne Duplikate
 const EMOJI_BASE = [...new Set(EMOJI_STARTER)];
@@ -574,7 +593,7 @@ function getUnlockedEmojis(achScore, isAdmin = false) {
 // (Legacy-Funktion bleibt für Kompatibilität, wird nicht mehr genutzt)
 function _legacyEmojis(achScore, isAdmin = false) {
   if (isAdmin) {
-    return [...new Set([...EMOJI_STARTER,...EMOJI_WAVE1,...EMOJI_WAVE2,...EMOJI_WAVE3,...EMOJI_WAVE4,...EMOJI_WAVE5,...EMOJI_WAVE6])];
+    return [...new Set([...EMOJI_STARTER,...EMOJI_WAVE1,...EMOJI_WAVE2,...EMOJI_WAVE3,...EMOJI_WAVE4,...EMOJI_WAVE5,...EMOJI_WAVE6,...EMOJI_WAVE7])];
   }
   return [...new Set([
     ...EMOJI_STARTER,
@@ -1063,8 +1082,8 @@ function buildAchievements(lang) {
   const en = lang === "en";
   const A = []; let id = 0;
   const push = (cat, icon, name, desc, target, key, p) => A.push({ id: "a"+(id++), cat, icon, name, desc, target, key, pts: p });
-  const COLORS = ["blau","grün","rot","gelb","lila","schwarz","weiß","pink"];
-  const CEN = {blau:"blue",grün:"green",rot:"red",gelb:"yellow",lila:"purple",schwarz:"black",weiß:"white",pink:"pink"};
+  const COLORS = ["blau","grün","rot","gelb","lila","pink","holz","schwarz","weiß"];
+  const CEN = {blau:"blue",grün:"green",rot:"red",gelb:"yellow",lila:"purple",pink:"pink",holz:"wood",schwarz:"black",weiß:"white"};
   const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
   const cName = c => en ? cap(CEN[c]||c) : cap(c);
   const tier = (arr, i, f) => arr[i] || `${f} ${i+1}`;
@@ -1106,8 +1125,8 @@ function buildAchievements(lang) {
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
-  [15,20,25,30,36,42,50].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
-  [8,12,16,20,25,30,38].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
+  [20,28,38,50,64,80,100].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  [10,15,22,30,40,52,66].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
 
   // KOMBI / SPEZIAL
   [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
@@ -1118,7 +1137,7 @@ function buildAchievements(lang) {
   [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
 
   // MEHRLING
-  [[5,50],[8,90],[10,130],[12,175],[15,230],[20,320]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+  [[6,50],[9,90],[13,130],[18,175],[24,230],[32,320]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
 
   // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
   [[5,8],[10,14],[20,20],[40,30],[65,42],[95,55],[130,68],[175,85],[230,105],[300,135],[380,168],[480,220],[600,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
@@ -1169,19 +1188,44 @@ function buildAchievements(lang) {
   // ZEIT-CHALLENGES (Routen an einem Tag = maxDayTops)
   const ZEIT = en?"Speed":"Speed";
   [
-    [15,en?"Speed Rookie (15 in 1 day) ⏱":"Speed Rookie (15 an 1 Tag) ⏱",
-      en?"15 routes in one day — solid session!":"15 Routen an einem Tag — starke Session!",80],
-    [20,en?"El Cap Free Solo (20 in 1 day) 🎬":"El Cap Free Solo (20 an 1 Tag) 🎬",
-      en?"20 routes in one day — like Alex Honnold's free solo pace":"20 an einem Tag — wie Alex Honnolds Free Solo Tempo",130],
-    [25,en?"Ueli Steck – Eiger (25 in 1 day) 💨":"Ueli Steck – Eiger (25 an 1 Tag) 💨",
-      en?"25 routes in one day — like Ueli Steck's Eiger record pace":"25 an einem Tag — wie Ueli Stecks Eiger-Rekord Tempo",190],
-    [30,en?"Dawn Wall (30 in 1 day) 🌅":"Dawn Wall (30 an 1 Tag) 🌅",
-      en?"30 routes in one day — legendary like the Dawn Wall":"30 an einem Tag — legendär wie die Dawn Wall",260],
-    [40,en?"Deep Water Solo Mode (40 in 1 day) 🌊":"Deep Water Solo Modus (40 an 1 Tag) 🌊",
-      en?"40 routes in one day — no mercy":"40 an einem Tag — gnadenlos",360],
-    [50,en?"Project Moonboard (50 in 1 day) 🌙":"Project Moonboard (50 an 1 Tag) 🌙",
-      en?"50 routes in one day — you are on another level":"50 an einem Tag — du bist auf einem anderen Level",500],
+    [25,en?"Speed Rookie (25 in 1 day) ⏱":"Speed Rookie (25 an 1 Tag) ⏱",
+      en?"25 routes in one day — solid session!":"25 Routen an einem Tag — starke Session!",80],
+    [35,en?"El Cap Free Solo (35 in 1 day) 🎬":"El Cap Free Solo (35 an 1 Tag) 🎬",
+      en?"35 routes in one day — like Alex Honnold's free solo pace":"35 an einem Tag — wie Alex Honnolds Free Solo Tempo",130],
+    [48,en?"Ueli Steck – Eiger (48 in 1 day) 💨":"Ueli Steck – Eiger (48 an 1 Tag) 💨",
+      en?"48 routes in one day — like Ueli Steck's Eiger record pace":"48 an einem Tag — wie Ueli Stecks Eiger-Rekord Tempo",190],
+    [62,en?"Dawn Wall (62 in 1 day) 🌅":"Dawn Wall (62 an 1 Tag) 🌅",
+      en?"62 routes in one day — legendary like the Dawn Wall":"62 an einem Tag — legendär wie die Dawn Wall",260],
+    [80,en?"Deep Water Solo Mode (80 in 1 day) 🌊":"Deep Water Solo Modus (80 an 1 Tag) 🌊",
+      en?"80 routes in one day — no mercy":"80 an einem Tag — gnadenlos",360],
+    [100,en?"Project Moonboard (100 in 1 day) 🌙":"Project Moonboard (100 an 1 Tag) 🌙",
+      en?"100 routes in one day — you are on another level":"100 an einem Tag — du bist auf einem anderen Level",500],
   ].forEach(([n,name,desc,p])=>push(ZEIT,"⏱",name,desc,n,"maxDayTops",p));
+
+  // SEKTOREN — auf verschiedenen Sektoren/Wänden klettern
+  const SEK = en?"Sectors":"Sektoren";
+  [[2,en?"Sector Curious":"Sektor-Neugier"],[3,en?"Sector Tour":"Sektor-Tour"],[4,en?"Sector Connoisseur":"Sektor-Kenner"],[5,en?"All Sectors":"Alle Sektoren"]]
+    .forEach(([k,nm])=>push(SEK,"🧭",nm,en?`Climb on ${k} different sectors`:`Klettere an ${k} verschiedenen Sektoren`,k,"distinctWalls",30+(k-2)*35));
+
+  // GRAD-ENTDECKER — verschiedene Schwierigkeitsgrade insgesamt
+  const GE = en?"Grade Explorer":"Grad-Entdecker";
+  [[3,en?"3 Grades":"3 Grade"],[5,en?"5 Grades":"5 Grade"],[7,en?"7 Grades":"7 Grade"],[8,en?"All Grades 1–8":"Alle Grade 1–8"]]
+    .forEach(([k,nm])=>push(GE,"🪜",nm,en?`Climb ${k} different grades overall`:`Klettere ${k} verschiedene Grade insgesamt`,k,"distinctGrades",35+(k-3)*30));
+
+  // SERIE — Klettertage in Folge (echte Kalendertage)
+  const SER = en?"Streak":"Serie";
+  [[2,en?"2-Day Streak":"2 Tage in Folge",40],[3,en?"3-Day Streak":"3 Tage in Folge",70],[5,en?"5-Day Streak":"5 Tage in Folge",120],[7,en?"7-Day Streak":"7 Tage in Folge",180],[10,en?"10-Day Streak":"10 Tage in Folge",280]]
+    .forEach(([k,nm,p])=>push(SER,"🔂",nm,en?`Climb ${k} calendar days in a row`:`Klettere an ${k} Kalendertagen in Folge`,k,"maxConsecutiveDays",p));
+
+  // PERFEKTER TAG — alle Begehungen eines Tages waren Flashes
+  const PT = en?"Flawless":"Makellos";
+  [[5,en?"Flawless 5":"Makellos 5"],[8,en?"Flawless 8":"Makellos 8"],[12,en?"Flawless 12":"Makellos 12"],[18,en?"Flawless 18":"Makellos 18"]]
+    .forEach(([k,nm],i)=>push(PT,"💯",nm,en?`A day where all ${k}+ sends were flashes`:`Ein Tag, an dem alle ${k}+ Begehungen Flashes waren`,k,"bestAllFlashDay",70+i*45));
+
+  // WOCHENEND-KRIEGER — an Wochenend-Tagen klettern
+  const WE = en?"Weekend Warrior":"Wochenend-Krieger";
+  [[5,en?"Weekend Warrior 5":"Wochenend-Krieger 5"],[15,en?"Weekend Warrior 15":"Wochenend-Krieger 15"],[40,en?"Weekend Warrior 40":"Wochenend-Krieger 40"],[90,en?"Weekend Warrior 90":"Wochenend-Krieger 90"]]
+    .forEach(([k,nm])=>push(WE,"📅",nm,en?`Climb on ${k} weekend days`:`Klettere an ${k} Wochenend-Tagen`,k,"weekendDays",pts(k*4)+20));
 
   return A;
 }
@@ -1470,7 +1514,7 @@ function levelStory(level) {
 function catIcon(c) { const a = ACHS().find(x => x.cat === c); return a ? a.icon : "🏅"; }
 
 const RAINBOW = ["blau", "grün", "rot", "gelb", "lila"];
-function normColor(c) { return c === "gruen" ? "grün" : c === "weiss" ? "weiß" : c; }
+function normColor(c) { return c === "gruen" ? "grün" : c === "weiss" ? "weiß" : c === "violett" ? "lila" : c; }
 function computeAgg(routes, name) {
   const agg = { tops: 0, flashes: 0, points: 0, grade: {}, color: {}, wall: {}, gradeColor: {}, days: {} };
   routes.forEach(r => {
@@ -1481,7 +1525,7 @@ function computeAgg(routes, name) {
     (agg.grade[g] = agg.grade[g] || { t: 0, f: 0 }).t++; if (isF) agg.grade[g].f++;
     (agg.wall[w] = agg.wall[w] || { t: 0, f: 0 }).t++; if (isF) agg.wall[w].f++;
     if (c) { (agg.color[c] = agg.color[c] || { t: 0, f: 0 }).t++; if (isF) agg.color[c].f++; const k = g + "|" + c; (agg.gradeColor[k] = agg.gradeColor[k] || { t: 0, f: 0 }).t++; if (isF) agg.gradeColor[k].f++; }
-    const day = r.date || "?"; const D = agg.days[day] = agg.days[day] || { t: 0, f: 0, colors: new Set(), grades: new Set(), cc: {}, gc: {} };
+    const day = (r.resultDates && r.resultDates[name]) || r.date || "?"; const D = agg.days[day] = agg.days[day] || { t: 0, f: 0, colors: new Set(), grades: new Set(), cc: {}, gc: {} };
     D.t++; if (isF) D.f++; D.grades.add(g); D.gc[g] = (D.gc[g] || 0) + 1; if (c) { D.colors.add(c); D.cc[c] = (D.cc[c] || 0) + 1; }
   });
   agg.maxDayTops = 0; agg.maxDayFlashes = 0; agg.maxColorDay = {}; agg.maxGradeDay = {}; agg.rainbowDays = 0; agg.allGradeDays = 0;
@@ -1504,6 +1548,18 @@ function computeAgg(routes, name) {
     let k = 0; while (D.grades.has(k + 1)) k++; agg.maxFrom1 = Math.max(agg.maxFrom1, k);
     let run = 0, best = 0; for (let g = 1; g <= 8; g++) { if (D.grades.has(g)) { run++; best = Math.max(best, run); } else run = 0; } agg.maxRun = Math.max(agg.maxRun, best);
   });
+  // Neue Metriken
+  agg.distinctWalls = Object.keys(agg.wall).length;
+  agg.distinctGrades = Object.keys(agg.grade).length;
+  let bestAllFlashDay = 0;
+  Object.values(agg.days).forEach(D => { if (D.t > 0 && D.f === D.t) bestAllFlashDay = Math.max(bestAllFlashDay, D.t); });
+  agg.bestAllFlashDay = bestAllFlashDay;
+  let maxConsec = dayNums.length ? 1 : 0, runC = dayNums.length ? 1 : 0;
+  for (let i = 1; i < dayNums.length; i++) { if (dayNums[i] === dayNums[i - 1] + 1) { runC++; if (runC > maxConsec) maxConsec = runC; } else { runC = 1; } }
+  agg.maxConsecutiveDays = maxConsec;
+  let weekendDays = 0;
+  Object.keys(agg.days).forEach(d => { if (d && d !== "?") { const wd = new Date(d).getUTCDay(); if (wd === 0 || wd === 6) weekendDays++; } });
+  agg.weekendDays = weekendDays;
   return agg;
 }
 function achValue(agg, key) {
@@ -1522,6 +1578,11 @@ function achValue(agg, key) {
   if (key === "weekStreak2") return agg.weekStreak2 || 0;
   if (key === "daysIn100") return agg.daysIn100 || 0;
   if (key === "daysIn365") return agg.daysIn365 || 0;
+  if (key === "distinctWalls") return agg.distinctWalls || 0;
+  if (key === "distinctGrades") return agg.distinctGrades || 0;
+  if (key === "maxConsecutiveDays") return agg.maxConsecutiveDays || 0;
+  if (key === "bestAllFlashDay") return agg.bestAllFlashDay || 0;
+  if (key === "weekendDays") return agg.weekendDays || 0;
   const p = key.split(":");
   if (p[0] === "grade") return (agg.grade[p[1]]?.[p[2]]) || 0;
   if (p[0] === "color") return (agg.color[p[1]]?.[p[2]]) || 0;
@@ -2365,6 +2426,8 @@ const CSS = `
 .achbar { height:6px; border-radius:3px; background:var(--panel2); overflow:hidden; }
 .achbar i { display:block; height:100%; background:#b8ff00; border-radius:3px; }
 .achprog { font-family:'Barlow Condensed'; font-weight:700; font-size:15px; text-align:right; flex:none; }
+.catrow-done { border-color:rgba(184,255,0,.55); background:linear-gradient(150deg, rgba(184,255,0,.10), var(--panel)); }
+.catprog-done { flex:none; display:flex; align-items:center; justify-content:center; width:30px; height:30px; }
 .achpts { font-size:10px; color:var(--amber); font-family:'Figtree'; font-weight:600; }
 .catrow .achbar { margin-top:7px; }
 
@@ -3206,13 +3269,15 @@ export default function App() {
             ))}
 
             <h3 className="ssec">{t("ach.cats")}</h3>
-            {achState.catList.map(c => (
-              <button key={c.cat} className="catrow" onClick={() => setAchCat(c.cat)}>
+            {achState.catList.map(c => { const full = c.total > 0 && c.done === c.total; return (
+              <button key={c.cat} className={"catrow" + (full ? " catrow-done" : "")} onClick={() => setAchCat(c.cat)}>
                 <span className="achic">{c.icon}</span>
                 <div className="achinfo"><div className="achn">{c.cat}</div><div className="achbar"><i style={{ width: `${(c.done / c.total) * 100}%` }} /></div></div>
-                <div className="achprog">{c.done}/{c.total}</div>
+                {full
+                  ? <div className="catprog-done"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8ff00" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></div>
+                  : <div className="achprog">{c.done}/{c.total}</div>}
               </button>
-            ))}
+            ); })}
           </div></div>
         )}
 
@@ -3924,8 +3989,8 @@ function getFpData() {
     { code: "wkw", pts: "6,6 22,6 17,30 22,52 17,74 22,96 18,110 6,110", orient: "v", lx: 11, ly: 58, fs: 6.0, label: en ? "COMP WALL" : "WETTKAMPFWAND" },
     { code: "h",   pts: "60,9 71,10 79,19 81,30 75,42 64,47 54,43 52,31 54,18", orient: "h", lx: 66, ly: 25.5, fs: 6.0, label: en ? ["BACK", "BLOCK"] : ["BLOCK", "HINTEN"] },
     { code: "v",   pts: "61,52 73,55 80,66 80,82 72,96 60,101 50,93 48,78 51,62", orient: "h", lx: 64, ly: 74.5, fs: 6.0, label: en ? ["FRONT", "BLOCK"] : ["BLOCK", "VORNE"] },
-    { code: "pl",  pts: "90,10 96,12 97,40 98,60 95,80 92,95 89,78 88,45 89,20", orient: "v", lx: 93, ly: 52, fs: 5.6, label: en ? "SLAB" : "PLATTE" },
-    { code: "tb",  pts: "102,17 117,21 117,72 110,80 102,74 100,55 100,30", orient: "v", lx: 108, ly: 46, fs: 5.0, label: en ? "TRAINING AREA" : "TRAININGSBEREICH" },
+    { code: "pl",  pts: "84,22 98,24 99,46 98,64 95,82 85,83 83,62 82,44", orient: "v", lx: 90.5, ly: 53, fs: 4.7, ls: 0.2, label: en ? "SLAB" : "PLATTE & BUG" },
+    { code: "tb",  pts: "100,30 102,16 117,20 117,74 110,82 102,76 100,55", orient: "v", lx: 108.5, ly: 49, fs: 4.6, ls: 0.2, label: en ? "TRAINING AREA" : "TRAININGSBEREICH" },
   ];
   // Trainings-Boards & Kinderbereich (gestrichelt, nicht wählbar)
   const boards = [
@@ -3964,7 +4029,7 @@ function FloorPlan({ value, onChange, newest }) {
               <polygon points={w.pts} fill="none" stroke="#b8ff00" strokeWidth={fresh ? 0.9 : 0.65} strokeLinejoin="round" filter={`url(#g${rid})`} />
             </>)}
             {w.orient === "v" ? (
-              <text x={w.lx} y={w.ly} transform={`rotate(-90 ${w.lx} ${w.ly})`} textAnchor="middle" dominantBaseline="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={w.fs} letterSpacing="0.5" fill={tcol}>{w.label}</text>
+              <text x={w.lx} y={w.ly} transform={`rotate(-90 ${w.lx} ${w.ly})`} textAnchor="middle" dominantBaseline="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={w.fs} letterSpacing={w.ls != null ? w.ls : 0.5} fill={tcol}>{w.label}</text>
             ) : (
               <text textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={w.fs} letterSpacing="0.4" fill={tcol}><tspan x={w.lx} y={w.ly}>{w.label[0]}</tspan><tspan x={w.lx} dy={w.fs + 0.6}>{w.label[1]}</tspan></text>
             )}
@@ -4021,7 +4086,7 @@ function CategorySheet({ cat, items, onClose }) {
 function ProfileEmojiSheet({ me, achScore, isAdmin, onClose, onPick }) {
   const unlocked = getUnlockedEmojis(achScore, isAdmin);
   const next = getNextEmojiUnlock(achScore);
-  const locked = [...EMOJI_WAVE1,...EMOJI_WAVE2,...EMOJI_WAVE3,...EMOJI_WAVE4,...EMOJI_WAVE5,...EMOJI_WAVE6]
+  const locked = [...EMOJI_WAVE1,...EMOJI_WAVE2,...EMOJI_WAVE3,...EMOJI_WAVE4,...EMOJI_WAVE5,...EMOJI_WAVE6,...EMOJI_WAVE7]
     .filter(e => !unlocked.includes(e));
   return (
     <div className="scrim" onClick={onClose}>
