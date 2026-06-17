@@ -1275,22 +1275,22 @@ const LEVEL_NAMES = [
 const TOTAL_SKILLPOINTS = ACH_DE.reduce((s, a) => s + a.pts, 0);
 const ACH_COUNT = ACH_DE.length;
 /* ── LEVEL-KURVE ──────────────────────────────────────────────────────────────
- * Level = Anzahl freigeschalteter ERFOLGE. WACHSENDE Abstände: jedes Level kostet
- * mehr Erfolge als das vorige -> je höher das Level, desto schwerer der Aufstieg.
- *   Abstand(Level k -> k+1) = LEVEL_BASE_GAP + grow*(k-1)
- *   need[2] = LEVEL_BASE_GAP (sanfter Start) · need[100] = ACH_COUNT (alles frei)
- * 'grow' wird automatisch aus ACH_COUNT abgeleitet: je mehr Erfolge es gibt, desto
- * stärker wachsen die Abstände nach oben. Da die leichten Erfolge zuerst kommen und
- * oben nur die brutalen Stufen (zehntausende Tops, tausende Klettertage) übrig sind,
- * dauern die obersten Level real viele Hundert Sessions.
- * Justierbar: LEVEL_BASE_GAP (kleiner = sanfterer Start + stärker steigende Kurve). */
-const LEVEL_BASE_GAP = 3;
+ * Level = KARRIERE-PUNKTE (Summe ALLER je erkletterten Routen-Punkte, schwierigkeits-
+ * gewichtet: jede Route gibt grade*0.25, Flash +Bonus). Warum nicht "Anzahl Erfolge"?
+ * Erfolge häufen sich in den ersten 1-2 Sessions (viele leichte Erste-Male: erster
+ * Flash, 10 an einem Tag, Mehrling, Sektoren ...) -> ein Anfänger wäre sofort hoch.
+ * Punkte wachsen dagegen mit echtem Klettervolumen: gleichmäßig, nicht sprunghaft.
+ *   need[2]  = LEVEL_L2_POINTS  (per Konstruktion -> ~1-2 Sessions = Level 2)
+ *   need[100]= LEVEL_MAX_POINTS (Level 100 = Meisterschaft, viele Jahre)
+ * WACHSENDE Abstände (LEVEL_POWER > 1): jedes Level kostet mehr Punkte als das vorige.
+ * Justierbar: LEVEL_L2_POINTS (Start sanfter/härter) · LEVEL_MAX_POINTS (Decke). */
+const LEVEL_MAX_POINTS = 60000; // Punkte für Level 100
+const LEVEL_L2_POINTS = 35;     // Punkte für Level 2 (~1-2 Sessions)
+const LEVEL_POWER = Math.log(LEVEL_MAX_POINTS / LEVEL_L2_POINTS) / Math.log(99); // >1 => wachsende Abstände
 function buildLevels() {
   const out = [];
-  const grow = (ACH_COUNT - LEVEL_BASE_GAP * 99) / 4851; // 4851 = 99*98/2 -> need[100]=ACH_COUNT
   for (let i = 1; i <= 100; i++) {
-    const k = i - 1;
-    const need = i === 1 ? 0 : Math.round(LEVEL_BASE_GAP * k + grow * k * (k - 1) / 2);
+    const need = i === 1 ? 0 : Math.round(LEVEL_MAX_POINTS * Math.pow((i - 1) / 99, LEVEL_POWER));
     out.push({ level: i, name: LEVEL_NAMES[i - 1] || ("Level " + i), need });
   }
   return out;
@@ -2698,8 +2698,8 @@ export default function App() {
   }, [myAgg, lang]);
   const nextUp = useMemo(() => achState.evald.filter(a => !a.done).sort((a, b) => (b.ratio - a.ratio) || (a.target - b.target)).slice(0, 10), [achState]);
   const achScore = achState.score;
-  // Level = Anzahl freigeschalteter Erfolge (proportional zu den Erfolgen)
-  const levelXp = achState.unlocked;
+  // Level = Karriere-Punkte (alle je erkletterten Routen-Punkte, schwierigkeitsgewichtet)
+  const levelXp = myAgg.points || 0;
   const myLevelInfo = levelFor(levelXp);
   const [levelUp, setLevelUp] = useState(null);
   const lvlBaseRef = useRef({ uid: null, level: null });
@@ -3241,15 +3241,15 @@ export default function App() {
                     <div className="lvlnum">{lv.level}<span>/100</span></div>
                     <div className="lvlname">
                       <div className="lvltitle">{lv.name}</div>
-                      <div className="lvlsub">{levelXp} / {ACH_COUNT} {LANG === "en" ? "achievements" : "Erfolge"}</div>
+                      <div className="lvlsub">{fmtPts(levelXp)} {LANG === "en" ? "career points" : "Karriere-Punkte"}</div>
                     </div>
                   </div>
                   <div className="lvlbar"><i style={{ width: pct + "%" }} /></div>
                   <div className="lvlnext">
                     {lv.next
                       ? (LANG === "en"
-                          ? <><b>{lv.next.need - levelXp}</b> more achievement{lv.next.need - levelXp === 1 ? "" : "s"} to Level {lv.next.level} · {lv.next.name}</>
-                          : <>noch <b>{lv.next.need - levelXp}</b> Erfolg{lv.next.need - levelXp === 1 ? "" : "e"} bis Level {lv.next.level} · {lv.next.name}</>)
+                          ? <><b>{fmtPts(Math.ceil(lv.next.need - levelXp))}</b> more points to Level {lv.next.level} · {lv.next.name}</>
+                          : <>noch <b>{fmtPts(Math.ceil(lv.next.need - levelXp))}</b> Punkte bis Level {lv.next.level} · {lv.next.name}</>)
                       : <>🏔 {LANG === "en" ? "Max level reached — you are a legend!" : "Maximales Level erreicht — du bist eine Legende!"}</>}
                   </div>
                 </div>
