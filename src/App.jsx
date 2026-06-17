@@ -2016,6 +2016,7 @@ export default function App() {
     return { ...g, aktuell, gesamt, erfolge, mem };
   }), [groups, accById, totals, boardMode, me]);
   const groupsRanked = useMemo(() => [...groupStats].sort((a, b) => (b[boardMode] || 0) - (a[boardMode] || 0)), [groupStats, boardMode]);
+  const boardGroupsRanked = useMemo(() => groupsRanked.filter(g => !g.private), [groupsRanked]);
   const myGroups = groupStats.filter(g => (g.members || []).includes(me?.id));
   const otherGroups = groupStats.filter(g => !(g.members || []).includes(me?.id) && !g.private);
 
@@ -2396,10 +2397,10 @@ export default function App() {
             </div>
           ); })}
 
-          {boardScope === "gruppen" && groupsRanked.length === 0 && (
+          {boardScope === "gruppen" && boardGroupsRanked.length === 0 && (
             <div className="empty"><div className="big">👥</div>{t("board.noGroups")}</div>
           )}
-          {boardScope === "gruppen" && (() => { const gmax = Math.max(1, ...groupStats.map(g => g[boardMode] || 0)); return groupsRanked.map((g, i) => { const v = g[boardMode] || 0; const mine = (g.members || []).includes(me.id); return (
+          {boardScope === "gruppen" && (() => { const gmax = Math.max(1, ...boardGroupsRanked.map(g => g[boardMode] || 0)); return boardGroupsRanked.map((g, i) => { const v = g[boardMode] || 0; const mine = (g.members || []).includes(me.id); return (
             <div key={g.id} className={"lbrow" + (i === 0 && v > 0 ? " lead" : "") + (mine ? " meRow" : "")} onClick={() => setOpenGroupId(g.id)} style={{ cursor: "pointer" }}>
               <div className="rank">{medal(i) || (i + 1)}</div>
               <div className="gemoji">{g.emoji || "👥"}</div>
@@ -3147,7 +3148,7 @@ export default function App() {
       {tipsRoute && (
         <TipsSheet route={tipsRoute} me={me} isAdmin={isAdmin} onClose={() => setTipsRouteId(null)} onAdd={(t) => addTip(tipsRoute.id, t)} onDelete={(id) => delTip(tipsRoute.id, id)} />
       )}
-      {newGroupOpen && <NewGroupSheet onClose={() => setNewGroupOpen(false)} achScore={achScore} isAdmin={isAdmin} onCreate={(n, e) => { createGroup(n, e); setNewGroupOpen(false); }} />}
+      {newGroupOpen && <NewGroupSheet onClose={() => setNewGroupOpen(false)} achScore={achScore} isAdmin={isAdmin} onCreate={(n, e, isPriv) => { createGroup(n, e, isPriv); setNewGroupOpen(false); }} />}
       {changePinOpen && <ChangePinSheet me={me} onClose={() => setChangePinOpen(false)} onSave={(p) => { setMyPin(p); setChangePinOpen(false); }} />}
       {scoringOpen && <ScoringSheet step={STEP} flash={FLASH_BONUS} onClose={() => setScoringOpen(false)} onSave={(s,f) => { setScoring(s,f); setScoringOpen(false); }} />}
       {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
@@ -3230,13 +3231,13 @@ function TipsSheet({ route, me, isAdmin, onClose, onAdd, onDelete }) {
 /* ============================ Draufsicht (Hallenplan) ============================ */
 function getFpData() {
   const en = LANG === "en";
-  // Kantige Wand-Silhouetten (Polygone) – wie im Hallenplan-Design
+  // Kantige Wand-Silhouetten (Polygone) – Schrift bleibt innerhalb der Konturen
   const walls = [
-    { code: "wkw", pts: "6,6 25,6 15,15 28,25 15,35 28,45 15,55 28,65 15,75 28,85 15,95 27,103 18,110 6,110", orient: "v", lx: 15.5, ly: 58, fs: 6.6, label: en ? "COMP WALL" : "WETTKAMPFWAND", acc: [21, 99] },
-    { code: "h",   pts: "60,9 71,10 79,19 81,30 75,42 64,47 54,43 52,31 54,18", orient: "h", lx: 66, ly: 25.5, fs: 6.2, label: en ? ["BACK", "BLOCK"] : ["BLOCK", "HINTEN"], acc: [76, 16] },
-    { code: "v",   pts: "61,52 73,55 80,66 80,82 72,96 60,101 50,93 48,78 51,62", orient: "h", lx: 64, ly: 74.5, fs: 6.2, label: en ? ["FRONT", "BLOCK"] : ["BLOCK", "VORNE"], acc: [56, 95] },
-    { code: "pl",  pts: "90,10 96,12 97,40 98,60 95,80 92,95 89,78 88,45 89,20", orient: "v", lx: 93, ly: 52, fs: 6.4, label: en ? "SLAB" : "PLATTE", acc: [92, 88] },
-    { code: "tb",  pts: "104,17 117,21 118,33 116,62 110,80 102,73 99,55 100,30", orient: "v", lx: 109, ly: 48, fs: 5.3, label: en ? "TRAINING AREA" : "TRAININGSBEREICH", acc: [103, 75] },
+    { code: "wkw", pts: "6,6 22,6 17,30 22,52 17,74 22,96 18,110 6,110", orient: "v", lx: 11, ly: 58, fs: 6.0, label: en ? "COMP WALL" : "WETTKAMPFWAND" },
+    { code: "h",   pts: "60,9 71,10 79,19 81,30 75,42 64,47 54,43 52,31 54,18", orient: "h", lx: 66, ly: 25.5, fs: 6.0, label: en ? ["BACK", "BLOCK"] : ["BLOCK", "HINTEN"] },
+    { code: "v",   pts: "61,52 73,55 80,66 80,82 72,96 60,101 50,93 48,78 51,62", orient: "h", lx: 64, ly: 74.5, fs: 6.0, label: en ? ["FRONT", "BLOCK"] : ["BLOCK", "VORNE"] },
+    { code: "pl",  pts: "90,10 96,12 97,40 98,60 95,80 92,95 89,78 88,45 89,20", orient: "v", lx: 93, ly: 52, fs: 5.6, label: en ? "SLAB" : "PLATTE" },
+    { code: "tb",  pts: "102,17 117,21 117,72 110,80 102,74 100,55 100,30", orient: "v", lx: 108, ly: 46, fs: 5.0, label: en ? "TRAINING AREA" : "TRAININGSBEREICH" },
   ];
   // Trainings-Boards & Kinderbereich (gestrichelt, nicht wählbar)
   const boards = [
@@ -3244,16 +3245,13 @@ function getFpData() {
     { code: "moon",   x: 122, y: 50.5, w: 13, h: 14, rx: 3, fs: 3.1, label: ["MOON", "BOARD"] },
     { code: "kids",   x: 118, y: 84,   w: 16, h: 22, rx: 3, fs: 3.4, label: en ? ["KIDS", "AREA"] : ["KINDER-", "BEREICH"] },
   ];
-  const entrance = { x: 53, y: 105, w: 25, h: 5, label: en ? "ENTRANCE" : "EINGANG" };
+  const entrance = { cx: 64, ty: 112, label: en ? "ENTRANCE" : "EINGANG" };
   return { walls, boards, entrance };
 }
 function FloorPlan({ value, onChange, newest }) {
   const rid = useId().replace(/[:]/g, "");
   const { walls, boards, entrance } = getFpData();
   const TEX = "/floorplan-tex.png";
-  const accent = (x, y) => (
-    <g opacity="0.5">{[0, 1, 2].map(i => <line key={i} x1={x + i * 2} y1={y} x2={x + i * 2 - 2.4} y2={y + 2.4} stroke="#b8ff00" strokeWidth="0.5" />)}</g>
-  );
   return (
     <svg className="fp" viewBox="0 0 142 116">
       <defs>
@@ -3276,7 +3274,6 @@ function FloorPlan({ value, onChange, newest }) {
             ) : (<>
               <image href={TEX} x="0" y="0" width="142" height="116" preserveAspectRatio="xMidYMid slice" clipPath={`url(#c${rid}-${w.code})`} />
               <polygon points={w.pts} fill="none" stroke="#b8ff00" strokeWidth={fresh ? 1.5 : 1.05} strokeLinejoin="round" filter={`url(#g${rid})`} />
-              {accent(w.acc[0], w.acc[1])}
             </>)}
             {w.orient === "v" ? (
               <text x={w.lx} y={w.ly} transform={`rotate(-90 ${w.lx} ${w.ly})`} textAnchor="middle" dominantBaseline="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={w.fs} letterSpacing="0.5" fill={tcol}>{w.label}</text>
@@ -3298,13 +3295,8 @@ function FloorPlan({ value, onChange, newest }) {
         );
       })}
 
-      {(() => { const e = entrance, cx = e.x + e.w / 2; return (
-        <g>
-          <text x={cx} y={e.y - 1.6} textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize="3.4" letterSpacing="1.2" fill="#b8ff00">{e.label}</text>
-          <rect x={e.x} y={e.y} width={e.w} height={e.h} rx="2.5" fill="rgba(184,255,0,0.05)" stroke="#b8ff00" strokeWidth="0.7" filter={`url(#g${rid})`} />
-          <line x1={cx - 1.2} y1={e.y + 1.4} x2={cx - 1.2} y2={e.y + e.h - 1.4} stroke="#b8ff00" strokeWidth="0.6" />
-          <line x1={cx + 1.2} y1={e.y + 1.4} x2={cx + 1.2} y2={e.y + e.h - 1.4} stroke="#b8ff00" strokeWidth="0.6" />
-        </g>
+      {(() => { const e = entrance; return (
+        <text x={e.cx} y={e.ty} textAnchor="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize="4.2" letterSpacing="1.6" fill="#b8ff00">{e.label}</text>
       ); })()}
     </svg>
   );
@@ -3405,15 +3397,6 @@ function ScoringSheet({ step, flash, onClose, onSave }) {
               <span key={g+"f"} className="pv">{valid ? fmtPts(g * sv + fv) : "—"}</span>
             ])}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 12px",background:"var(--panel2)",borderRadius:10,border:"1px solid var(--line)"}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:600,color:"var(--chalk)"}}>{LANG==="en"?"Private group":"Private Gruppe"}</div>
-              <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{LANG==="en"?"Results not visible in community ranking":"Ergebnisse nicht im Community-Ranking sichtbar"}</div>
-            </div>
-            <button type="button" onClick={()=>setIsPrivate(v=>!v)} style={{width:44,height:24,borderRadius:12,background:isPrivate?"#b8ff00":"var(--line)",border:"none",cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
-              <span style={{position:"absolute",top:3,left:isPrivate?22:3,width:18,height:18,borderRadius:9,background:isPrivate?"#13141a":"var(--chalk)",transition:"left .2s",display:"block"}}/>
-            </button>
-          </div>
           <button className={"save" + (valid ? "" : " disabled")} style={{ marginTop: 16 }} onClick={() => valid && onSave(sv, fv)}>Speichern</button>
         </div>
       </div>
@@ -3469,6 +3452,10 @@ function NewGroupSheet({ onClose, onCreate, achScore, isAdmin }) {
             {next && <div className="emoji-info-next" style={{ marginBottom: 8 }}>Nächste <b>{next.count}</b> bei <b>{next.at} Skillpoints</b></div>}
             <div className="emojipick big">{unlocked.map((e, i) => <button key={i} className={"epick" + (emoji === e ? " on" : "")} onClick={() => setEmoji(e)}>{e}</button>)}</div>
           </div>
+          <button type="button" className="privtoggle" style={{ marginTop: 4, marginBottom: 12 }} onClick={() => setIsPrivate(p => !p)}>
+            <span className={"switch" + (isPrivate ? " on" : "")}><span className="knob" /></span>
+            <span className="privtext"><b>{LANG === "en" ? "Private group" : "Private Gruppe"}</b><span>{LANG === "en" ? "Hidden from the community ranking — only members can see it." : "Nicht im Community-Ranking sichtbar — nur Mitglieder sehen sie."}</span></span>
+          </button>
           <button className={"save" + (valid ? "" : " disabled")} onClick={() => valid && onCreate(name.trim(), emoji, isPrivate)}>{t("grp.create")}</button>
         </div>
       </div>
