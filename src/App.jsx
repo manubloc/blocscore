@@ -792,6 +792,47 @@ function IntroModal({ me, onClose, onDismiss }) {
 }
 
 
+// ── Level-Up Popup mit Konfetti ───────────────────────
+const _CONFETTI = Array.from({ length: 44 }, (_, i) => {
+  const ang = (i / 44) * Math.PI * 2 + Math.random() * 0.5;
+  const dist = 70 + Math.random() * 150;
+  const cols = ["#b8ff00", "#d4ff70", "#ffffff", "#9ac81f", "#eaffc2", "#b8ff00"];
+  return {
+    tx: Math.cos(ang) * dist,
+    ty: Math.sin(ang) * dist - 30,
+    r: Math.round(Math.random() * 720 - 360),
+    c: cols[i % cols.length],
+    s: 6 + Math.round(Math.random() * 8),
+    dl: (Math.random() * 0.12).toFixed(2),
+    d: (0.9 + Math.random() * 0.7).toFixed(2),
+    round: Math.random() > 0.55,
+  };
+});
+function LevelUpModal({ level, name, story, onClose }) {
+  const en = LANG === "en";
+  return (
+    <div className="scrim lvlup-scrim" onClick={onClose}>
+      <div className="lvlup-card" onClick={e => e.stopPropagation()}>
+        <div className="lvlup-confetti" aria-hidden="true">
+          {_CONFETTI.map((p, i) => (
+            <span key={i} className="lvlup-piece" style={{
+              "--tx": p.tx + "px", "--ty": p.ty + "px", "--r": p.r + "deg",
+              "--s": p.s + "px", "--c": p.c, "--dl": p.dl + "s", "--d": p.d + "s",
+              borderRadius: p.round ? "50%" : "2px",
+            }} />
+          ))}
+        </div>
+        <div className="lvlup-kicker">{en ? "LEVEL UP" : "LEVEL UP"}</div>
+        <div className="lvlup-num">{level}<span>/100</span></div>
+        <div className="lvlup-title">{name}</div>
+        <div className="lvlup-story">{story}</div>
+        <button className="lvlup-btn" onClick={onClose}>{en ? "Let's go! 🚀" : "Weiter geht's! 🚀"}</button>
+      </div>
+    </div>
+  );
+}
+
+
 // ── Day Summary Share Card ────────────────────────────
 function ShareCard({ me, routes, today, onClose, logoSrc }) {
   const canvasRef = useRef(null);
@@ -1188,24 +1229,242 @@ const LEVEL_NAMES = [
   "Friction Deity","Boulder Legend","Crux Immortal","The Sender of Senders","Boulder Deity",
 ];
 const TOTAL_SKILLPOINTS = ACH_DE.reduce((s, a) => s + a.pts, 0);
-const LEVEL_CURVE_POWER = 2.4;   // >1 = höhere Level kosten überproportional mehr
-const LEVEL_TOP_FRACTION = 0.85; // Level 100 ≈ 85% aller Skillpoints (echtes Completionist-Ziel)
-function buildLevels(total) {
-  const top = Math.round(total * LEVEL_TOP_FRACTION);
+/* ── LEVEL-KURVE ──────────────────────────────────────────────────────────────
+ * Level basieren auf den gesammelten KLETTER-PUNKTEN (wachsen gleichmäßig, ~1–2
+ * pro Route), NICHT auf Skillpoints (die sprunghaft durch Tages-/Speed-Achievements
+ * steigen und das Level sonst explodieren lassen).
+ * Kalibrierung: ~2 Sessions ≈ Level 2 · Level 100 = jahrelanges Lebenswerk.
+ * Justierbar: LEVEL_BASE = Punkte für Level 2, LEVEL_POWER = Steilheit (höher = steiler). */
+const LEVEL_BASE = 25;
+const LEVEL_POWER = 1.6;
+function buildLevels() {
   const out = [];
   for (let i = 1; i <= 100; i++) {
-    const need = i === 1 ? 0 : Math.round(top * Math.pow((i - 1) / 99, LEVEL_CURVE_POWER));
+    const need = i === 1 ? 0 : Math.round(LEVEL_BASE * Math.pow(i - 1, LEVEL_POWER));
     out.push({ level: i, name: LEVEL_NAMES[i - 1] || ("Level " + i), need });
   }
   return out;
 }
-const LEVELS = buildLevels(TOTAL_SKILLPOINTS);
-// Liefert das aktuelle Level + das nächste (oder null bei Max) für einen Skillpoint-Stand
-function levelFor(score) {
+const LEVELS = buildLevels();
+const LEVEL_MAX_XP = LEVELS[LEVELS.length - 1].need;
+// Liefert das aktuelle Level + das nächste (oder null bei Max) für einen Punkte-Stand
+function levelFor(xp) {
+  const x = xp || 0;
   let cur = LEVELS[0];
-  for (const l of LEVELS) { if (score >= l.need) cur = l; else break; }
-  const next = LEVELS.find(l => l.need > score) || null;
-  return { ...cur, next, max: TOTAL_SKILLPOINTS };
+  for (const l of LEVELS) { if (x >= l.need) cur = l; else break; }
+  const next = LEVELS.find(l => l.need > x) || null;
+  return { ...cur, next, max: LEVEL_MAX_XP };
+}
+
+// Witziger, motivierender Einzeiler pro Level (passend zum Titel)
+// Witziger, ironischer Einzeiler pro Level (Stammtisch-Stil, mit echten Kletterfakten)
+const LEVEL_STORIES_DE = [
+  "Erstes Magnesia, erste Sucht. Fun Fact: Chalk kommt eigentlich vom Turnen — John Gill schmuggelte es in den 50ern an den Fels. Du bist jetzt offiziell Teil des Problems.",
+  "Noch guckst du wie ein Tourist in Fontainebleau — nur ohne Baguette. Keine Sorge: Auch die Pros standen mal ratlos vor ihrem ersten Block.",
+  "Das Crashpad ist zum Fallen da, nicht zum Pennen. Aber gut — Pausen sind laut jedem Trainingsplan 'aktive Regeneration'. Reden wir's uns schön.",
+  "Du umarmst jeden Griff, als wär's der letzte Henkel auf Erden. Lockerer! Verkrampfen kostet mehr Kraft als der ganze Boulder.",
+  "Du liest die Farben wie die Bierkarte am Stammtisch — gründlich. Jetzt noch bestellen, äh, hochklettern.",
+  "Du wärmst fleißig die Matte vor. Andere nennen's 'zwischen Versuchen liegen und Beta diskutieren' — auch eine Kunstform.",
+  "Auf der Platte gibt's keine Henkel, nur Vertrauen — und du vertraust deinen Füßen noch so weit, wie du sie werfen kannst. Wird besser, versprochen.",
+  "Henkel-Sightseeing! Genieß es, solange die Griffe noch nach Griffen aussehen — das ändert sich schneller, als dir lieb ist.",
+  "Du klebst an der Wand wie Klett — leider auch mitten in der Bewegung. Aus Festkleben wird bald Fließen.",
+  "Neugier geweckt. Warnung vom Stammtisch: Bouldern ist die einzige Sucht, für die dich alle loben, während dein Konto für Schuhe und Tape blutet.",
+  "Erste Leisten! Profitipp, den du ignorieren wirst: Sehnen wachsen langsamer als dein Ego — sonst grüßt das A2-Ringband. Trotzdem: oho!",
+  "'Da ist doch GAR nichts zum Halten!' Doch — Reibung. Physik schlägt Skepsis, sobald die Hände kühl und der Kopf ruhig sind.",
+  "Du leihst dir noch jede Beta aus. Fun Fact: Das Wort 'Beta' kommt angeblich von alten Betamax-Videos. Bald drehst du deine eigenen.",
+  "Noch zappelst du wie ein Fisch im Überhang. Eleganz ist nur Gezappel mit besserem Timing — du arbeitest dran.",
+  "Erster Hakeneinsatz! Sieht aus wie Yoga im Streit mit der Wand, fühlt sich aber an wie ein Cheatcode.",
+  "Du jagst den ersten sauberen Top. 'Send' kommt von 'ascend' — und das Hochgefühl danach kommt von ganz allein. Süchtig machend, das Ding.",
+  "Deine Unterarme sind prall wie nach Tag eins im Gym — das ist der berühmte 'Pump'. Tut weh, heißt aber: Es passiert was.",
+  "Noch bist du 'gripped' — Klettersprech für 'die Höhe macht mir die Hosen voll'. Mut ist eine Bewegung, die man üben kann. Atme.",
+  "Du träumst vom großen Sprung. Im modernen Wettkampf sind 'Coordination Dynos' fast Parkour an der Wand — fang klein an, träum groß.",
+  "Der Aufzug auf den Block — der Moment, in dem jeder kurz aussieht wie ein Seehund, der aufs Boot robbt. Würde kommt mit Übung.",
+  "Der 'Crux', die Schlüsselstelle, reizt dich. Genau da trennt sich Henkel von Held — und genau da macht's am meisten Spaß.",
+  "Du willst den Flash: erster Versuch, aber mit Beta im Kopf. (Ohne Beta heißt's Onsight — eine andere Liga.) Plan schmieden, durchziehen!",
+  "Oben drüberklettern statt abspringen — das echte Bouldern. Kinn hoch, Hintern hoch, Stolz noch höher.",
+  "Du lernst Smearing: dem Schuh auf glattem Fels vertrauen, obwohl da kein Tritt ist. Reibung ist Glaube — und Vibram-Gummi hilft auch.",
+  "Erster Gaston — der Griff, der nach außen drückt und sich falsch anfühlt. Benannt nach Bergsteiger Gaston Rébuffat. Falsch fühlt sich oft goldrichtig an.",
+  "Campus-Board-Fieber. Fun Fact: Wolfgang Güllich erfand das Ding für 'Action Directe' (erste 9a, im Frankenjura!). Aber Achtung, Padawan — deine Sehnen sind noch keine Stahlseile.",
+  "Du entdeckst die dicken Volumen. Riesig, rund, rutschig — wie Stammtisch-Geschichten, nur zum Draufstehen.",
+  "Erstes Knie eingeklemmt — und plötzlich hast du eine Hand frei für, sagen wir, eine dramatische Geste. Der Kneebar: der Liegestuhl unter den Klettertricks.",
+  "Du lernst Flaggen: ein Bein als Gegengewicht raushängen. Sieht elegant aus und verhindert das peinliche Wegdrehen von der Wand. Win-win.",
+  "Erstes echtes Projekt gewählt! Ein 'Projekt' ist ein Boulder, der dich über Wochen zur Verzweiflung treibt — und den du trotzdem liebst. Klingt toxisch, ist Klettern.",
+  "Leisten sind nicht mehr der Feind. Kleine Griffe, große Egos — pass nur weiter auf die Ringbänder auf.",
+  "Sloper machen dich nicht mehr zum Affen. Geheimtipp: kühle Halle, trockene Hände — 'gute Bedingungen' sind keine Ausrede, sondern Physik.",
+  "Du braust deine eigene Beta. Bald gibst du am Stammtisch ungefragt Tipps — willkommen im Klub der 'Beta-Sprayer'.",
+  "Jeder Top sitzt sauberer. Du bist im 'Send-Train' — der Zug, der nur eine Richtung kennt: nach oben.",
+  "Zangengriffe? Kein Drama mehr. Deine Hände sind langsam mehr Schraubstock als Hand.",
+  "Der Zehenhaken wird Taktik. Wer hätte gedacht, dass man mit dem Fuß ziehen kann wie mit der Hand? Bouldern ist Schach mit Muskelkater.",
+  "Aus dem Traum wurde der Sprung — du fliegst und fängst dich. Kurz fühlst du dich wie im Finale. Genieß den Applaus in deinem Kopf.",
+  "Das Dach jagt dir keine Angst mehr ein. Überhang ist jetzt Spielplatz — Schwerkraft, wir müssen reden.",
+  "Du kletterst durch den Pump, statt vorher abzusteigen. Mentale Stärke heißt: dem brennenden Unterarm 'gleich, gleich' zuflüstern und weitermachen.",
+  "Du glaubst an dich an der Wand. Und der Glaube versetzt — nun ja — Boulder. (Berge macht das Seilklettern.)",
+  "Schlüsselstellen knackst du jetzt mit Köpfchen statt Kraft. Der Crux hat angefangen, dich zu fürchten.",
+  "Du flasht, was andere dreimal angucken müssen. Auge, Mut, Ausführung — fast schon unfair.",
+  "Topouts sind Routine. Oben grinst du in die Halle wie jemand, der gerade vergessen hat, wie's unten aussah.",
+  "Kompression — den Boulder regelrecht zusammenquetschen, bis er nachgibt. Kraft trifft Körperspannung trifft Sturheit.",
+  "Du brichst die Standard-Beta und findest deinen eigenen Weg. Am Stammtisch heißt das 'Rebell', der Routenbauer nennt es 'nicht so gemeint'.",
+  "Deine Hacke rettet jede verzweifelte Lage. Held der hässlichen, aber effektiven Züge — Stil ist überbewertet, Tops zählen.",
+  "Auf der Platte tanzt du Ballett. Fun Fact: Genau die Wand ohne Griffe macht dem stärksten Kraftkletterer weiche Knie. Dir nicht mehr.",
+  "Sprünge sind deine Religion. Schwerkraft? Nur ein Vorschlag, den du höflich ablehnst.",
+  "Deine Griffkraft ist gefürchtet. In der Arena der Wand hörst du innerlich schon das Kolosseum jubeln.",
+  "Halbzeit, harter Hund! Die Hälfte des Bergs liegt hinter dir. Wie Messner sagen würde: Der Gipfel ist optional, das Weitermachen nicht. (Hat er nie gesagt, klingt aber gut.)",
+  "Du genießt Leisten wie ein Sommelier den Wein: kurz prüfen, andächtig zugreifen, nicht verschütten. Feinste Fingerarbeit.",
+  "Sloper gehorchen dir wie verzaubert. Dabei ist's nur Reibung, Hautkontakt und eiserne Nerven — aber 'Magier' klingt besser.",
+  "Top um Top, du läufst wie geölt. Ueli Steck hieß 'Swiss Machine' — du bist die Hallenversion. Respekt.",
+  "Du dozierst über Zangengriffe, während du sie hältst. Lehrstuhl für angewandte Fingerkraft — verdient.",
+  "Jeder Aufzug sitzt. Kein Seehund-Gerobbe mehr — du gleitest über die Kante wie über deine eigene Türschwelle.",
+  "Du baust Beta wie ein Architekt Kathedralen: jede Bewegung tragend, nichts überflüssig. Andere stehen ratlos, du hast schon den Bauplan.",
+  "Im Überhang herrschst du wie ein Fürst. Das Dach ist dein Thronsaal, die Schwerkraft dein murrender Untertan.",
+  "Du flasht wie besessen. Adam Ondra flasht 9a, du flasht den halben Plan der Halle — Maßstäbe sind relativ, der Spaß ist absolut.",
+  "Deine Zangenkraft sprengt Skalen. In deiner Hand sieht selbst ein Sloper aus wie ein Henkel.",
+  "Projekte fallen reihenweise. Was dich letzte Woche zur Weißglut trieb, machst du heute zum Aufwärmen. Frechheit siegt.",
+  "Keine Schlüsselstelle hält dich auf. Du eroberst, wo andere 'das geht eh nicht' murmeln und zum nächsten Boulder schleichen.",
+  "Du explodierst an die Griffe wie ein gut gelaunter Flummi. Energie ohne Ende — Dynamo eben.",
+  "Löcher und Taschen sind dein Spielzeug. Güllichs 'Action Directe' lebt von Einfinger-Löchern — du nickst wissend und steckst zwei Finger rein, du Angeber.",
+  "Du regierst die Kompression. Pressen, halten, hochziehen — der Boulder ergibt sich, bevor du überhaupt schwitzt.",
+  "Deine Hacke ist von königlicher Eleganz. Eine Verbeugung — aber vorsichtig, sonst rutscht die Krone.",
+  "Du flüsterst der Wand ihre Geheimnisse ab. Sie verrät dir alles — andere stehen daneben und hören nur Schweigen.",
+  "Sloper flüstern dir zu, wie man sie hält. Reibung und du — eine Freundschaft, die kein Anfänger versteht.",
+  "Kein Ausstieg ist dir zu wild, kein Highball zu hoch. Titan über allen Blöcken — der Boden ist nur eine Empfehlung.",
+  "Andere pilgern zu dir, um Griffkraft zu lernen. Guru der Finger — dein Händedruck allein ist schon eine Drohung.",
+  "Du führst die Halle an. Wo du kletterst, schaut man hin — und tut so, als hätte man nicht geschaut. Boss.",
+  "Auf deinem Kreuzzug fällt jede Leiste. Nichts ist zu klein — du würdest auf einer Briefmarke stehen, wenn man dich ließe.",
+  "Tops sind dein Königreich. Du herrschst über jeden Boulder, und die Skala verbeugt sich.",
+  "Du flasht so lautlos und sicher, dass es fast unheimlich ist. Phantom der Wand — kurz da, oben weg, niemand weiß wie.",
+  "Wahnwitzige Sprünge sind dein Markenzeichen. Mut wie ein Stuntman — Honnolds Angstzentrum soll ja kaum anspringen; deins hat wohl auch frei.",
+  "Du bist das Vorbild für Zangenkraft schlechthin. Hände aus Stahl, Unterarme aus Schiffstau.",
+  "Du liest Überhänge wie ein Orakel die Zukunft. Jeden Zug vorausgesehen — der Boulder hat keine Geheimnisse mehr, nur noch Termine.",
+  "Du verkündest die Macht der rohen Kraft — und lebst sie vor. Prophet der Power, dem selbst die Skala glaubt.",
+  "Deine Bewegungsweisheit ist legendär. Du erkennst einen 'Sandbag' (untertrieben bewerteter Boulder), bevor du ihn anfasst. Weiser der Wand.",
+  "Selbst pyramidenschwere Projekte beugen sich dir. Pharao der Boulder — die Halle baut dir im Geiste schon ein Denkmal.",
+  "Du herrschst über jede Schlüsselstelle mit eiserner Hand. Zar des Crux — Widerworte werden nicht geduldet, schon gar nicht von der Wand.",
+  "Auf winzigsten Leisten stehst du wie ein Koloss. Die Physik schaut zu und macht sich Notizen.",
+  "Du hast die Kunst der Sloper vollendet. Wo andere abrutschen, klebst du — nicht mit Magie, mit Meisterschaft (okay, ein bisschen Magie).",
+  "Du lehrst das Senden wie ein Sensei das Schwert. Schüler verbeugen sich, Boulder ergeben sich.",
+  "In der Luft bist du von edler Eleganz. Während andere springen, schwebst du — Adel der Flugphase.",
+  "Über jeden Block krönst du dich selbst. Monarch des Aufzugs — der Topout ist deine Krönungszeremonie, jedes Mal.",
+  "Dein Flash-Talent ist ein Phänomen. Janja Garnbret fällt im Wettkampf fast nie — du gehörst zur selben seltenen Spezies, nur mit Feierabendbier.",
+  "Du verhandelst mit der Schwerkraft — und gewinnst meistens. Diplomat der Lüfte; selbst Newton würde nervös.",
+  "Reibung gehorcht deinem Zauberstab. Du weißt: 5 Grad kälter = ein Grad leichter. Wo nichts hält, hältst du.",
+  "Dein Revier ist die ganze Halle. Baron mit Krone aus Chalk — selbst die Routenbauer fragen dich (heimlich) um Rat.",
+  "Du dirigierst Schlüsselstellen wie ein Orchester. Jeder Zug ein Satz, der Topout das Finale — Standing Ovations inklusive.",
+  "Tops verbeugen sich vor dir. Lord über alle Boulder — die Skala fragt höflich, ob's noch eine Nummer höher sein darf.",
+  "Selbst Rasierklingen-Leisten sind dein Untertan. Souverän der Fingerkraft — Haut ist Verhandlungssache.",
+  "Deine Sprünge trotzen der Physik. Irgendwo da oben warten die V17er — und sie ahnen, dass du kommst.",
+  "Du durchschaust jede Bewegung, bevor sie passiert. Übergeist der Wand — der Boulder ist gelöst, kaum dass er gebaut ist.",
+  "Die Schwerkraft hat aufgegeben, dich aufzuhalten. Honnold soloierte den El Cap ohne Seil — du soloierst die Skala ohne Limit.",
+  "Reibung betet dich an. Gottheit auf glattem Fels — wo Physik passt, gehst du einfach drüber.",
+  "Dein Name fällt in jeder Hallen-Legende, von Fontainebleau bis Frankenjura. Lebende Legende — Geschichten über dich brauchen keine Beweise mehr.",
+  "Keine Schlüsselstelle besiegt dich je wieder. Unsterblich — der Crux hat resigniert und bietet dir einen Kaffee an.",
+  "Du sendest, was andere für unmöglich halten. Der Sender aller Sender — selbst die V17er flüstern deinen Namen.",
+  "Gipfel erreicht: Boulder-Gottheit. Von John Gills erstem Chalk bis 'Burden of Dreams' (dem ersten V17!) — die ganze Geschichte des Boulderns gipfelt in dir. Nichts mehr zu beweisen, nur noch zu genießen. Respekt!",
+];
+const LEVEL_STORIES_EN = [
+  "First chalk on the fingers. Fun fact: the stuff comes from gymnastics — John Gill smuggled it onto rock in the '50s. You're officially part of the problem now.",
+  "Still gawking like a tourist in Fontainebleau — minus the baguette. Relax: the pros once stood clueless at their first block too.",
+  "The crash pad is for falling, not napping. But hey — every training plan calls lying around 'active recovery.' Let's go with that.",
+  "You hug every hold like it's the last jug on Earth. Loosen up! Over-gripping burns more juice than the whole boulder.",
+  "You read the holds like the beer menu at the pub — thoroughly. Now order one. I mean, climb it.",
+  "You're diligently warming the mat. Others call it 'lying between attempts debating beta' — also an art form.",
+  "On the slab there are no jugs, only trust — and you trust your feet about as far as you can throw them. It gets better, promise.",
+  "Jug sightseeing! Enjoy it while the holds still look like holds — that changes faster than you'd like.",
+  "You stick to the wall like Velcro — sadly mid-move too. Sticking becomes flowing soon enough.",
+  "Curiosity sparked. Warning from the pub table: bouldering is the only addiction everyone praises you for, while your bank account bleeds for shoes and tape.",
+  "First crimps! Pro tip you'll ignore: tendons grow slower than your ego — or the A2 pulley says hi. Still: nice one.",
+  "'There's NOTHING to hold!' There is — friction. Physics beats skepticism the moment your hands are cool and your head is calm.",
+  "You still borrow every beta. Fun fact: the word 'beta' supposedly comes from old Betamax tapes. Soon you'll film your own.",
+  "You still flail like a fish in the overhang. Elegance is just flailing with better timing — you're working on it.",
+  "First heel hook! Looks like yoga arguing with the wall, feels like a cheat code.",
+  "You're chasing your first clean send. 'Send' comes from 'ascend' — and the high afterward comes all by itself. Addictive little thing.",
+  "Your forearms are swollen like after day one — that's the famous 'pump.' Hurts, but it means something's happening.",
+  "You're still 'gripped' — climber-speak for 'the height is scaring the pants off me.' Courage is a move you can practice. Breathe.",
+  "You dream of the big leap. In modern comps, coordination dynos are basically parkour on the wall — start small, dream big.",
+  "The mantle onto the block — the moment everyone briefly looks like a seal flopping onto a boat. Dignity comes with practice.",
+  "The crux, the key move, intrigues you. That's where jugs separate from heroes — and where the fun peaks.",
+  "You want the flash: first try, but with beta in your head. (Without beta it's an onsight — another league.) Make a plan, send it!",
+  "Climbing over the top instead of jumping off — real bouldering. Chin up, hips up, pride even higher.",
+  "You're learning to smear: trusting the shoe on blank rock with no foothold. Friction is faith — and Vibram rubber helps too.",
+  "First gaston — the hold you push outward that feels all wrong. Named after alpinist Gaston Rébuffat. Wrong often feels exactly right.",
+  "Campus board fever. Fun fact: Wolfgang Güllich invented it for 'Action Directe' (first 9a, in Germany's Frankenjura!). But careful, padawan — your tendons aren't steel cables yet.",
+  "You're discovering the big volumes. Huge, round, slippery — like pub-table stories, only you can stand on these.",
+  "First knee bar locked in — suddenly a free hand for, say, a dramatic gesture. The kneebar: the deck chair of climbing tricks.",
+  "You're learning to flag: hanging a leg out as counterweight. Looks elegant, prevents the embarrassing spin off the wall. Win-win.",
+  "First real project picked! A 'project' is a boulder that drives you mad for weeks — and you love it anyway. Sounds toxic, it's just climbing.",
+  "Crimps aren't the enemy anymore. Small holds, big egos — just keep minding those pulleys.",
+  "Slopers no longer make a monkey of you. Insider tip: cool gym, dry hands — 'good conditions' aren't an excuse, they're physics.",
+  "You brew your own beta. Soon you'll give unsolicited tips at the pub — welcome to the club of 'beta sprayers.'",
+  "Every send lands cleaner. You're on the 'send train' — the one that only goes one way: up.",
+  "Pinches? No drama anymore. Your hands are slowly more vise than hand.",
+  "The toe hook becomes tactics. Who knew you could pull with a foot like a hand? Bouldering is chess with a side of muscle ache.",
+  "The dream became the leap — you fly and you stick it. For a second you feel like the comp finals. Enjoy the applause in your head.",
+  "The roof doesn't scare you anymore. Overhang is your playground now — gravity, we need to talk.",
+  "You climb through the pump instead of bailing first. Mental strength means whispering 'almost, almost' to a burning forearm and carrying on.",
+  "You believe in yourself on the wall. And belief moves — well — boulders. (Mountains are the rope climbers' department.)",
+  "You crack cruxes with your head, not just muscle. The crux has started to fear you.",
+  "You flash what others have to study three times. Eye, nerve, execution — almost unfair.",
+  "Topouts are routine. Up top you grin across the gym like someone who just forgot what 'down there' looked like.",
+  "Compression — literally squeezing the boulder until it gives. Power meets body tension meets stubbornness.",
+  "You break the standard beta and find your own way. The pub calls it 'rebel'; the setter calls it 'not what I intended.'",
+  "Your heel saves every desperate position. Hero of the ugly-but-effective moves — style's overrated, tops count.",
+  "On the slab you dance ballet. Fun fact: the gripless wall is exactly what gives the strongest power-climbers weak knees. Not you anymore.",
+  "Dynos are your religion. Gravity? Just a suggestion you politely decline.",
+  "Your grip strength is feared. In the arena of the wall you can already hear the Colosseum roar.",
+  "Halfway, hard one! Half the mountain's behind you. As Messner might say: the summit is optional, the not-quitting isn't. (He never said it, but it sounds good.)",
+  "You savor crimps like a sommelier savors wine: inspect briefly, grip reverently, don't spill. Finest fingerwork.",
+  "Slopers obey you as if enchanted. It's only friction, skin contact and iron nerves — but 'wizard' sounds better.",
+  "Send after send, you run like clockwork. Ueli Steck was the 'Swiss Machine' — you're the gym edition. Respect.",
+  "You lecture on pinches while holding them. A professorship in applied finger strength — earned.",
+  "Every mantle lands. No more seal-flopping — you glide over the lip like your own doorstep.",
+  "You build beta like an architect builds cathedrals: every move load-bearing, nothing wasted. Others stand clueless; you've got the blueprint.",
+  "In the overhang you reign like a lord. The roof is your throne room, gravity your grumbling subject.",
+  "You flash like you're possessed. Adam Ondra flashes 9a, you flash half the setting in the gym — scales are relative, the fun is absolute.",
+  "Your pinch strength breaks the scale. In your hand even a sloper looks like a jug.",
+  "Projects fall in rows. What drove you mad last week is today's warm-up. Cheek wins.",
+  "No crux stops you. You conquer where others mutter 'that's impossible anyway' and sneak to the next boulder.",
+  "You explode onto the holds like a cheerful bouncy ball. Endless energy — a dynamo indeed.",
+  "Pockets are your toys. Güllich's 'Action Directe' runs on one-finger monos — you nod knowingly and stuff in two, show-off.",
+  "You rule compression. Squeeze, hold, pull — the boulder surrenders before you even sweat.",
+  "Your heel hook has royal elegance. A bow — but carefully, or the crown slips.",
+  "You whisper the wall's secrets out of it. It tells you everything — others stand by hearing only silence.",
+  "Slopers whisper how to hold them. Friction and you — a friendship no beginner understands.",
+  "No topout too wild, no highball too tall. Titan above all blocks — the ground is merely a suggestion.",
+  "Others pilgrimage to you to learn grip. Guru of fingers — your handshake alone is a threat.",
+  "You lead the gym. Where you climb, all eyes follow — and pretend they didn't. Boss.",
+  "On your crusade every crimp falls. Nothing's too small — you'd stand on a postage stamp if they let you.",
+  "Tops are your kingdom. You reign over every boulder, and the scale bows.",
+  "You flash so silently and surely it's almost eerie. Phantom of the wall — there for a blink, gone at the top, nobody knows how.",
+  "Insane leaps are your trademark. Nerve like a stuntman — Honnold's fear center barely fires; yours seems to have the day off too.",
+  "You're the very model of pinch strength. Hands of steel, forearms of ship's rope.",
+  "You read overhangs like an oracle reads the future. Every move foreseen — the boulder has no secrets left, only appointments.",
+  "You preach the power of raw strength — and live it. Prophet of power, believed even by the scale.",
+  "Your movement wisdom is legendary. You spot a sandbag (an under-graded boulder) before you even touch it. Sage of the wall.",
+  "Even pyramid-heavy projects bow to you. Pharaoh of boulders — the gym is already building you a monument in its mind.",
+  "You rule every crux with an iron hand. Czar of the crux — backtalk is not tolerated, least of all from the wall.",
+  "On the tiniest crimps you stand like a colossus. Physics watches and takes notes.",
+  "You've perfected the art of slopers. Where others slide off, you stick — not by magic, by mastery (okay, a little magic).",
+  "You teach sending like a sensei teaches the sword. Students bow, boulders surrender.",
+  "In the air you're of noble elegance. While others jump, you float — aristocrat of the flight phase.",
+  "Over every block you crown yourself. Monarch of the mantle — the topout is your coronation, every single time.",
+  "Your flash talent is a phenomenon. Janja Garnbret almost never falls in comps — you're the same rare species, just with an after-work beer.",
+  "You negotiate with gravity — and usually win. Diplomat of the air; even Newton would get nervous.",
+  "Friction obeys your wand. You know: 5 degrees cooler equals one grade easier. Where nothing holds, you hold.",
+  "Your domain is the whole gym. Baron with a crown of chalk — even the setters (secretly) ask your advice.",
+  "You conduct cruxes like an orchestra. Every move a movement, the topout the finale — standing ovations included.",
+  "Tops bow to you. Lord over all boulders — the scale politely asks if you'd like one number harder.",
+  "Even razor-blade crimps are your subjects. Sovereign of finger strength — skin is negotiable.",
+  "Your dynos defy physics. Somewhere up there the V17s are waiting — and they sense you're coming.",
+  "You see through every move before it happens. Overmind of the wall — the boulder is solved the moment it's set.",
+  "Gravity has given up stopping you. Honnold soloed El Cap with no rope — you solo the scale with no limit.",
+  "Friction worships you. Deity on blank rock — where physics gives, you simply walk over.",
+  "Your name is in every gym legend, from Fontainebleau to Frankenjura. Living legend — stories about you no longer need proof.",
+  "No crux ever beats you again. Immortal — the crux has resigned and offers you a coffee.",
+  "You send what others call impossible. The sender of senders — even the V17s whisper your name.",
+  "Summit reached: Boulder Deity. From John Gill's first chalk to 'Burden of Dreams' (the first V17!) — the whole history of bouldering peaks in you. Nothing left to prove, only to enjoy. Respect!",
+];
+function levelStory(level) {
+  const arr = LANG === "en" ? LEVEL_STORIES_EN : LEVEL_STORIES_DE;
+  return arr[level - 1] || (LANG === "en" ? "New level reached — keep crushing!" : "Neues Level erreicht — weiter so!");
 }
 
 function catIcon(c) { const a = ACHS().find(x => x.cat === c); return a ? a.icon : "🏅"; }
@@ -1564,6 +1823,13 @@ const CSS = `
 .addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:1px solid rgba(255,255,255,.18); color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
 .installtb { flex:none; width:34px; height:34px; border-radius:9px; background:rgba(184,255,0,.14); border:1px solid rgba(184,255,0,.55); color:#b8ff00; display:flex; align-items:center; justify-content:center; position:relative; z-index:1; cursor:pointer; padding:0; margin-right:6px; }
 .installtb:active { background:rgba(184,255,0,.26); }
+.installhint { position:absolute; top:64px; right:10px; z-index:60; display:flex; align-items:center; gap:5px; animation:ihIn .35s cubic-bezier(.2,1,.4,1); }
+@keyframes ihIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+.installhint-bubble { position:relative; display:flex; align-items:center; gap:7px; padding:9px 13px; background:#1c2129; border:1.4px solid rgba(184,255,0,.65); border-radius:11px; color:#b8ff00; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 8px 24px rgba(0,0,0,.42), 0 0 18px rgba(184,255,0,.12); }
+.installhint-bubble:active { background:#222833; }
+.installhint-bubble::before { content:""; position:absolute; top:-6px; right:20px; width:11px; height:11px; background:#1c2129; border-left:1.4px solid rgba(184,255,0,.65); border-top:1.4px solid rgba(184,255,0,.65); transform:rotate(45deg); }
+.installhint-close { flex:none; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:var(--chalk); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+.installhint-close:active { background:rgba(255,255,255,.16); }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -2068,6 +2334,19 @@ const CSS = `
 .lvlbar i { display:block; height:100%; border-radius:5px; background:linear-gradient(90deg,#7da600,#b8ff00); box-shadow:0 0 10px rgba(184,255,0,.5); transition:width .5s ease; }
 .lvlnext { font-size:12.5px; color:var(--muted); line-height:1.4; }
 .lvlnext b { color:#b8ff00; font-weight:800; }
+.lvlup-scrim { z-index:300; align-items:center; justify-content:center; padding:24px; background:rgba(8,9,12,.86); backdrop-filter:blur(7px); animation:fadeIn .2s ease; }
+.lvlup-card { position:relative; width:100%; max-width:360px; background:linear-gradient(160deg, #181d22, #11151a); border:1.5px solid rgba(184,255,0,.5); border-radius:22px; padding:30px 26px 24px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.55), 0 0 50px rgba(184,255,0,.12); animation:lvlup-pop .4s cubic-bezier(.18,1.1,.4,1); overflow:hidden; }
+@keyframes lvlup-pop { 0%{ transform:scale(.8); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
+.lvlup-confetti { position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:0; }
+.lvlup-piece { position:absolute; left:50%; top:34%; width:var(--s); height:var(--s); background:var(--c); opacity:0; transform:translate(-50%,-50%) scale(.2); animation:lvlup-burst var(--d) cubic-bezier(.12,.6,.25,1) var(--dl) forwards; }
+@keyframes lvlup-burst { 0%{ transform:translate(-50%,-50%) scale(.2) rotate(0deg); opacity:1; } 65%{ opacity:1; } 100%{ transform:translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1) rotate(var(--r)); opacity:0; } }
+.lvlup-kicker { position:relative; z-index:1; font-size:13px; font-weight:800; letter-spacing:.22em; color:#b8ff00; margin-bottom:2px; }
+.lvlup-num { position:relative; z-index:1; font-family:'Barlow Condensed',sans-serif; font-size:74px; font-weight:900; line-height:1; color:#b8ff00; letter-spacing:-2px; text-shadow:0 0 24px rgba(184,255,0,.45); }
+.lvlup-num span { font-size:22px; font-weight:700; color:rgba(184,255,0,.45); margin-left:2px; letter-spacing:0; }
+.lvlup-title { position:relative; z-index:1; font-family:'Barlow Condensed',sans-serif; font-size:27px; font-weight:800; color:#fff; margin-top:6px; line-height:1.1; }
+.lvlup-story { position:relative; z-index:1; font-size:14px; line-height:1.5; color:rgba(255,255,255,.72); margin-top:12px; }
+.lvlup-btn { position:relative; z-index:1; width:100%; margin-top:22px; padding:13px; border-radius:11px; background:#b8ff00; color:#11151a; font-weight:800; font-size:15px; border:none; cursor:pointer; transition:filter .12s; }
+.lvlup-btn:active { filter:brightness(.92); }
 .ssec { margin:6px 2px 10px; font-size:15px; font-weight:700; }
 .ssecn { color:#5cc97e; font-family:'Barlow Condensed'; font-weight:700; }
 .achstrip { display:flex; gap:9px; overflow-x:auto; padding:2px 2px 12px; margin:0 -2px; }
@@ -2243,6 +2522,10 @@ export default function App() {
     if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} setInstallEvt(null); }
     else if (isIOS) { setIosInstallOpen(true); }
   }
+  // Ausgeschriebener "App installieren"-Hinweis am Menü (einmalig, wegklickbar & gemerkt)
+  const [installHintDismissed, setInstallHintDismissed] = useState(true);
+  useEffect(() => { (async () => { try { const r = await window.storage.get("blocscore:installhint", false); setInstallHintDismissed(!!(r && r.value === "1")); } catch (e) { setInstallHintDismissed(false); } })(); }, []);
+  async function dismissInstallHint() { setInstallHintDismissed(true); try { await window.storage.set("blocscore:installhint", "1", false); } catch (e) {} }
 
   useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) }; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
   useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
@@ -2346,6 +2629,20 @@ export default function App() {
   }, [myAgg, lang]);
   const nextUp = useMemo(() => achState.evald.filter(a => !a.done).sort((a, b) => (b.ratio - a.ratio) || (a.target - b.target)).slice(0, 10), [achState]);
   const achScore = achState.score;
+  // Level basiert auf den gesammelten Kletter-Punkten (gleichmäßiges Wachstum)
+  const levelXp = myAgg.points || 0;
+  const myLevelInfo = levelFor(levelXp);
+  const [levelUp, setLevelUp] = useState(null);
+  const lvlBaseRef = useRef({ uid: null, level: null });
+  useEffect(() => {
+    if (!ready || !me) return;
+    const b = lvlBaseRef.current;
+    if (b.uid !== me.id) { lvlBaseRef.current = { uid: me.id, level: myLevelInfo.level }; return; }
+    if (myLevelInfo.level > b.level) {
+      setLevelUp({ level: myLevelInfo.level, name: myLevelInfo.name, story: levelStory(myLevelInfo.level) });
+      lvlBaseRef.current = { uid: me.id, level: myLevelInfo.level };
+    }
+  }, [myLevelInfo.level, ready, me]);
   const NEED_COMMENT = 100, NEED_GROUP = 200, NEED_CREATOR = 0;
   // Max groups: 1 ab 200 Pts, 2 ab 500 Pts, 3 ab 1500 Pts
   const maxGroupsAllowed = isAdmin ? 3 : achScore >= 1500 ? 3 : achScore >= 500 ? 2 : achScore >= 200 ? 1 : 0;
@@ -2669,6 +2966,18 @@ export default function App() {
         </button>
       </div>
 
+      {showInstall && !installHintDismissed && (
+        <div className="installhint">
+          <div className="installhint-bubble" onClick={doInstall} role="button" tabIndex={0}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" /></svg>
+            <span>{LANG === "en" ? "Install app" : "App installieren"}</span>
+          </div>
+          <button className="installhint-close" onClick={dismissInstallHint} aria-label={LANG === "en" ? "Dismiss" : "Ausblenden"}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+      )}
+
       {/* BOARD */}
       {tab === "board" && (<>
         <div className="segwrap" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -2853,25 +3162,26 @@ export default function App() {
             </div>
 
             {(() => {
-              const lv = levelFor(achScore);
-              const into = achScore - lv.need;
+              const lv = levelFor(levelXp);
+              const into = levelXp - lv.need;
               const span = lv.next ? (lv.next.need - lv.need) : 1;
               const pct = lv.next ? Math.max(2, Math.min(100, (into / span) * 100)) : 100;
+              const ptsR = Math.round(levelXp);
               return (
                 <div className="lvlcard">
                   <div className="lvlhead">
                     <div className="lvlnum">{lv.level}<span>/100</span></div>
                     <div className="lvlname">
                       <div className="lvltitle">{lv.name}</div>
-                      <div className="lvlsub">{achScore} Skillpoints</div>
+                      <div className="lvlsub">{ptsR} {LANG === "en" ? "points" : "Punkte"}</div>
                     </div>
                   </div>
                   <div className="lvlbar"><i style={{ width: pct + "%" }} /></div>
                   <div className="lvlnext">
                     {lv.next
                       ? (LANG === "en"
-                          ? <><b>{lv.next.need - achScore}</b> Skillpoints to Level {lv.next.level} · {lv.next.name}</>
-                          : <><b>{lv.next.need - achScore}</b> Skillpoints bis Level {lv.next.level} · {lv.next.name}</>)
+                          ? <><b>{Math.max(0, Math.ceil(lv.next.need - levelXp))}</b> points to Level {lv.next.level} · {lv.next.name}</>
+                          : <><b>{Math.max(0, Math.ceil(lv.next.need - levelXp))}</b> Punkte bis Level {lv.next.level} · {lv.next.name}</>)
                       : <>🏔 {LANG === "en" ? "Max level reached — you are a legend!" : "Maximales Level erreicht — du bist eine Legende!"}</>}
                   </div>
                 </div>
@@ -3228,7 +3538,7 @@ export default function App() {
             return (<>
               {/* Übersicht mit Zeitraum-Filter */}
               <div className="stcard">
-                <h3><span>{me.emoji ? me.emoji+" " : "🧗 "}{LANG==="en"?"My Stats":"Meine Stats"}</span><button className="shareIcon" title={LANG==="en"?"Share my stats":"Meine Stats teilen"} onClick={() => { const lv = levelFor(achScore); const todayTop = routes.filter(r => r.results?.[me.name] && ascentDate(r) === today).sort((a,b)=>b.grade-a.grade).slice(0,10).map(r => ({ grade:r.grade, title:routeTitle(r), color:colorOf(r.name), flash:r.results[me.name]==="flash", wall:wallName(r.gym) })); shareStatsCard({ name: me.name, emoji: me.emoji, levelNum: lv.level, levelName: lv.name, periodLabel, sends: myRoutes.length, flashes: myFlashes, meters: myMeters, pts: myPts, ptsLabel: fmtPts(myPts), todayRoutes: todayTop }); }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="M7 8l5-5 5 5"/></svg></button></h3>
+                <h3><span>{me.emoji ? me.emoji+" " : "🧗 "}{LANG==="en"?"My Stats":"Meine Stats"}</span><button className="shareIcon" title={LANG==="en"?"Share my stats":"Meine Stats teilen"} onClick={() => { const lv = levelFor(levelXp); const todayTop = routes.filter(r => r.results?.[me.name] && ascentDate(r) === today).sort((a,b)=>b.grade-a.grade).slice(0,10).map(r => ({ grade:r.grade, title:routeTitle(r), color:colorOf(r.name), flash:r.results[me.name]==="flash", wall:wallName(r.gym) })); shareStatsCard({ name: me.name, emoji: me.emoji, levelNum: lv.level, levelName: lv.name, periodLabel, sends: myRoutes.length, flashes: myFlashes, meters: myMeters, pts: myPts, ptsLabel: fmtPts(myPts), todayRoutes: todayTop }); }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="M7 8l5-5 5 5"/></svg></button></h3>
                 <div className="seg" style={{ marginBottom:14 }}>
                   {periods.map(p => <button key={p.key} className={myPeriod===p.key?"on":""} onClick={()=>setMyPeriod(p.key)}>{p.label}</button>)}
                 </div>
@@ -3512,6 +3822,7 @@ export default function App() {
       {newGroupOpen && <NewGroupSheet onClose={() => setNewGroupOpen(false)} achScore={achScore} isAdmin={isAdmin} onCreate={(n, e, isPriv) => { createGroup(n, e, isPriv); setNewGroupOpen(false); }} />}
       {changePinOpen && <ChangePinSheet me={me} onClose={() => setChangePinOpen(false)} onSave={(p) => { setMyPin(p); setChangePinOpen(false); }} />}
       {scoringOpen && <ScoringSheet step={STEP} flash={FLASH_BONUS} onClose={() => setScoringOpen(false)} onSave={(s,f) => { setScoring(s,f); setScoringOpen(false); }} />}
+      {levelUp && <LevelUpModal level={levelUp.level} name={levelUp.name} story={levelUp.story} onClose={() => setLevelUp(null)} />}
       {iosInstallOpen && (
         <div className="scrim" onClick={() => setIosInstallOpen(false)}>
           <div className="sheet" onClick={e => e.stopPropagation()}>
