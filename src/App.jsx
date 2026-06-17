@@ -1888,15 +1888,8 @@ const CSS = `
 .segwrap { padding:0 16px 4px; display:flex; align-items:center; gap:10px; }
 .seg.full, .segwrap .seg { width:fit-content; }
 .addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:1px solid rgba(255,255,255,.18); color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
-.installtb { flex:none; width:34px; height:34px; border-radius:9px; background:rgba(184,255,0,.14); border:1px solid rgba(184,255,0,.55); color:#b8ff00; display:flex; align-items:center; justify-content:center; position:relative; z-index:1; cursor:pointer; padding:0; margin-right:6px; }
+.installtb { flex:none; height:34px; padding:0 16px; border-radius:9px; background:rgba(184,255,0,.14); border:1px solid rgba(184,255,0,.55); color:#b8ff00; display:flex; align-items:center; justify-content:center; position:absolute; left:50%; transform:translateX(-50%); z-index:1; cursor:pointer; font-family:'Barlow Condensed'; font-weight:700; font-size:14.5px; letter-spacing:.05em; white-space:nowrap; }
 .installtb:active { background:rgba(184,255,0,.26); }
-.installhint { position:absolute; top:64px; right:10px; z-index:60; display:flex; align-items:center; gap:5px; animation:ihIn .35s cubic-bezier(.2,1,.4,1); }
-@keyframes ihIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-.installhint-bubble { position:relative; display:flex; align-items:center; gap:7px; padding:9px 13px; background:#1c2129; border:1.4px solid rgba(184,255,0,.65); border-radius:11px; color:#b8ff00; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 8px 24px rgba(0,0,0,.42), 0 0 18px rgba(184,255,0,.12); }
-.installhint-bubble:active { background:#222833; }
-.installhint-bubble::before { content:""; position:absolute; top:-6px; right:20px; width:11px; height:11px; background:#1c2129; border-left:1.4px solid rgba(184,255,0,.65); border-top:1.4px solid rgba(184,255,0,.65); transform:rotate(45deg); }
-.installhint-close { flex:none; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:var(--chalk); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
-.installhint-close:active { background:rgba(255,255,255,.16); }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -2591,11 +2584,6 @@ export default function App() {
     if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} setInstallEvt(null); }
     else if (isIOS) { setIosInstallOpen(true); }
   }
-  // Ausgeschriebener "App installieren"-Hinweis am Menü (einmalig, wegklickbar & gemerkt)
-  const [installHintDismissed, setInstallHintDismissed] = useState(true);
-  useEffect(() => { (async () => { try { const r = await window.storage.get("blocscore:installhint", false); setInstallHintDismissed(!!(r && r.value === "1")); } catch (e) { setInstallHintDismissed(false); } })(); }, []);
-  async function dismissInstallHint() { setInstallHintDismissed(true); try { await window.storage.set("blocscore:installhint", "1", false); } catch (e) {} }
-
   useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) }; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
   useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
 
@@ -3024,8 +3012,8 @@ export default function App() {
         </div>
         {tab === "routes" && canSetRoutes && <button className="addtop-tb" onClick={() => setEditing("new")}><span className="plus">+</span>{t("routes.add")}</button>}
         {showInstall && (
-          <button className="installtb" onClick={doInstall} aria-label={LANG === "en" ? "Install app" : "App installieren"} title={LANG === "en" ? "Install app" : "App installieren"}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" /></svg>
+          <button className="installtb" onClick={doInstall} aria-label={LANG === "en" ? "Install App" : "App installieren"}>
+            {LANG === "en" ? "Install App" : "App installieren"}
           </button>
         )}
         <button className="uchip" onClick={() => setTab("account")}>
@@ -3034,18 +3022,6 @@ export default function App() {
           <Avatar name={me.name} size={28} emoji={me.emoji} />
         </button>
       </div>
-
-      {showInstall && !installHintDismissed && (
-        <div className="installhint">
-          <div className="installhint-bubble" onClick={doInstall} role="button" tabIndex={0}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" /></svg>
-            <span>{LANG === "en" ? "Install app" : "App installieren"}</span>
-          </div>
-          <button className="installhint-close" onClick={dismissInstallHint} aria-label={LANG === "en" ? "Dismiss" : "Ausblenden"}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
-        </div>
-      )}
 
       {/* BOARD */}
       {tab === "board" && (<>
