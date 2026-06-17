@@ -141,7 +141,7 @@ const NOUNS = [
 const THINGS = [
   { g: "m", n: "Brocken" }, { g: "m", n: "Hammer" }, { g: "m", n: "Klopper" }, { g: "m", n: "Riese" }, { g: "m", n: "Henkel" }, { g: "m", n: "Schinken" },
   { g: "n", n: "Brett" }, { g: "n", n: "Teil" }, { g: "n", n: "Monster" }, { g: "n", n: "Biest" }, { g: "n", n: "Ungetüm" },
-  { g: "f", n: "Wand" }, { g: "f", n: "Platte" }, { g: "f", n: "Wucht" }, { g: "f", n: "Granate" },
+  { g: "f", n: "Wand" }, { g: "f", n: "Platte & Bug" }, { g: "f", n: "Wucht" }, { g: "f", n: "Granate" },
 ];
 const ENG_ADJ = ["Crazy", "Mega", "Turbo", "Epic", "Wild", "Super", "Hyper", "Ultra", "Savage", "Funky", "Insane", "Cosmic", "Atomic", "Electric", "Maximum", "Smooth"];
 const ENG_NOUN = ["Crusher", "Booster", "Rollercoaster", "Sender", "Dyno", "Beast", "Machine", "Rocket", "Thunder", "Smash", "Vortex", "Monster", "Blaster", "Power", "Grip", "Flow"];
@@ -285,6 +285,136 @@ const STR = {
 function t(k, v) { let s = (STR[LANG] && STR[LANG][k]) != null ? STR[LANG][k] : (STR.de[k] != null ? STR.de[k] : k); if (v) for (const key in v) s = s.split("{" + key + "}").join(v[key]); return s; }
 function routeTitle(r) { return (r.nick && r.nick.trim()) ? r.nick : genName((r.id || "") + "|" + (r.name || ""), r.grade); }
 function colorWord(name) { const t = (name || "").toLowerCase(); for (const k of Object.keys(COLOR_DOT)) if (t.includes(k)) return k.charAt(0).toUpperCase() + k.slice(1); return null; }
+
+/* ── Teilen: Route-Info+Foto sowie generierte Stats-Bildkarte ──────────────── */
+function dataUrlToFile(dataUrl, filename) {
+  try {
+    const [head, b64] = dataUrl.split(",");
+    const mime = (head.match(/data:(.*?)[;,]/) || [])[1] || "image/jpeg";
+    const bin = atob(b64); const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new File([arr], filename, { type: mime });
+  } catch (e) { return null; }
+}
+// Teilt eine Route (Farbe, Grad, Schraubdatum) inkl. Foto, wo möglich. Rückgabe: true | "copied" | false
+async function shareRouteInfo(r, photoDataUrl) {
+  const col = colorWord(r.name);
+  const info = LANG === "en"
+    ? [col, "grade " + r.grade, "set " + fmtDate(r.date)].filter(Boolean).join(" · ")
+    : [col, r.grade + "er", "Schraubdatum " + fmtDate(r.date)].filter(Boolean).join(" · ");
+  const text = "🧗 " + routeTitle(r) + "\n" + info + "\n→ blocscore.de";
+  let files = [];
+  if (photoDataUrl) { const f = dataUrlToFile(photoDataUrl, "route.jpg"); if (f && navigator.canShare && navigator.canShare({ files: [f] })) files = [f]; }
+  try {
+    if (navigator.share) { await navigator.share(files.length ? { title: "blocscore", text, files } : { title: "blocscore", text, url: "https://blocscore.de" }); return true; }
+  } catch (e) { if (e && e.name === "AbortError") return false; }
+  try { await navigator.clipboard.writeText(text); return "copied"; } catch (e) {}
+  return false;
+}
+function _rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+// Erzeugt eine schöne Stats-Bildkarte (1080×1350) und teilt/lädt sie. d = {name,emoji,levelNum,levelName,periodLabel,sends,flashes,meters,pts}
+async function shareStatsCard(d) {
+  const W = 1080, M = 70;
+  const SANS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+  const rows = (d.todayRoutes || []).slice(0, 10);
+  const hasList = rows.length > 0;
+  // dynamische Höhe je nach Listenlänge
+  const kpiBottom = 745;
+  const listTop = kpiBottom + 50;
+  const rowH = 52;
+  const HEAD_GAP = 112, BOT_PAD = 30; // Abstand Überschrift→1. Zeile, unteres Padding wie KPI-Kacheln
+  const panelH = hasList ? (HEAD_GAP + (rows.length - 1) * rowH + BOT_PAD) : 0;
+  const footerY = listTop + panelH + (hasList ? 34 : 6);
+  const H = Math.round(footerY + 120);
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  async function loadImg(src) { try { const im = new Image(); im.src = src; await im.decode(); return im; } catch (e) { return null; } }
+  const [logo, bg] = await Promise.all([loadImg("/logo.png"), loadImg("/login-bg-portrait.jpg")]);
+  // Hintergrundbild (cover) + Abdunkelung
+  ctx.fillStyle = "#13141a"; ctx.fillRect(0, 0, W, H);
+  if (bg) { try { const s = Math.max(W / bg.width, H / bg.height); const dw = bg.width * s, dh = bg.height * s; ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh); } catch (e) {} }
+  const ov = ctx.createLinearGradient(0, 0, 0, H);
+  ov.addColorStop(0, "rgba(15,16,20,.84)"); ov.addColorStop(0.5, "rgba(15,16,20,.74)"); ov.addColorStop(1, "rgba(15,16,20,.9)");
+  ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#b8ff00"; ctx.fillRect(0, 0, W, 9);
+  ctx.textBaseline = "alphabetic";
+  // Logo
+  if (logo) { try { ctx.drawImage(logo, M, 46, 104, 104); } catch (e) {} }
+  // Avatar + Name + Level (kompakt)
+  const ay = 232;
+  ctx.fillStyle = "#1d222a"; ctx.beginPath(); ctx.arc(M + 42, ay, 42, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#b8ff00"; ctx.lineWidth = 3; ctx.stroke();
+  ctx.textAlign = "center"; ctx.font = "46px " + SANS; ctx.fillStyle = "#edeee8";
+  if (d.emoji) ctx.fillText(d.emoji, M + 42, ay + 15); else { ctx.fillStyle = "#b8ff00"; ctx.font = "700 40px " + SANS; ctx.fillText((d.name || "?").charAt(0).toUpperCase(), M + 42, ay + 14); }
+  ctx.textAlign = "left"; ctx.fillStyle = "#edeee8"; ctx.font = "800 50px " + SANS; ctx.fillText(d.name || "", M + 108, ay - 4);
+  ctx.fillStyle = "#b8ff00"; ctx.font = "700 30px " + SANS; ctx.fillText("LEVEL " + d.levelNum + " · " + d.levelName, M + 108, ay + 36);
+  // KPI-Kacheln 2×2 (kompakt) mit Lime-Rand
+  const gap = 24, cw = (W - 2 * M - gap) / 2, ch = 200, ky = 315;
+  const kpis = [
+    [String(d.sends), LANG === "en" ? "SENDS" : "BEGEHUNGEN"],
+    [String(d.flashes) + " ⚡", "FLASHES"],
+    [Math.round(d.meters) + " m", LANG === "en" ? "ELEVATION" : "HÖHENMETER"],
+    [d.ptsLabel, LANG === "en" ? "POINTS" : "PUNKTE"],
+  ];
+  kpis.forEach((k, i) => {
+    const x = M + (i % 2) * (cw + gap), y = ky + Math.floor(i / 2) * (ch + gap);
+    ctx.fillStyle = "rgba(18,21,27,.8)"; _rrect(ctx, x, y, cw, ch, 24); ctx.fill();
+    ctx.strokeStyle = "rgba(184,255,0,.65)"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.textAlign = "center"; ctx.fillStyle = "#edeee8"; ctx.font = "800 74px " + SANS;
+    ctx.fillText(k[0], x + cw / 2, y + ch / 2 + 8);
+    ctx.fillStyle = "#9aa6b2"; ctx.font = "700 25px " + SANS; ctx.fillText(k[1], x + cw / 2, y + ch - 30);
+  });
+  // Liste: heute geschafft (Top 10 der schwersten)
+  if (hasList) {
+    const pw = W - 2 * M;
+    ctx.fillStyle = "rgba(18,21,27,.8)"; _rrect(ctx, M, listTop, pw, panelH, 24); ctx.fill();
+    ctx.strokeStyle = "rgba(184,255,0,.65)"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.textAlign = "left"; ctx.fillStyle = "#b8ff00"; ctx.font = "800 26px " + SANS;
+    ctx.fillText(LANG === "en" ? "TODAY · MY HIGHLIGHTS" : "HEUTE · MEINE HIGHLIGHTS", M + 28, listTop + 52);
+    // feste rechte Spalten: Segment + Flash sauber untereinander (rechtsbündig)
+    const flashX = W - M - 28, segRightX = W - M - 72;
+    ctx.font = "400 24px " + SANS;
+    let maxSegW = 0; rows.forEach(r => { if (r.wall) maxSegW = Math.max(maxSegW, ctx.measureText(r.wall).width); });
+    const nameMaxRight = segRightX - maxSegW - 22;
+    rows.forEach((r, i) => {
+      const ry = listTop + HEAD_GAP + i * rowH;
+      const col = r.color;
+      const isBlack = col === "#181C22";
+      const boxCol = col || "#b8ff00";
+      // Grad-Kachel: dünne Outline, dünne Zahl (wie auf den Route-Karten)
+      const bs = 44, bx = M + 18, by = ry - 33;
+      _rrect(ctx, bx, by, bs, bs, 9);
+      if (isBlack) { ctx.fillStyle = "rgba(255,255,255,.88)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,.5)"; }
+      else { ctx.strokeStyle = boxCol; }
+      ctx.lineWidth = 2; ctx.stroke();
+      ctx.textAlign = "center"; ctx.fillStyle = isBlack ? "#181C22" : boxCol; ctx.font = "300 30px " + SANS;
+      ctx.fillText(String(r.grade), bx + bs / 2, by + bs / 2 + 11);
+      // Segment (rechtsbündige Spalte)
+      ctx.textAlign = "right"; ctx.fillStyle = "#8b95a1"; ctx.font = "400 24px " + SANS;
+      if (r.wall) ctx.fillText(r.wall, segRightX, ry);
+      // Flash (eigene rechtsbündige Spalte)
+      if (r.flash) { ctx.fillStyle = "#b8ff00"; ctx.font = "700 26px " + SANS; ctx.fillText("⚡", flashX, ry); }
+      // Name (links, nicht fett, gekürzt)
+      ctx.textAlign = "left"; ctx.fillStyle = "#dbe1e8"; ctx.font = "400 28px " + SANS;
+      const nameX = M + 80;
+      let title = r.title || "";
+      const maxW = nameMaxRight - nameX;
+      if (maxW > 40 && ctx.measureText(title).width > maxW) { while (title.length > 3 && ctx.measureText(title + "…").width > maxW) title = title.slice(0, -1); title = title.trim() + "…"; }
+      ctx.fillText(title, nameX, ry);
+    });
+  }
+  // Fuß: Datum + Adresse (klein, nicht fett)
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#c9d2dc"; ctx.font = "400 26px " + SANS; ctx.fillText(fmtDate(todayISO()), W / 2, H - 96);
+  ctx.fillStyle = "#b8ff00"; ctx.font = "400 30px " + SANS; ctx.fillText("www.blocscore.de", W / 2, H - 52);
+  const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+  if (!blob) return false;
+  const file = new File([blob], "blocscore-stats.png", { type: "image/png" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "blocscore", text: LANG === "en" ? "My bouldering stats" : "Meine Boulder-Stats" }); return true; }
+  } catch (e) { if (e && e.name === "AbortError") return false; }
+  const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "blocscore-stats.png"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); return true;
+}
 
 /* ---- Profilnamen (Gamertag-Stil) · sprachabhängig ---- */
 const TAG_A = ["krawatten", "zangen", "turbo", "gummi", "stein", "kletter", "chalk", "sloper", "crimp", "mega", "wackel", "donner", "keks", "nebel", "disco", "raketen", "kaktus", "pudding", "glitzer", "beton", "senf", "wasabi", "samt", "neon"];
@@ -602,7 +732,7 @@ function ActivityChart({ results, routeDate, label, color="#b8ff00" }) {
 function IntroModal({ me, onClose, onDismiss }) {
   const en = LANG === "en";
   return (
-    <div className="scrim" onClick={onClose} style={{zIndex:200, alignItems:"center", padding:"20px 16px", backgroundImage:`url(${BG_LOGIN})`, backgroundSize:"cover", backgroundPosition:"center"}}>
+    <div className="scrim intro-scrim" onClick={onClose}>
       <div className="intro-modal" onClick={e=>e.stopPropagation()}>
         <div className="intro-header">
           <img src={LOGIN_LOGO} alt="blocscore" style={{width:72,height:72,objectFit:"contain",borderRadius:12,marginBottom:8,display:"block",margin:"0 auto 10px"}} />
@@ -902,19 +1032,19 @@ function buildAchievements(lang) {
   const L = {Gesamt:en?"Total":"Gesamt",Flash:"Flash",Punkte:en?"Points":"Punkte",Kombi:en?"Combo":"Kombi",Tagesform:en?"Day form":"Tagesform",Spezial:en?"Special":"Spezial",Treue:en?"Loyalty":"Treue",Straßen:en?"Straights":"Straßen",Mehrling:en?"Multiples":"Mehrling",Ausdauer:en?"Endurance":"Ausdauer"};
 
   // GESAMT TOPS — Anfänger 14/sess→~1000 nach 70 sess; Gut 19/sess; Pro 32/sess
-  const TOPS=[25,60,120,250,500,900,1500,2500,4000,6500,10000,15000,22000,32000,45000];
+  const TOPS=[40,90,180,350,650,1050,1700,2600,4000,6500,10000,15000,22000,32000,45000];
   const TNAMES_DE=["Erster Zug","Handflächen warm","Dabei","Stammgast","Fleißig","Ehrgeizig","Halbhundert","Hartnäckig","Hundert!","Obsessiv","Zweihundert","Dreihundert","Fünfhundert","Dreiviertel-Tausend","Tausendsassa","Zweitausend","Dreitausend","Boulder-Gott"];
   const TNAMES_EN=["First Move","Palms Warm","On Board","Regular","Diligent","Ambitious","Half Century","Persistent","Hundred!","Obsessed","Two Hundred","Three Hundred","Five Hundred","Three-Quarter K","Jack of All","Two Thousand","Three Thousand","Boulder God"];
   TOPS.forEach((n,i)=>push(L.Gesamt,"🧗",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
 
   // FLASH — harder, Anfänger flasst selten, Pro flasht ~6/sess
-  const FLASHES=[15,40,90,200,400,800,1800,3500];
+  const FLASHES=[25,65,140,280,520,950,1900,3500];
   const FDE=["Erster Flash","Flash-Trio","Flash-Fünf","Flash-Zehn","Flash-Profi","Flash-Meister","Flash-Legende","Flash-Elite","Flash-Gott","Flash-Mythos"];
   const FEN=["First Flash","Flash Trio","Flash Five","Flash Ten","Flash Pro","Flash Master","Flash Legend","Flash Elite","Flash God","Flash Myth"];
   FLASHES.forEach((n,i)=>push("Flash","⚡",tier(en?FEN:FDE,i,""),en?`Flash ${n} routes`:`Flashe ${n} Routen`,n,"flashes",Math.round(pts(n)*2.2)));
 
   // PUNKTE — Anfänger: 7pts/sess→100pts nach 14 sess; Gut: 22.5; Pro: 51.5
-  const PTS_V=[150,400,1000,2500,6000,13000,28000,65000,130000,260000];
+  const PTS_V=[300,750,1600,3500,7500,15000,30000,65000,130000,260000];
   const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott"];
   const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God"];
   PTS_V.forEach((n,i)=>push(L.Punkte,"💎",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
@@ -1018,6 +1148,66 @@ function buildAchievements(lang) {
 const ACH_DE = buildAchievements("de");
 const ACH_EN = buildAchievements("en");
 function ACHS() { return LANG === "en" ? ACH_EN : ACH_DE; }
+
+/* ── LEVEL-SYSTEM ─────────────────────────────────────────────────────────────
+ * 100 kletter-thematische Level. Man steigt auf, indem man Skillpoints (Summe der
+ * pts freigeschalteter Achievements) sammelt. Level 100 = quasi alles freigeschaltet.
+ * Voll datengetrieben & erweiterbar: Namen in LEVEL_NAMES anpassen/ergänzen,
+ * Kurve über LEVEL_CURVE_POWER / LEVEL_TOP_FRACTION justieren.
+ */
+const LEVEL_NAMES = [
+  // 1–10 · Erste Berührungen
+  "Chalk Virgin","Gym Tourist","Crash-Pad Napper","Hold Hugger","Tape Reader",
+  "Mat Warmer","Slab Stumbler","Jug Tourist","Velcro Climber","Boulder-Curious",
+  // 11–20 · Vom Bazillus gepackt
+  "Crimp Rookie","Sloper Skeptic","Beta Borrower","Flailing Flapper","Heel-Hook Hopeful",
+  "Send Seeker","Pump Apprentice","Gripped Greenhorn","Dyno Dreamer","Mantle Trainee",
+  // 21–30 · Stammgast
+  "Crux Curious","Flash Hopeful","Topout Trainee","Smear Student","Gaston Greenhorn",
+  "Campus Cadet","Volume Voyager","Kneebar Novice","Flagging Freshman","Project Picker",
+  // 31–40 · Kann was
+  "Crimp Cadet","Sloper Steady","Beta Brewer","Send Striver","Pinch Practitioner",
+  "Toe-Hook Tactician","Dyno Doer","Overhang Operator","Pump Pusher","Boulder Believer",
+  // 41–50 · Solide
+  "Crux Crusher","Flash Finder","Topout Tactician","Compression Climber","Beta Breaker",
+  "Heel-Hook Hero","Slab Specialist","Dyno Disciple","Grip Gladiator","Halfway Hardman",
+  // 51–60 · Stark
+  "Crimp Connoisseur","Sloper Sorcerer","Send Machine","Pinch Professor","Mantle Master",
+  "Beta Architect","Overhang Overlord","Flash Fiend","Power Pincher","Project Slayer",
+  // 61–70 · Fortgeschritten
+  "Crux Conqueror","Dyno Dynamo","Pocket Prodigy","Compression King","Heel-Hook Highness",
+  "Beta Whisperer","Sloper Whisperer","Topout Titan","Grip Guru","Boulder Boss",
+  // 71–80 · Elite
+  "Crimp Crusader","Send Sovereign","Flash Phantom","Dyno Daredevil","Pinch Paragon",
+  "Overhang Oracle","Power Prophet","Beta Sage","Project Pharaoh","Crux Czar",
+  // 81–90 · Meister
+  "Crimp Colossus","Sloper Sage","Send Sensei","Airtime Aristocrat","Mantle Monarch",
+  "Flash Phenom","Gravity Negotiator","Friction Wizard","Boulder Baron","Crux Conductor",
+  // 91–100 · Legende
+  "Send Lord","Crimp Sovereign","Dyno Demigod","Beta Overmind","Gravity Defier",
+  "Friction Deity","Boulder Legend","Crux Immortal","The Sender of Senders","Boulder Deity",
+];
+const TOTAL_SKILLPOINTS = ACH_DE.reduce((s, a) => s + a.pts, 0);
+const LEVEL_CURVE_POWER = 2.4;   // >1 = höhere Level kosten überproportional mehr
+const LEVEL_TOP_FRACTION = 0.85; // Level 100 ≈ 85% aller Skillpoints (echtes Completionist-Ziel)
+function buildLevels(total) {
+  const top = Math.round(total * LEVEL_TOP_FRACTION);
+  const out = [];
+  for (let i = 1; i <= 100; i++) {
+    const need = i === 1 ? 0 : Math.round(top * Math.pow((i - 1) / 99, LEVEL_CURVE_POWER));
+    out.push({ level: i, name: LEVEL_NAMES[i - 1] || ("Level " + i), need });
+  }
+  return out;
+}
+const LEVELS = buildLevels(TOTAL_SKILLPOINTS);
+// Liefert das aktuelle Level + das nächste (oder null bei Max) für einen Skillpoint-Stand
+function levelFor(score) {
+  let cur = LEVELS[0];
+  for (const l of LEVELS) { if (score >= l.need) cur = l; else break; }
+  const next = LEVELS.find(l => l.need > score) || null;
+  return { ...cur, next, max: TOTAL_SKILLPOINTS };
+}
+
 function catIcon(c) { const a = ACHS().find(x => x.cat === c); return a ? a.icon : "🏅"; }
 
 const RAINBOW = ["blau", "grün", "rot", "gelb", "lila"];
@@ -1319,7 +1509,7 @@ const CSS = `
   .rc .rbanner { height:160px; object-fit:cover; }
   .hkpi-grid { grid-template-columns:repeat(4,1fr); }
   .stcard { break-inside:avoid; }
-  .brand-logo { height:30px !important; max-height:30px !important; }
+  .brand-logo { height:50px !important; max-height:50px !important; }
   .tab svg { width:24px !important; height:24px !important; }
   .tabbar { min-height:66px !important; height:66px !important; }
 }
@@ -1361,7 +1551,7 @@ const CSS = `
 .topbar { padding:6px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; background-size:cover; background-position:center 40%; height:60px; min-height:60px; max-height:60px; border-bottom:1px solid rgba(255,255,255,.08); background-color:#252830; overflow:hidden; }
 .topbar-overlay { position:absolute; inset:0; background:linear-gradient(90deg, #13141a 0%, #13141a 33%, rgba(19,20,26,.6) 55%, rgba(19,20,26,0) 90%); pointer-events:none; }
 .brand { display:flex; align-items:center; position:relative; z-index:2; padding-left:0; }
-.brand-logo { height:24px; width:auto; object-fit:contain; display:block; max-height:24px; }
+.brand-logo { height:50px; width:auto; object-fit:contain; display:block; max-height:50px; }
 .brand h1 { font-family:'Barlow Condensed'; font-weight:300; font-size:27px; margin:0; line-height:1; letter-spacing:.05em; color:var(--chalk); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .uchip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); border-radius:22px; padding:4px 5px 4px 10px; flex:none; position:relative; z-index:1; }
 .uchip .un { font-size:12.5px; font-weight:600; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1448,8 +1638,9 @@ const CSS = `
 
 
 /* unified color+grade chip */
-.gcol { width:36px; height:36px; border-radius:7px; flex:none; display:flex; align-items:center; justify-content:center; border:2px solid var(--gcol-color, #b8ff00); background:transparent; }
+.gcol { width:36px; height:36px; border-radius:9px; flex:none; display:flex; align-items:center; justify-content:center; border:2px solid var(--gcol-color, #b8ff00); background:transparent; }
 .gcol .ggrade { font-family:'Barlow Condensed'; font-weight:300; font-size:23px; line-height:1; text-align:center; color:var(--gcol-color, #b8ff00); letter-spacing:.02em; }
+.gcol.black-grade .ggrade { color:#13141a; }
 .wldone { font-family:'Barlow Condensed'; font-weight:700; font-size:14px; color:#b8ff00; margin-left:auto; padding:0 6px; }
 .wlcount { min-width:20px; text-align:right; }
 .ovdone { font-size:12px; font-weight:700; color:#5cc97e; margin-left:6px; }
@@ -1468,6 +1659,8 @@ const CSS = `
 .stcard.meCard { border:1px solid var(--amber); }
 .stcard h3 { margin:0 0 11px; font-size:15px; font-weight:700; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .stcard h3 .r { font-family:'Barlow Condensed'; font-size:13px; color:var(--muted); font-weight:600; }
+.shareIcon { margin-left:auto; align-self:center; flex:none; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:rgba(184,255,0,.12); border:1px solid rgba(184,255,0,.4); color:#b8ff00; cursor:pointer; padding:0; }
+.shareIcon:active { background:rgba(184,255,0,.24); }
 .gradeline { display:flex; align-items:center; gap:10px; margin:9px 0; }
 .gradeline .lab { font-family:'Barlow Condensed'; font-weight:700; width:30px; font-size:15px; }
 .gtrack { flex:1; height:9px; background:var(--panel2); border-radius:5px; overflow:hidden; }
@@ -1570,6 +1763,10 @@ const CSS = `
 .save { width:100%; background:#b8ff00; color:#0d0e0f; font-weight:700; font-size:16px; padding:14px; border-radius:12px; margin-top:6px; border:1px solid rgba(255,255,255,.18); }
 .save.disabled { opacity:.4; }
 .del { width:100%; background:none; color:#dd5468; font-weight:600; font-size:14px; padding:12px; margin-top:8px; }
+.grp-leave { width:100%; padding:13px; border-radius:11px; background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:600; font-size:14px; margin-top:8px; }
+.grp-leave:active { background:var(--panel2); }
+.grp-delete { width:100%; padding:13px; border-radius:11px; background:transparent; border:1px solid rgba(221,84,104,.35); color:#dd5468; font-weight:600; font-size:14px; margin-top:8px; }
+.grp-delete:active { background:rgba(221,84,104,.08); }
 .empty { text-align:center; color:var(--muted); padding:50px 20px; font-size:14px; }
 .empty .big { font-size:30px; margin-bottom:10px; }
 
@@ -1751,7 +1948,8 @@ const CSS = `
 .achart-labels span { font-size:9px; color:rgba(255,255,255,.5); text-align:center; flex:1; }
 .achart-legend { font-size:11px; color:rgba(255,255,255,.6); margin-top:6px; display:flex; align-items:center; gap:4px; }
 .achart-dot { display:inline-block; width:10px; height:10px; border-radius:2px; }
-.intro-modal { background:var(--panel); border-radius:20px; border:1.5px solid rgba(255,255,255,.12); width:100%; max-width:480px; overflow:hidden; animation:up .22s ease; }
+.intro-scrim { z-index:200; align-items:center; justify-content:center; padding:20px 16px; background:rgba(10,11,15,.82); backdrop-filter:blur(6px); }
+.intro-modal { background:var(--panel); border-radius:20px; border:1.5px solid rgba(255,255,255,.12); width:100%; max-width:420px; max-height:90vh; overflow-y:auto; overflow-x:hidden; animation:up .22s ease; }
 .intro-header { padding:28px 24px 16px; text-align:center; background:linear-gradient(180deg,rgba(184,255,0,.05) 0%,transparent 100%); }
 .intro-logo { font-size:40px; margin-bottom:10px; }
 .intro-ttl { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:26px; margin:0 0 6px; color:#fff; }
@@ -1859,6 +2057,17 @@ const CSS = `
 .achbig span { color:var(--muted); font-size:18px; }
 .achsub { color:var(--muted); font-size:12.5px; margin-top:3px; }
 .achscore { margin-top:8px; font-weight:700; font-size:13px; color:var(--amber); }
+.lvlcard { background:linear-gradient(150deg, rgba(184,255,0,.10), rgba(184,255,0,.02)); border:1.5px solid rgba(184,255,0,.45); border-radius:16px; padding:16px 18px; margin-bottom:16px; }
+.lvlhead { display:flex; align-items:center; gap:14px; }
+.lvlnum { font-size:40px; font-weight:900; line-height:1; color:#b8ff00; flex:none; letter-spacing:-1px; }
+.lvlnum span { font-size:15px; font-weight:700; color:rgba(184,255,0,.5); margin-left:1px; }
+.lvlname { min-width:0; }
+.lvltitle { font-size:19px; font-weight:800; color:var(--chalk); line-height:1.15; }
+.lvlsub { font-size:12px; font-weight:600; color:var(--muted); margin-top:2px; }
+.lvlbar { height:8px; border-radius:5px; background:rgba(255,255,255,.08); overflow:hidden; margin:13px 0 8px; }
+.lvlbar i { display:block; height:100%; border-radius:5px; background:linear-gradient(90deg,#7da600,#b8ff00); box-shadow:0 0 10px rgba(184,255,0,.5); transition:width .5s ease; }
+.lvlnext { font-size:12.5px; color:var(--muted); line-height:1.4; }
+.lvlnext b { color:#b8ff00; font-weight:800; }
 .ssec { margin:6px 2px 10px; font-size:15px; font-weight:700; }
 .ssecn { color:#5cc97e; font-family:'Barlow Condensed'; font-weight:700; }
 .achstrip { display:flex; gap:9px; overflow-x:auto; padding:2px 2px 12px; margin:0 -2px; }
@@ -2007,6 +2216,9 @@ export default function App() {
   const [achCat, setAchCat] = useState(null);
   const [hallTab, setHallTab] = useState("meine"); // meine | halle | creator
   const [cmpMetric, setCmpMetric] = useState("pts"); // Gruppen-Vergleichsmetrik (Hook muss top-level sein)
+  const [myPeriod, setMyPeriod] = useState("all"); // Meine Stats: day | week | month | year | all
+  const [myMetric, setMyMetric] = useState("tops"); // Meine Stats: Grad-Verteilung tops | flashes | pts
+  const [shared, setShared] = useState(false); // Teilen-Feedback
   const [lang, setLang] = useState("de");
   setLangG(lang);
   function changeLang(l) { setLang(l); setLangG(l); try { window.storage.set("blocscore:lang", l, false); } catch (e) {} }
@@ -2032,7 +2244,7 @@ export default function App() {
     else if (isIOS) { setIosInstallOpen(true); }
   }
 
-  useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
+  useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) }; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
   useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
 
   const accounts = community?.accounts || [];
@@ -2076,7 +2288,7 @@ export default function App() {
   function setWallHeight(h) { setCommunity(c => ({ ...c, wallHeight: Number(h) })); }
   const newestWall = useMemo(() => { let best = null, bd = ""; Object.entries(screwDates).forEach(([w, d]) => { if (d <= today && d > bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
   const nextWall = useMemo(() => { let best = null, bd = "9999"; Object.entries(screwDates).forEach(([w, d]) => { if (d > today && d < bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
-  const groupStats = useMemo(() => groups.map(g => {
+  const groupStats = useMemo(() => groups.filter(g => (g.members || []).length > 0).map(g => {
     let aktuell = 0, gesamt = 0, erfolge = 0; const mem = [];
     (g.members || []).forEach(id => { const a = accById[id]; if (!a || a.staff) return; if (a.private && a.id !== me?.id) return; const t = totals[a.name] || {}; aktuell += t.aktuell || 0; gesamt += t.gesamt || 0; erfolge += t.erfolge || 0; mem.push({ acc: a, pts: t }); });
     mem.sort((x, y) => (y.pts[boardMode] || 0) - (x.pts[boardMode] || 0));
@@ -2259,6 +2471,12 @@ export default function App() {
     return { ok: true };
   }
   function setMyEmoji(e) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, emoji: e } : a) })); }
+  async function shareApp() {
+    const url = "https://blocscore.de";
+    const data = { title: "blocscore", text: LANG === "en" ? "Track your boulders on blocscore" : "Tracke deine Boulder auf blocscore", url };
+    try { if (navigator.share) { await navigator.share(data); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(url); setShared(true); setTimeout(() => setShared(false), 2000); } catch (e) {}
+  }
 
   // ── Sendly Sync ──
   const [syncLog, setSyncLog] = useState([]);
@@ -2276,7 +2494,7 @@ export default function App() {
       pushSyncLog(`✅ ${incoming.length} Routen in Import-Datei`);
 
       // Sektor-Mapping sendly → blocscore
-      const SECTOR_MAP = { BH: "h", BV: "v", PL: "pl", TB: "tb", WK: "wkw", "Block Hinten": "h", "Block Vorne": "v", Platte: "pl", "Training & Bug": "tb", "Wettkampfwand": "wkw", Trainingsbereich: "tb" };
+      const SECTOR_MAP = { BH: "h", BV: "v", PL: "pl", TB: "tb", WK: "wkw", "Block Hinten": "h", "Block Vorne": "v", "Platte": "pl", "Platte & Bug": "pl", "Training & Bug": "tb", "Wettkampfwand": "wkw", Trainingsbereich: "tb" };
       const COLOR_MAP = { Pink: "pink", Gelb: "gelb", Blau: "blau", Weiss: "weiß", Weiß: "weiß", Rot: "rot", Grün: "grün", Gruen: "grün", Orange: "orange", Lila: "lila", Violett: "lila", Schwarz: "schwarz", Türkis: "türkis", Tuerkis: "türkis", Mint: "mint", Braun: "braun", Grau: "grau" };
 
       // Normalisiere eingehende Routen
@@ -2549,7 +2767,7 @@ export default function App() {
                           {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const inline = r.photos[0].startsWith("data:"); const src = inline ? r.photos[0] : await loadPhotoBlob(r.photos[0]); setLightbox(src); }} />}
                           <div className="rbody">
                             <div className="rchead">
-                              <div className="gcol" style={col ? { "--gcol-color": col, background: col === "#181C22" ? "rgba(255,255,255,0.35)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
+                              <div className={"gcol" + (col === "#181C22" ? " black-grade" : "")} style={col ? { "--gcol-color": col === "#181C22" ? "rgba(255,255,255,0.85)" : col, background: col === "#181C22" ? "rgba(255,255,255,0.35)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
                                 <span className="ggrade">{r.grade}</span>
                               </div>
                               <div className="rname">
@@ -2633,6 +2851,32 @@ export default function App() {
                 <div className="achscore">🏅 {achState.score} {t("ach.points")}</div>
               </div>
             </div>
+
+            {(() => {
+              const lv = levelFor(achScore);
+              const into = achScore - lv.need;
+              const span = lv.next ? (lv.next.need - lv.need) : 1;
+              const pct = lv.next ? Math.max(2, Math.min(100, (into / span) * 100)) : 100;
+              return (
+                <div className="lvlcard">
+                  <div className="lvlhead">
+                    <div className="lvlnum">{lv.level}<span>/100</span></div>
+                    <div className="lvlname">
+                      <div className="lvltitle">{lv.name}</div>
+                      <div className="lvlsub">{achScore} Skillpoints</div>
+                    </div>
+                  </div>
+                  <div className="lvlbar"><i style={{ width: pct + "%" }} /></div>
+                  <div className="lvlnext">
+                    {lv.next
+                      ? (LANG === "en"
+                          ? <><b>{lv.next.need - achScore}</b> Skillpoints to Level {lv.next.level} · {lv.next.name}</>
+                          : <><b>{lv.next.need - achScore}</b> Skillpoints bis Level {lv.next.level} · {lv.next.name}</>)
+                      : <>🏔 {LANG === "en" ? "Max level reached — you are a legend!" : "Maximales Level erreicht — du bist eine Legende!"}</>}
+                  </div>
+                </div>
+              );
+            })()}
 
             {(() => { const done = achState.evald.filter(a => a.done).sort((a, b) => b.pts - a.pts); return done.length > 0 ? (
               <>
@@ -2730,7 +2974,7 @@ export default function App() {
               {hallStats.popularRoutes.map((r, i) => (
                 <div key={r.id} className="hpop-row" onClick={() => { setTab("routes"); setTimeout(() => jumpToRoute(r.id), 80); }} style={{ cursor: "pointer" }}>
                   <span className="hrank">{medal(i) || (i + 1)}</span>
-                  <div className="gcol" style={colorOf(r.name) ? { "--gcol-color": colorOf(r.name), background: colorOf(r.name) === "#181C22" ? "rgba(255,255,255,0.35)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
+                  <div className={"gcol" + (colorOf(r.name) === "#181C22" ? " black-grade" : "")} style={colorOf(r.name) ? { "--gcol-color": colorOf(r.name) === "#181C22" ? "rgba(255,255,255,0.85)" : colorOf(r.name), background: colorOf(r.name) === "#181C22" ? "rgba(255,255,255,0.35)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
                     <span className="ggrade">{r.grade}</span>
                   </div>
                   <div className="hrname">
@@ -2768,7 +3012,7 @@ export default function App() {
             const gId = hallTab.slice(4);
             const grp = groups.find(g => g.id === gId);
             if (!grp) return <div className="note">{LANG==="en"?"Group not found.":"Gruppe nicht gefunden."}</div>;
-            const members = (grp.members || []).map(id => accounts.find(a => a.id === id)).filter(Boolean);
+            const members = (grp.members || []).map(id => accounts.find(a => a.id === id)).filter(a => a && a.role !== "superadmin");
 
             const memberStats = members.map(m => {
               const mRoutes = routes.filter(r => r.results?.[m.name]);
@@ -2858,21 +3102,6 @@ export default function App() {
                   </div>
                 );
               })()}
-
-              {/* Meine Aktivität */}
-              <div className="stcard">
-                <h3><span>{LANG==="en"?"My activity":"Meine Aktivität"}</span></h3>
-                <ActivityChart
-                  results={(() => {
-                    const r = [];
-                    routes.forEach(rt => {
-                      const st = rt.results?.[me.name];
-                      if (st) r.push({ date: rt.date, status: st, grade: rt.grade });
-                    });
-                    return r;
-                  })()}
-                />
-              </div>
             </div></div>);
           })()}
 
@@ -2948,33 +3177,61 @@ export default function App() {
 
           {/* ── Meine Stats ── */}
           {hallTab === "meine" && (() => {
-            const myRoutes = routes.filter(r => r.results?.[me.name]);
-            const myFlashes = myRoutes.filter(r => r.results[me.name] === "flash").length;
-            const myTops = myRoutes.length - myFlashes;
-            const myPts = myRoutes.reduce((s,r) => s + pointsFor(r.grade, r.results[r.id] || r.results[me.name]), 0);
-            const myMeters = myRoutes.length * WALL_HEIGHT;
-            // Daily / weekly / monthly / yearly
-            const now = new Date(today);
-            const weekAgo = new Date(now - 7*86400000).toISOString().slice(0,10);
-            const monthAgo = new Date(now - 30*86400000).toISOString().slice(0,10);
-            const yearAgo = new Date(now - 365*86400000).toISOString().slice(0,10);
-            // Echtes Begehungsdatum nutzen; für Alt-Begehungen ohne Datum Fallback auf Schraub-Datum
             const ascentDate = r => (r.resultDates && r.resultDates[me.name]) || r.date;
-            const rByDate = (from) => routes.filter(r => r.results?.[me.name] && ascentDate(r) >= from);
-            const todayR = routes.filter(r => r.results?.[me.name] && ascentDate(r) === today);
-            const weekR = rByDate(weekAgo); const monthR = rByDate(monthAgo); const yearR = rByDate(yearAgo);
-            // Mountain comparison
+            const now = new Date(today);
+            const from = {
+              day: today,
+              week: new Date(now - 7*86400000).toISOString().slice(0,10),
+              month: new Date(now - 30*86400000).toISOString().slice(0,10),
+              year: new Date(now - 365*86400000).toISOString().slice(0,10),
+            };
+            const periods = [
+              { key:"day", label: LANG==="en"?"Day":"Tag" },
+              { key:"week", label: LANG==="en"?"Week":"Woche" },
+              { key:"month", label: LANG==="en"?"Month":"Monat" },
+              { key:"year", label: LANG==="en"?"Year":"Jahr" },
+              { key:"all", label: LANG==="en"?"All time":"Gesamt" },
+            ];
+            const periodLabel = (periods.find(p => p.key === myPeriod) || periods[4]).label;
+            const inPeriod = r => {
+              if (!r.results?.[me.name]) return false;
+              if (myPeriod === "all") return true;
+              if (myPeriod === "day") return ascentDate(r) === today;
+              return ascentDate(r) >= from[myPeriod];
+            };
+            const myRoutes = routes.filter(inPeriod);
+            const myFlashes = myRoutes.filter(r => r.results[me.name] === "flash").length;
+            const myPts = myRoutes.reduce((s,r) => s + pointsFor(r.grade, r.results[me.name]), 0);
+            const myMeters = myRoutes.length * WALL_HEIGHT;
+            // Grad-Verteilung (Vergleichsbalken analog Gruppen) für den gewählten Zeitraum
+            const gmetrics = [
+              { key:"tops", label: LANG==="en"?"Sends":"Begehungen", val: g => g.tops, fmt: v => v },
+              { key:"flashes", label:"Flashes", val: g => g.flashes, fmt: v => v },
+              { key:"pts", label: LANG==="en"?"Points":"Punkte", val: g => g.pts, fmt: v => fmtPts(v) },
+            ];
+            const curM = gmetrics.find(m => m.key === myMetric) || gmetrics[0];
+            const byGrade = GRADES.map(g => {
+              const rs = myRoutes.filter(r => r.grade === g);
+              return { grade:g, tops: rs.length, flashes: rs.filter(r=>r.results[me.name]==="flash").length, pts: rs.reduce((s,r)=>s+pointsFor(r.grade,r.results[me.name]),0) };
+            });
+            const maxG = Math.max(1, ...byGrade.map(curM.val));
+            // Berge (immer kumulativ / Gesamt)
+            const allMyRoutes = routes.filter(r => r.results?.[me.name]);
+            const totalMeters = allMyRoutes.length * WALL_HEIGHT;
             const MOUNTAINS = [
               {name:"Feldberg (DE)",m:1493},{name:"Zugspitze (DE)",m:2962},{name:"Großglockner (AT)",m:3798},
               {name:"Matterhorn",m:4478},{name:"Mont Blanc",m:4806},{name:"Elbrus",m:5642},
               {name:"Kilimanjaro",m:5895},{name:"Denali",m:6190},{name:"Aconcagua",m:6961},
               {name:"Mount Everest",m:8849},
             ];
-            const climbed = MOUNTAINS.filter(mn => myMeters >= mn.m);
-            const nextMtn = MOUNTAINS.find(mn => myMeters < mn.m);
+            const nextMtn = MOUNTAINS.find(mn => totalMeters < mn.m);
             return (<>
-              {/* Gesamt KPIs */}
-              <div className="stcard" style={{ padding:12 }}>
+              {/* Übersicht mit Zeitraum-Filter */}
+              <div className="stcard">
+                <h3><span>{me.emoji ? me.emoji+" " : "🧗 "}{LANG==="en"?"My Stats":"Meine Stats"}</span><button className="shareIcon" title={LANG==="en"?"Share my stats":"Meine Stats teilen"} onClick={() => { const lv = levelFor(achScore); const todayTop = routes.filter(r => r.results?.[me.name] && ascentDate(r) === today).sort((a,b)=>b.grade-a.grade).slice(0,10).map(r => ({ grade:r.grade, title:routeTitle(r), color:colorOf(r.name), flash:r.results[me.name]==="flash", wall:wallName(r.gym) })); shareStatsCard({ name: me.name, emoji: me.emoji, levelNum: lv.level, levelName: lv.name, periodLabel, sends: myRoutes.length, flashes: myFlashes, meters: myMeters, pts: myPts, ptsLabel: fmtPts(myPts), todayRoutes: todayTop }); }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="M7 8l5-5 5 5"/></svg></button></h3>
+                <div className="seg" style={{ marginBottom:14 }}>
+                  {periods.map(p => <button key={p.key} className={myPeriod===p.key?"on":""} onClick={()=>setMyPeriod(p.key)}>{p.label}</button>)}
+                </div>
                 <div className="hkpi-grid" style={{ gridTemplateColumns:"repeat(2,1fr)" }}>
                   <div className="hkpi"><div className="hkv">{myRoutes.length}</div><div className="hku">{LANG==="en"?"Sends":"Begehungen"}</div></div>
                   <div className="hkpi"><div className="hkv">{myFlashes}</div><div className="hku">Flashes ⚡</div></div>
@@ -2983,28 +3240,44 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Zeitraum */}
+              {/* Grad-Verteilung (Vergleich, mit Metrik-Toggle) */}
               <div className="stcard">
-                <h3><span>📅 Aktivität</span></h3>
-                {[
-                  ["Heute",todayR],["Diese Woche",weekR],["Diesen Monat",monthR],["Dieses Jahr",yearR]
-                ].map(([label, rs]) => (
-                  <div key={label} className="hwall-row">
-                    <span className="hwn">{label}</span>
-                    <span className="hws">{rs.length} Begehungen</span>
-                    <span className="hwf"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{rs.filter(r=>r.results[me.name]==="flash").length}</span>
-                    <span style={{fontSize:12,color:"var(--muted)"}}>{Math.round(rs.length*WALL_HEIGHT)} m</span>
-                  </div>
-                ))}
+                <h3><span>{LANG==="en"?"By grade":"Nach Grad"}</span><span className="r">{periodLabel}</span></h3>
+                <div className="seg" style={{ marginBottom:14 }}>
+                  {gmetrics.map(m => <button key={m.key} className={myMetric===m.key?"on":""} onClick={()=>setMyMetric(m.key)}>{m.label}</button>)}
+                </div>
+                {myRoutes.length === 0
+                  ? <div className="note">{LANG==="en"?"No sends in this period yet.":"Noch keine Begehungen in diesem Zeitraum."}</div>
+                  : byGrade.map(g => {
+                      const v = curM.val(g);
+                      const pct = Math.round((v / maxG) * 100);
+                      return (
+                        <div key={g.grade} style={{ marginBottom:12 }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, marginBottom:5 }}>
+                            <span style={{ color: GRADE_COLOR[g.grade], fontWeight:700 }}>{g.grade}er</span>
+                            <span style={{ color:"var(--muted)" }}>{curM.fmt(v)}</span>
+                          </div>
+                          <div style={{ height:8, background:"var(--panel2)", borderRadius:4, overflow:"hidden" }}>
+                            <div style={{ height:"100%", width:`${pct}%`, background:"#b8ff00", borderRadius:4, transition:"width .5s" }}/>
+                          </div>
+                        </div>
+                      );
+                    })}
               </div>
 
-              {/* Höhenmeter / Berge */}
+              {/* Aktivität (Verlauf) */}
+              <div className="stcard">
+                <h3><span>{LANG==="en"?"Activity":"Aktivität"}</span></h3>
+                <ActivityChart results={allMyRoutes.map(rt => ({ date: ascentDate(rt), status: rt.results[me.name], grade: rt.grade }))} />
+              </div>
+
+              {/* Höhenmeter / Berge (Gesamt) */}
               <div className="stcard">
                 <h3><span>{LANG==="en"?"Peaks Climbed":"Erklommene Berge"}</span></h3>
-                <div className="phint" style={{marginBottom:10}}>{LANG==="en"?`Each route = ${WALL_HEIGHT}m · Total: ${Math.round(myMeters)}m`:`Jede Route = ${WALL_HEIGHT} Höhenmeter · Gesamt: ${Math.round(myMeters)} m`}</div>
+                <div className="phint" style={{marginBottom:10}}>{LANG==="en"?`Each route = ${WALL_HEIGHT}m · Total: ${Math.round(totalMeters)}m`:`Jede Route = ${WALL_HEIGHT} Höhenmeter · Gesamt: ${Math.round(totalMeters)} m`}</div>
                 {MOUNTAINS.map(mn => {
-                  const done = myMeters >= mn.m;
-                  const pct = Math.min(100, (myMeters/mn.m)*100);
+                  const done = totalMeters >= mn.m;
+                  const pct = Math.min(100, (totalMeters/mn.m)*100);
                   return (
                     <div key={mn.name} className="hwall-row" style={{opacity: done ? 1 : 0.6}}>
                       <span className="hwn">{done ? <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#b8ff00" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><polyline points="1.5,6.5 4.5,9.5 10.5,2.5"/></svg> : <svg width="11" height="13" viewBox="0 0 12 14" fill="none" stroke="#b8ff00" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:4}}><rect x="2" y="6" width="8" height="7" rx="1.5"/><path d="M4 6V4a2 2 0 0 1 4 0v2"/></svg>}{mn.name}</span>
@@ -3015,7 +3288,7 @@ export default function App() {
                     </div>
                   );
                 })}
-                {nextMtn && <div className="note" style={{marginTop:10}}>{LANG==="en"?<>{Math.ceil(nextMtn.m - myMeters)}m to go until <b>{nextMtn.name}</b> ({nextMtn.m}m)</>:<>Noch {Math.ceil(nextMtn.m - myMeters)} m bis zum <b>{nextMtn.name}</b> ({nextMtn.m} m)</>}</div>}
+                {nextMtn && <div className="note" style={{marginTop:10}}>{LANG==="en"?<>{Math.ceil(nextMtn.m - totalMeters)}m to go until <b>{nextMtn.name}</b> ({nextMtn.m}m)</>:<>Noch {Math.ceil(nextMtn.m - totalMeters)} m bis zum <b>{nextMtn.name}</b> ({nextMtn.m} m)</>}</div>}
                 {!nextMtn && <div className="note" style={{marginTop:10,color:"var(--amber)"}}>🏆 {LANG==="en"?"You've climbed them all — even Mount Everest!":"Du hast alle Berge erklommen — sogar den Mount Everest!"}</div>}
               </div>
             </>);
@@ -3068,6 +3341,13 @@ export default function App() {
               <button className="miniaction danger" style={{ marginTop: 0 }} onClick={logout}><span className="mi-ic">🚪</span>{t("acc.logout")}</button>
             </div>
             {!isAdmin && <button className="miniaction" style={{ marginTop: 8, color: "#e98b7d", borderColor: "rgba(233,139,125,.3)", background: "rgba(233,139,125,.08)" }} onClick={deleteMyAccount}><span className="mi-ic">🗑</span>Konto löschen</button>}
+          </div>
+          <div className="stcard">
+            <h3><span>🔗 {LANG==="en"?"Share blocscore":"blocscore teilen"}</span></h3>
+            <div className="note" style={{ marginBottom: 10 }}>{LANG==="en"?"Invite friends to the gym scoreboard.":"Lade Freunde zum Hallen-Scoreboard ein."}</div>
+            <button className="miniaction primary" style={{ marginTop: 0 }} onClick={shareApp}>
+              <span className="mi-ic">{shared ? "✓" : "📤"}</span>{shared ? (LANG==="en"?"Link copied!":"Link kopiert!") : (LANG==="en"?"Share app · blocscore.de":"App teilen · blocscore.de")}
+            </button>
           </div>
           <div className="stcard">
             <h3><span>{t("acc.points")}</span>{isAdmin && <button className="miniaction" style={{ marginTop:0, marginLeft:"auto", width:"auto", padding:"4px 10px", fontSize:12 }} onClick={() => setScoringOpen(true)}>✎ Bearbeiten</button>}</h3>
@@ -3267,17 +3547,19 @@ export default function App() {
         const g = groupStats.find(x => x.id === openGroupId); if (!g) return null;
         const isMember = (g.members || []).includes(me.id);
         const isCreator = g.createdBy === me.id;
+        const isLastMember = (g.members || []).length === 1 && isMember;
+        const canDelete = isCreator || isLastMember || isAdmin;
         const requested = (g.requests || []).includes(me.id);
         const full = (g.members || []).length >= MAX_MEMBERS;
         const inviteables = accounts.filter(a => !groupOf(a.id) && a.id !== me.id && a.role !== "superadmin");
         return (
           <GroupSheet group={g} me={me} accById={accById} boardMode={boardMode}
-            isMember={isMember} isCreator={isCreator} requested={requested} full={full} meHasGroup={!!myGroup} inviteables={inviteables}
+            isMember={isMember} isCreator={isCreator} canDelete={canDelete} requested={requested} full={full} meHasGroup={!!myGroup} inviteables={inviteables}
             onClose={() => setOpenGroupId(null)}
             onRequest={() => requestJoin(g.id)} onCancelReq={() => cancelRequest(g.id)}
             onAccept={(aid) => acceptRequest(g.id, aid)} onDecline={(aid) => declineRequest(g.id, aid)} onInvite={(aid) => inviteMember(g.id, aid)}
             onLeave={() => { leaveGroup(g.id); setOpenGroupId(null); }}
-            onDelete={() => { if (confirm("Gruppe wirklich löschen?")) { deleteGroup(g.id); setOpenGroupId(null); } }} />
+            onDelete={() => { if (confirm(LANG === "en" ? "Really delete this group?" : "Gruppe wirklich löschen?")) { deleteGroup(g.id); setOpenGroupId(null); } }} />
         );
       })()}
     </div>
@@ -3369,7 +3651,7 @@ function FloorPlan({ value, onChange, newest }) {
               <polygon points={w.pts} fill="#b8ff00" filter={`url(#g${rid})`} />
             ) : (<>
               <image href={TEX} x="0" y="0" width="142" height="116" preserveAspectRatio="xMidYMid slice" clipPath={`url(#c${rid}-${w.code})`} />
-              <polygon points={w.pts} fill="none" stroke="#b8ff00" strokeWidth={fresh ? 1.5 : 1.05} strokeLinejoin="round" filter={`url(#g${rid})`} />
+              <polygon points={w.pts} fill="none" stroke="#b8ff00" strokeWidth={fresh ? 0.9 : 0.65} strokeLinejoin="round" filter={`url(#g${rid})`} />
             </>)}
             {w.orient === "v" ? (
               <text x={w.lx} y={w.ly} transform={`rotate(-90 ${w.lx} ${w.ly})`} textAnchor="middle" dominantBaseline="middle" fontFamily="'Barlow Condensed'" fontWeight="700" fontSize={w.fs} letterSpacing="0.5" fill={tcol}>{w.label}</text>
@@ -3558,7 +3840,7 @@ function NewGroupSheet({ onClose, onCreate, achScore, isAdmin }) {
     </div>
   );
 }
-function GroupSheet({ group, me, accById, boardMode, isMember, isCreator, requested, full, meHasGroup, inviteables, onClose, onRequest, onCancelReq, onAccept, onDecline, onInvite, onLeave, onDelete }) {
+function GroupSheet({ group, me, accById, boardMode, isMember, isCreator, canDelete, requested, full, meHasGroup, inviteables, onClose, onRequest, onCancelReq, onAccept, onDecline, onInvite, onLeave, onDelete }) {
   const [showInvite, setShowInvite] = useState(false);
   const reqs = (group.requests || []).map(id => accById[id]).filter(Boolean);
   return (
@@ -3618,8 +3900,8 @@ function GroupSheet({ group, me, accById, boardMode, isMember, isCreator, reques
               : full ? <div className="note" style={{ textAlign: "center" }}>Diese Gruppe ist voll (10/10).</div>
                 : <button className="save" onClick={onRequest}>Beitritt anfragen</button>)}
 
-          {isMember && <button className="leavebtn" style={{ width: "100%", padding: 13 }} onClick={onLeave}>Gruppe verlassen</button>}
-          {isCreator && <button className="del" onClick={onDelete}>Gruppe löschen</button>}
+          {isMember && <button className="grp-leave" onClick={onLeave}>{LANG === "en" ? "Leave group" : "Gruppe verlassen"}</button>}
+          {canDelete && <button className="grp-delete" onClick={onDelete}>{LANG === "en" ? "Delete group" : "Gruppe löschen"}</button>}
         </div>
       </div>
     </div>
@@ -3684,11 +3966,18 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
     onSave({ id: route?.id || uid(), date, gym: wall, grade, name: name.trim(), nick: nick.trim(), note: note.trim(), archived, results, resultDates, photos: keepIds, tips: route?.tips || [] });
   }
 
+  const [shareMsg, setShareMsg] = useState("");
+  async function doShareRoute() {
+    const r = route || { name, grade, date };
+    const res = await shareRouteInfo(r, photos[0]?.dataUrl);
+    if (res === "copied") { setShareMsg("✓"); setTimeout(() => setShareMsg(""), 1800); }
+  }
+
   return (
     <div className={"scrim" + (isNew && !wall ? " full" : "")} onClick={onClose}>
       <div className={"sheet" + (isNew && !wall ? " planmode" : "")} onClick={e => e.stopPropagation()}>
         <div className="grip" />
-        <div className="shead"><h2>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Edit route":"Route bearbeiten")}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
+        <div className="shead"><h2>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Edit route":"Route bearbeiten")}</h2><div style={{display:"flex",gap:8,alignItems:"center"}}>{!isNew && <button className="shareIcon" onClick={doShareRoute} title={LANG==="en"?"Share route":"Route teilen"}>{shareMsg ? shareMsg : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>}</button>}<button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div></div>
         <div className="sbody">
           {(!wall && isNew) ? (
             <div className="planpick">
