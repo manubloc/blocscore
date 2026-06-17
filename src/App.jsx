@@ -860,19 +860,19 @@ function buildAchievements(lang) {
   const L = {Gesamt:en?"Total":"Gesamt",Flash:"Flash",Punkte:en?"Points":"Punkte",Kombi:en?"Combo":"Kombi",Tagesform:en?"Day form":"Tagesform",Spezial:en?"Special":"Spezial",Treue:en?"Loyalty":"Treue",Straßen:en?"Straights":"Straßen",Mehrling:en?"Multiples":"Mehrling",Ausdauer:en?"Endurance":"Ausdauer"};
 
   // GESAMT TOPS — Anfänger 14/sess→~1000 nach 70 sess; Gut 19/sess; Pro 32/sess
-  const TOPS=[5,15,30,60,100,200,400,600,1000,1500,2500,4000,7000,10000,15000];
+  const TOPS=[25,60,120,250,500,900,1500,2500,4000,6500,10000,15000,22000,32000,45000];
   const TNAMES_DE=["Erster Zug","Handflächen warm","Dabei","Stammgast","Fleißig","Ehrgeizig","Halbhundert","Hartnäckig","Hundert!","Obsessiv","Zweihundert","Dreihundert","Fünfhundert","Dreiviertel-Tausend","Tausendsassa","Zweitausend","Dreitausend","Boulder-Gott"];
   const TNAMES_EN=["First Move","Palms Warm","On Board","Regular","Diligent","Ambitious","Half Century","Persistent","Hundred!","Obsessed","Two Hundred","Three Hundred","Five Hundred","Three-Quarter K","Jack of All","Two Thousand","Three Thousand","Boulder God"];
   TOPS.forEach((n,i)=>push(L.Gesamt,"🧗",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
 
   // FLASH — harder, Anfänger flasst selten, Pro flasht ~6/sess
-  const FLASHES=[5,15,30,75,150,300,750,1500];
+  const FLASHES=[15,40,90,200,400,800,1800,3500];
   const FDE=["Erster Flash","Flash-Trio","Flash-Fünf","Flash-Zehn","Flash-Profi","Flash-Meister","Flash-Legende","Flash-Elite","Flash-Gott","Flash-Mythos"];
   const FEN=["First Flash","Flash Trio","Flash Five","Flash Ten","Flash Pro","Flash Master","Flash Legend","Flash Elite","Flash God","Flash Myth"];
   FLASHES.forEach((n,i)=>push("Flash","⚡",tier(en?FEN:FDE,i,""),en?`Flash ${n} routes`:`Flashe ${n} Routen`,n,"flashes",Math.round(pts(n)*2.2)));
 
   // PUNKTE — Anfänger: 7pts/sess→100pts nach 14 sess; Gut: 22.5; Pro: 51.5
-  const PTS_V=[50,150,400,1000,2500,5000,10000,25000,50000,100000];
+  const PTS_V=[150,400,1000,2500,6000,13000,28000,65000,130000,260000];
   const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott"];
   const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God"];
   PTS_V.forEach((n,i)=>push(L.Punkte,"💎",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
@@ -880,21 +880,21 @@ function buildAchievements(lang) {
   // GRADE — kalibriert: 1er/2er/3er Anfänger, 4er/5er Gut, 6er/7er Fortgeschritten, 8er Pro
   const gScale=[0,1,1.2,1.5,2,3,5,8,15];
   GRADES.forEach(g=>{
-    const tC=g<=2?[10,30,60,120,250,500,1000]:g<=4?[5,15,40,80,150,300,600]:g<=6?[2,8,20,50,100,200]:g===7?[1,5,15,35,75]:[1,3,10,25,50];
+    const tC=g<=2?[25,75,150,300,600,1200,2500]:g<=4?[15,40,100,200,400,750,1500]:g<=6?[5,20,50,120,250,500]:g===7?[2,10,30,75,150]:[1,5,20,50,100];
     tC.forEach((n)=>push(`${g}`,"🪨",en?`${n}× Grade ${g}`:`${n}× ${g}er`,en?`Climb ${n} grade-${g} routes`:`Klettere ${n} ${g}er-Routen`,n,`grade:${g}:t`,Math.round(pts(n)*gScale[g])));
-    const fC=g<=3?[10,30,75]:g<=5?[5,20,50,100,200]:g<=7?[2,10,25,60,120]:[1,5,15,40];
+    const fC=g<=3?[25,75,180]:g<=5?[15,50,120,250,500]:g<=7?[5,25,60,150,300]:[2,12,40,100];
     fC.forEach((n)=>push(`${g}`,"⚡",en?`Flash ${n}× Grade ${g}`:`Flash ${n}× ${g}er`,en?`Flash ${n} grade-${g} routes`:`Flashe ${n} ${g}er-Routen`,n,`grade:${g}:f`,Math.round(pts(n)*gScale[g]*2)));
   });
 
   // FARBE
   COLORS.forEach(c=>{
-    [3,10,25,50,100,200,500].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
-    [5,15,30,75,150].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
+    [10,30,75,150,300,600,1200].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
+    [15,40,90,200,400].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
-  [10,15,20,25,30,40,50].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
-  [5,8,12,15,20,25,30].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
+  [15,20,25,30,36,42,50].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  [8,12,16,20,25,30,38].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
 
   // KOMBI / SPEZIAL
   [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
@@ -908,13 +908,13 @@ function buildAchievements(lang) {
   [[5,50],[8,90],[10,130],[12,175],[15,230],[20,320]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
 
   // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
-  [[1,8],[3,14],[5,20],[10,30],[20,42],[35,55],[50,68],[75,85],[100,105],[150,135],[200,168],[300,220],[365,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
+  [[5,8],[10,14],[20,20],[40,30],[65,42],[95,55],[130,68],[175,85],[230,105],[300,135],[380,168],[480,220],[600,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
 
   // AUSDAUER
-  [1,2,3,4,5,6,8,10,12,16,20,26,52].forEach(n=>push(L.Ausdauer,"⏳",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
-  [2,3,4,6,8,12,16,26].forEach(n=>push(L.Ausdauer,"⏳",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
-  [10,20,30,50,75,100].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
-  [20,50,75,100,150,200,250,300].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
+  [2,3,5,7,10,13,17,22,28,36,44,52,78].forEach(n=>push(L.Ausdauer,"⏳",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
+  [3,5,8,12,16,22,32,52].forEach(n=>push(L.Ausdauer,"⏳",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
+  [20,35,55,75,90,100].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
+  [40,80,120,170,220,270,320,360].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
 
   // BERGE — totalRoutes × wallHeight(3.5m default)
   [
@@ -1329,6 +1329,11 @@ const CSS = `
 .segwrap { padding:0 16px 4px; display:flex; align-items:center; gap:10px; }
 .seg.full, .segwrap .seg { width:fit-content; }
 .addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:1px solid rgba(255,255,255,.18); color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
+.installtb { flex:none; width:34px; height:34px; border-radius:9px; background:rgba(184,255,0,.14); border:1px solid rgba(184,255,0,.55); color:#b8ff00; display:flex; align-items:center; justify-content:center; position:relative; z-index:1; cursor:pointer; padding:0; margin-right:6px; }
+.installtb:active { background:rgba(184,255,0,.26); }
+.iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
+.iosstep:last-of-type { border-bottom:none; }
+.iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
 .addtop-tb .plus { font-size:17px; font-weight:300; line-height:1; }
 
 
@@ -1965,6 +1970,25 @@ export default function App() {
   function jumpToRoute(id) { setFlashId(id); setTimeout(() => { const el = document.getElementById("r-" + id); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); }, 30); setTimeout(() => setFlashId(null), 1700); }
   const firstSave = useRef(false);
 
+  // PWA-Installation: beforeinstallprompt einfangen (Chromium), iOS-Fallback erkennen
+  const [installEvt, setInstallEvt] = useState(null);
+  const [iosInstallOpen, setIosInstallOpen] = useState(false);
+  useEffect(() => {
+    const onBip = (e) => { e.preventDefault(); setInstallEvt(e); };
+    const onInstalled = () => setInstallEvt(null);
+    window.addEventListener("beforeinstallprompt", onBip);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => { window.removeEventListener("beforeinstallprompt", onBip); window.removeEventListener("appinstalled", onInstalled); };
+  }, []);
+  const isStandalone = typeof window !== "undefined" && ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true);
+  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+  const canInstall = !!installEvt;
+  const showInstall = !isStandalone && (canInstall || isIOS);
+  async function doInstall() {
+    if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} setInstallEvt(null); }
+    else if (isIOS) { setIosInstallOpen(true); }
+  }
+
   useEffect(() => { (async () => { const c = await loadCommunity(); setCommunity(c && c.accounts ? c : SEED_COMMUNITY); setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
   useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
 
@@ -2042,7 +2066,15 @@ export default function App() {
 
   function cycleMine(routeId) {
     if (!me) return;
-    setCommunity(c => ({ ...c, routes: c.routes.map(r => { if (r.id !== routeId) return r; const cur = r.results?.[me.name] || null; const next = cur === null ? "top" : cur === "top" ? "flash" : null; return { ...r, results: { ...r.results, [me.name]: next } }; }) }));
+    const td = todayISO();
+    setCommunity(c => ({ ...c, routes: c.routes.map(r => {
+      if (r.id !== routeId) return r;
+      const cur = r.results?.[me.name] || null;
+      const next = cur === null ? "top" : cur === "top" ? "flash" : null;
+      const resultDates = { ...(r.resultDates || {}) };
+      if (next === null) delete resultDates[me.name]; else resultDates[me.name] = td;
+      return { ...r, results: { ...r.results, [me.name]: next }, resultDates };
+    }) }));
   }
   function upsertRoute(route) { setCommunity(c => { const ex = c.routes.some(r => r.id === route.id); return { ...c, routes: ex ? c.routes.map(r => r.id === route.id ? route : r) : [route, ...c.routes] }; }); }
   function deleteRoute(id) { setCommunity(c => ({ ...c, routes: c.routes.filter(r => r.id !== id) })); }
@@ -2364,6 +2396,11 @@ export default function App() {
           </button>
         </div>
         {tab === "routes" && canSetRoutes && <button className="addtop-tb" onClick={() => setEditing("new")}><span className="plus">+</span>{t("routes.add")}</button>}
+        {showInstall && (
+          <button className="installtb" onClick={doInstall} aria-label={LANG === "en" ? "Install app" : "App installieren"} title={LANG === "en" ? "Install app" : "App installieren"}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" /></svg>
+          </button>
+        )}
         <button className="uchip" onClick={() => setTab("account")}>
           {me.role !== "community" && me.role !== "superadmin" && <span className="adminpill">{me.role === "admin" ? "Admin" : "Route Creator"}</span>}
           <span className="un">{me.name}</span>
@@ -2878,9 +2915,10 @@ export default function App() {
             const weekAgo = new Date(now - 7*86400000).toISOString().slice(0,10);
             const monthAgo = new Date(now - 30*86400000).toISOString().slice(0,10);
             const yearAgo = new Date(now - 365*86400000).toISOString().slice(0,10);
-            // We use route date as proxy for send date
-            const rByDate = (from) => routes.filter(r => r.date >= from && r.results?.[me.name]);
-            const todayR = routes.filter(r => r.date === today && r.results?.[me.name]);
+            // Echtes Begehungsdatum nutzen; für Alt-Begehungen ohne Datum Fallback auf Schraub-Datum
+            const ascentDate = r => (r.resultDates && r.resultDates[me.name]) || r.date;
+            const rByDate = (from) => routes.filter(r => r.results?.[me.name] && ascentDate(r) >= from);
+            const todayR = routes.filter(r => r.results?.[me.name] && ascentDate(r) === today);
             const weekR = rByDate(weekAgo); const monthR = rByDate(monthAgo); const yearR = rByDate(yearAgo);
             // Mountain comparison
             const MOUNTAINS = [
@@ -3151,6 +3189,21 @@ export default function App() {
       {newGroupOpen && <NewGroupSheet onClose={() => setNewGroupOpen(false)} achScore={achScore} isAdmin={isAdmin} onCreate={(n, e, isPriv) => { createGroup(n, e, isPriv); setNewGroupOpen(false); }} />}
       {changePinOpen && <ChangePinSheet me={me} onClose={() => setChangePinOpen(false)} onSave={(p) => { setMyPin(p); setChangePinOpen(false); }} />}
       {scoringOpen && <ScoringSheet step={STEP} flash={FLASH_BONUS} onClose={() => setScoringOpen(false)} onSave={(s,f) => { setScoring(s,f); setScoringOpen(false); }} />}
+      {iosInstallOpen && (
+        <div className="scrim" onClick={() => setIosInstallOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="grip" />
+            <div className="shead"><h2>{LANG === "en" ? "Install blocscore" : "blocscore installieren"}</h2><button className="x" onClick={() => setIosInstallOpen(false)}>✕</button></div>
+            <div className="sbody">
+              <div className="note" style={{ marginBottom: 14 }}>{LANG === "en" ? "On iPhone/iPad, add the app to your home screen via Safari:" : "Auf iPhone/iPad fügst du die App über Safari zum Home-Bildschirm hinzu:"}</div>
+              <div className="iosstep"><span className="iosnum">1</span><span>{LANG === "en" ? <>Tap the <b>Share</b> icon <span style={{whiteSpace:"nowrap"}}>( ⬆️ )</span> in the Safari toolbar.</> : <>Tippe in der Safari-Leiste auf das <b>Teilen</b>-Symbol <span style={{whiteSpace:"nowrap"}}>( ⬆️ )</span>.</>}</span></div>
+              <div className="iosstep"><span className="iosnum">2</span><span>{LANG === "en" ? <>Scroll down and tap <b>“Add to Home Screen”</b>.</> : <>Scrolle nach unten und tippe auf <b>„Zum Home-Bildschirm"</b>.</>}</span></div>
+              <div className="iosstep"><span className="iosnum">3</span><span>{LANG === "en" ? <>Tap <b>“Add”</b> — done!</> : <>Tippe oben rechts auf <b>„Hinzufügen"</b> — fertig!</>}</span></div>
+              <button className="save" style={{ marginTop: 16 }} onClick={() => setIosInstallOpen(false)}>{LANG === "en" ? "Got it" : "Verstanden"}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
       {emojiOpen && <ProfileEmojiSheet me={me} achScore={achScore} isAdmin={isAdmin} onClose={() => setEmojiOpen(false)} onPick={(e) => { setMyEmoji(e); setEmojiOpen(false); }} />}
       {confirmCreator && (
@@ -3564,6 +3617,7 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
   const [note, setNote] = useState(route?.note || "");
   const [archived, setArchived] = useState(route?.archived || false);
   const [results, setResults] = useState(route?.results ? { ...route.results } : {});
+  const [resultDates, setResultDates] = useState(route?.resultDates ? { ...route.resultDates } : {});
   const [photos, setPhotos] = useState([]);
   const [photoBusy, setPhotoBusy] = useState(false);
   const fileRef = useRef(null);
@@ -3574,13 +3628,17 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
   useEffect(() => { let on = true; (async () => { try { if (!route?.photos?.length) return; const out = []; for (const id of route.photos) { if (!id) continue; if (typeof id === "string" && id.startsWith("data:")) { out.push({ id, dataUrl: id }); } else { try { const b = await loadPhotoBlob(id); if (b) out.push({ id, dataUrl: b }); } catch(_){} } } if (on) setPhotos(out); } catch(e) { console.error("photo load error", e); } })(); return () => { on = false; }; }, []);
   async function onPickFiles(e) { const files = Array.from(e.target.files || []); e.target.value = ""; if (!files.length) return; setPhotoBusy(true); const add = []; for (const f of files) { try { add.push({ id: uid(), dataUrl: await downscale(f) }); } catch (_) {} } setPhotos(p => [...p, ...add]); setPhotoBusy(false); }
   function removePhoto(id) { setPhotos(p => p.filter(x => x.id !== id)); }
-  function setMine(s) { setResults(r => ({ ...r, [me.name]: r[me.name] === s ? null : s })); }
+  function setMine(s) {
+    const next = results[me.name] === s ? null : s;
+    setResults(r => ({ ...r, [me.name]: next }));
+    setResultDates(d => { const nd = { ...d }; if (next === null) delete nd[me.name]; else nd[me.name] = todayISO(); return nd; });
+  }
   async function commit() {
     if (!valid) return;
     const keepIds = photos.map(p => p.id);
     for (const ph of photos) if (!String(ph.id).startsWith("data:")) await savePhotoBlob(ph.id, ph.dataUrl);
     for (const oid of origPhotoIds) if (!keepIds.includes(oid) && !String(oid).startsWith("data:")) await deletePhotoBlob(oid);
-    onSave({ id: route?.id || uid(), date, gym: wall, grade, name: name.trim(), nick: nick.trim(), note: note.trim(), archived, results, photos: keepIds, tips: route?.tips || [] });
+    onSave({ id: route?.id || uid(), date, gym: wall, grade, name: name.trim(), nick: nick.trim(), note: note.trim(), archived, results, resultDates, photos: keepIds, tips: route?.tips || [] });
   }
 
   return (
@@ -3644,7 +3702,7 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
 
           <div className="field"><label>Dein Ergebnis</label>
             <div className="bigtri">
-              <button onClick={() => setResults(r => ({ ...r, [me.name]: null }))} className={!myStatus ? "a" : ""}>—<span className="sp">offen</span></button>
+              <button onClick={() => { setResults(r => ({ ...r, [me.name]: null })); setResultDates(d => { const nd = { ...d }; delete nd[me.name]; return nd; }); }} className={!myStatus ? "a" : ""}>—<span className="sp">offen</span></button>
               <button className={myStatus === "top" ? "a" : ""} onClick={() => setMine("top")}>Top<span className="sp">{fmtPts(topPts(grade))}</span></button>
               <button className={myStatus === "flash" ? "f" : ""} onClick={() => setMine("flash")}>Flash<span className="sp">{fmtPts(topPts(grade) + FLASH_BONUS)}</span></button>
             </div>
