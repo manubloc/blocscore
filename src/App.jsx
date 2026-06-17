@@ -1092,41 +1092,41 @@ function buildAchievements(lang) {
   const L = {Gesamt:en?"Total":"Gesamt",Flash:"Flash",Punkte:en?"Points":"Punkte",Kombi:en?"Combo":"Kombi",Tagesform:en?"Day form":"Tagesform",Spezial:en?"Special":"Spezial",Treue:en?"Loyalty":"Treue",Straßen:en?"Straights":"Straßen",Mehrling:en?"Multiples":"Mehrling",Ausdauer:en?"Endurance":"Ausdauer"};
 
   // GESAMT TOPS — Anfänger 14/sess→~1000 nach 70 sess; Gut 19/sess; Pro 32/sess
-  const TOPS=[40,90,180,350,650,1050,1700,2600,4000,6500,10000,15000,22000,32000,45000];
-  const TNAMES_DE=["Erster Zug","Handflächen warm","Dabei","Stammgast","Fleißig","Ehrgeizig","Halbhundert","Hartnäckig","Hundert!","Obsessiv","Zweihundert","Dreihundert","Fünfhundert","Dreiviertel-Tausend","Tausendsassa","Zweitausend","Dreitausend","Boulder-Gott"];
-  const TNAMES_EN=["First Move","Palms Warm","On Board","Regular","Diligent","Ambitious","Half Century","Persistent","Hundred!","Obsessed","Two Hundred","Three Hundred","Five Hundred","Three-Quarter K","Jack of All","Two Thousand","Three Thousand","Boulder God"];
+  const TOPS=[40,90,180,350,650,1050,1700,2600,4000,6500,10000,15000,22000,32000,45000,60000,80000,110000,150000,200000];
+  const TNAMES_DE=["Erster Zug","Handflächen warm","Dabei","Stammgast","Fleißig","Ehrgeizig","Halbhundert","Hartnäckig","Hundert!","Obsessiv","Zweihundert","Dreihundert","Fünfhundert","Dreiviertel-Tausend","Tausendsassa","Zweitausend","Dreitausend","Boulder-Gott","Boulder-Titan","Unaufhaltbar"];
+  const TNAMES_EN=["First Move","Palms Warm","On Board","Regular","Diligent","Ambitious","Half Century","Persistent","Hundred!","Obsessed","Two Hundred","Three Hundred","Five Hundred","Three-Quarter K","Jack of All","Two Thousand","Three Thousand","Boulder God","Boulder Titan","Unstoppable"];
   TOPS.forEach((n,i)=>push(L.Gesamt,"🧗",tier(en?TNAMES_EN:TNAMES_DE,i,""),en?`Climb ${n} routes total`:`Schaffe ${n} Routen insgesamt`,n,"tops",pts(n)+Math.floor(n/10)));
 
   // FLASH — harder, Anfänger flasst selten, Pro flasht ~6/sess
-  const FLASHES=[25,65,140,280,520,950,1900,3500];
-  const FDE=["Erster Flash","Flash-Trio","Flash-Fünf","Flash-Zehn","Flash-Profi","Flash-Meister","Flash-Legende","Flash-Elite","Flash-Gott","Flash-Mythos"];
-  const FEN=["First Flash","Flash Trio","Flash Five","Flash Ten","Flash Pro","Flash Master","Flash Legend","Flash Elite","Flash God","Flash Myth"];
+  const FLASHES=[25,65,140,280,520,950,1900,3500,5500,8500,13000,20000];
+  const FDE=["Erster Flash","Flash-Trio","Flash-Fünf","Flash-Zehn","Flash-Profi","Flash-Meister","Flash-Legende","Flash-Elite","Flash-Gott","Flash-Mythos","Flash-Titan","Flash-Unsterblich"];
+  const FEN=["First Flash","Flash Trio","Flash Five","Flash Ten","Flash Pro","Flash Master","Flash Legend","Flash Elite","Flash God","Flash Myth","Flash Titan","Flash Immortal"];
   FLASHES.forEach((n,i)=>push("Flash","⚡",tier(en?FEN:FDE,i,""),en?`Flash ${n} routes`:`Flashe ${n} Routen`,n,"flashes",Math.round(pts(n)*2.2)));
 
   // PUNKTE — Anfänger: 7pts/sess→100pts nach 14 sess; Gut: 22.5; Pro: 51.5
-  const PTS_V=[300,750,1600,3500,7500,15000,30000,65000,130000,260000];
-  const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott"];
-  const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God"];
+  const PTS_V=[300,750,1600,3500,7500,15000,30000,65000,130000,260000,420000,650000,950000];
+  const PDE=["Erste Punkte","Guter Start","Dreißig","Dreistellig","Gut","Sehr gut","Sechshundert","Tausend","Elite","Hochleistung","Punktegott","Punkte-Titan","Punkte-Universum"];
+  const PEN=["First Points","Good Start","Thirty","Triple Digits","Good","Very Good","Six Hundred","Thousand","Elite","High Performance","Point God","Point Titan","Point Universe"];
   PTS_V.forEach((n,i)=>push(L.Punkte,"💎",tier(en?PEN:PDE,i,""),en?`Earn ${n} total points`:`Erreiche ${n} Spielpunkte`,n,"points",pts(n)+5));
 
   // GRADE — kalibriert: 1er/2er/3er Anfänger, 4er/5er Gut, 6er/7er Fortgeschritten, 8er Pro
   const gScale=[0,1,1.2,1.5,2,3,5,8,15];
   GRADES.forEach(g=>{
-    const tC=g<=2?[25,75,150,300,600,1200,2500]:g<=4?[15,40,100,200,400,750,1500]:g<=6?[5,20,50,120,250,500]:g===7?[2,10,30,75,150]:[1,5,20,50,100];
+    const tC=g<=2?[25,75,150,300,600,1200,2500,5000,9000]:g<=4?[15,40,100,200,400,750,1500,3000,5500]:g<=6?[5,20,50,120,250,500,1000,2000]:g===7?[2,10,30,75,150,350,700]:[1,5,20,50,100,250,500];
     tC.forEach((n)=>push(`${g}`,"🪨",en?`${n}× Grade ${g}`:`${n}× ${g}er`,en?`Climb ${n} grade-${g} routes`:`Klettere ${n} ${g}er-Routen`,n,`grade:${g}:t`,Math.round(pts(n)*gScale[g])));
-    const fC=g<=3?[25,75,180]:g<=5?[15,50,120,250,500]:g<=7?[5,25,60,150,300]:[2,12,40,100];
+    const fC=g<=3?[25,75,180,400]:g<=5?[15,50,120,250,500,1000]:g<=7?[5,25,60,150,300,600]:[2,12,40,100,250];
     fC.forEach((n)=>push(`${g}`,"⚡",en?`Flash ${n}× Grade ${g}`:`Flash ${n}× ${g}er`,en?`Flash ${n} grade-${g} routes`:`Flashe ${n} ${g}er-Routen`,n,`grade:${g}:f`,Math.round(pts(n)*gScale[g]*2)));
   });
 
   // FARBE
   COLORS.forEach(c=>{
-    [10,30,75,150,300,600,1200].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
-    [15,40,90,200,400].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
+    [10,30,75,150,300,600,1200,2400,4800,9000].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
+    [15,40,90,200,400,800,1600].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
-  [20,28,38,50,64,80,100].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
-  [10,15,22,30,40,52,66].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
+  [20,28,38,50,64,80,100,125,155,190].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  [10,15,22,30,40,52,66,82,100,120].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
 
   // KOMBI / SPEZIAL
   [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
@@ -1137,14 +1137,14 @@ function buildAchievements(lang) {
   [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
 
   // MEHRLING
-  [[6,50],[9,90],[13,130],[18,175],[24,230],[32,320]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+  [[6,50],[9,90],[13,130],[18,175],[24,230],[32,320],[42,420],[56,560],[72,720]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
 
   // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
-  [[5,8],[10,14],[20,20],[40,30],[65,42],[95,55],[130,68],[175,85],[230,105],[300,135],[380,168],[480,220],[600,300]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
+  [[5,8],[10,14],[20,20],[40,30],[65,42],[95,55],[130,68],[175,85],[230,105],[300,135],[380,168],[480,220],[600,300],[800,360],[1100,430],[1500,520],[2000,640],[2700,800]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
 
   // AUSDAUER
-  [2,3,5,7,10,13,17,22,28,36,44,52,78].forEach(n=>push(L.Ausdauer,"⏳",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
-  [3,5,8,12,16,22,32,52].forEach(n=>push(L.Ausdauer,"⏳",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
+  [2,3,5,7,10,13,17,22,28,36,44,52,78,104,156,208].forEach(n=>push(L.Ausdauer,"⏳",en?`${n} weeks in a row`:`${n} Wochen in Folge`,en?`At least 1×/week for ${n} weeks`:`Mindestens 1×/Woche für ${n} Wochen`,n,"weekStreak1",pts(n*3)+6));
+  [3,5,8,12,16,22,32,52,78,104].forEach(n=>push(L.Ausdauer,"⏳",en?`2×/week · ${n} weeks`:`2×/Woche · ${n} Wochen`,en?`At least 2×/week for ${n} weeks`:`Mindestens 2×/Woche für ${n} Wochen`,n,"weekStreak2",pts(n*5)+10));
   [20,35,55,75,90,100].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days in 100`:`${n} Tage in 100`,en?`Climb on ${n} days within 100 days`:`An ${n} Tagen innerhalb von 100 Tagen`,n,"daysIn100",pts(n*3)+6));
   [40,80,120,170,220,270,320,360].forEach(n=>push(L.Ausdauer,"📆",en?`${n} days/year`:`${n} Tage/Jahr`,en?`Climb on ${n} days within a year`:`An ${n} Tagen innerhalb eines Jahres`,n,"daysIn365",pts(n*2)+6));
 
@@ -1214,17 +1214,17 @@ function buildAchievements(lang) {
 
   // SERIE — Klettertage in Folge (echte Kalendertage)
   const SER = en?"Streak":"Serie";
-  [[2,en?"2-Day Streak":"2 Tage in Folge",40],[3,en?"3-Day Streak":"3 Tage in Folge",70],[5,en?"5-Day Streak":"5 Tage in Folge",120],[7,en?"7-Day Streak":"7 Tage in Folge",180],[10,en?"10-Day Streak":"10 Tage in Folge",280]]
+  [[2,en?"2-Day Streak":"2 Tage in Folge",40],[3,en?"3-Day Streak":"3 Tage in Folge",70],[5,en?"5-Day Streak":"5 Tage in Folge",120],[7,en?"7-Day Streak":"7 Tage in Folge",180],[10,en?"10-Day Streak":"10 Tage in Folge",280],[14,en?"14-Day Streak":"14 Tage in Folge",400],[21,en?"21-Day Streak":"21 Tage in Folge",560]]
     .forEach(([k,nm,p])=>push(SER,"🔂",nm,en?`Climb ${k} calendar days in a row`:`Klettere an ${k} Kalendertagen in Folge`,k,"maxConsecutiveDays",p));
 
   // PERFEKTER TAG — alle Begehungen eines Tages waren Flashes
   const PT = en?"Flawless":"Makellos";
-  [[5,en?"Flawless 5":"Makellos 5"],[8,en?"Flawless 8":"Makellos 8"],[12,en?"Flawless 12":"Makellos 12"],[18,en?"Flawless 18":"Makellos 18"]]
+  [[5,en?"Flawless 5":"Makellos 5"],[8,en?"Flawless 8":"Makellos 8"],[12,en?"Flawless 12":"Makellos 12"],[18,en?"Flawless 18":"Makellos 18"],[25,en?"Flawless 25":"Makellos 25"],[35,en?"Flawless 35":"Makellos 35"]]
     .forEach(([k,nm],i)=>push(PT,"💯",nm,en?`A day where all ${k}+ sends were flashes`:`Ein Tag, an dem alle ${k}+ Begehungen Flashes waren`,k,"bestAllFlashDay",70+i*45));
 
   // WOCHENEND-KRIEGER — an Wochenend-Tagen klettern
   const WE = en?"Weekend Warrior":"Wochenend-Krieger";
-  [[5,en?"Weekend Warrior 5":"Wochenend-Krieger 5"],[15,en?"Weekend Warrior 15":"Wochenend-Krieger 15"],[40,en?"Weekend Warrior 40":"Wochenend-Krieger 40"],[90,en?"Weekend Warrior 90":"Wochenend-Krieger 90"]]
+  [[5,en?"Weekend Warrior 5":"Wochenend-Krieger 5"],[15,en?"Weekend Warrior 15":"Wochenend-Krieger 15"],[40,en?"Weekend Warrior 40":"Wochenend-Krieger 40"],[90,en?"Weekend Warrior 90":"Wochenend-Krieger 90"],[150,en?"Weekend Warrior 150":"Wochenend-Krieger 150"],[250,en?"Weekend Warrior 250":"Wochenend-Krieger 250"]]
     .forEach(([k,nm])=>push(WE,"📅",nm,en?`Climb on ${k} weekend days`:`Klettere an ${k} Wochenend-Tagen`,k,"weekendDays",pts(k*4)+20));
 
   return A;
@@ -1275,16 +1275,22 @@ const LEVEL_NAMES = [
 const TOTAL_SKILLPOINTS = ACH_DE.reduce((s, a) => s + a.pts, 0);
 const ACH_COUNT = ACH_DE.length;
 /* ── LEVEL-KURVE ──────────────────────────────────────────────────────────────
- * Level = Anzahl freigeschalteter ERFOLGE (direkt proportional zu den Erfolgen).
- * Kalibrierung: Level 90 ≈ 300 Erfolge · Level 100 = alle Erfolge (~ACH_COUNT).
- * Bewusst langsam: die hohen Erfolge (tausende Tops, hunderte Klettertage) brauchen
- * mehrere Hundert Sessions — nicht in 100 Sessions erledigbar.
- * Justierbar: LEVEL_POWER (kleiner = oben dichter). Kurve skaliert automatisch mit ACH_COUNT. */
-const LEVEL_POWER = 0.7;
+ * Level = Anzahl freigeschalteter ERFOLGE. WACHSENDE Abstände: jedes Level kostet
+ * mehr Erfolge als das vorige -> je höher das Level, desto schwerer der Aufstieg.
+ *   Abstand(Level k -> k+1) = LEVEL_BASE_GAP + grow*(k-1)
+ *   need[2] = LEVEL_BASE_GAP (sanfter Start) · need[100] = ACH_COUNT (alles frei)
+ * 'grow' wird automatisch aus ACH_COUNT abgeleitet: je mehr Erfolge es gibt, desto
+ * stärker wachsen die Abstände nach oben. Da die leichten Erfolge zuerst kommen und
+ * oben nur die brutalen Stufen (zehntausende Tops, tausende Klettertage) übrig sind,
+ * dauern die obersten Level real viele Hundert Sessions.
+ * Justierbar: LEVEL_BASE_GAP (kleiner = sanfterer Start + stärker steigende Kurve). */
+const LEVEL_BASE_GAP = 3;
 function buildLevels() {
   const out = [];
+  const grow = (ACH_COUNT - LEVEL_BASE_GAP * 99) / 4851; // 4851 = 99*98/2 -> need[100]=ACH_COUNT
   for (let i = 1; i <= 100; i++) {
-    const need = i === 1 ? 0 : Math.round(ACH_COUNT * Math.pow((i - 1) / 99, LEVEL_POWER));
+    const k = i - 1;
+    const need = i === 1 ? 0 : Math.round(LEVEL_BASE_GAP * k + grow * k * (k - 1) / 2);
     out.push({ level: i, name: LEVEL_NAMES[i - 1] || ("Level " + i), need });
   }
   return out;
@@ -3139,7 +3145,7 @@ export default function App() {
                           {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const inline = r.photos[0].startsWith("data:"); const src = inline ? r.photos[0] : await loadPhotoBlob(r.photos[0]); setLightbox(src); }} />}
                           <div className="rbody">
                             <div className="rchead">
-                              <div className={"gcol" + (col === "#181C22" ? " black-grade" : "")} style={col ? { "--gcol-color": col === "#181C22" ? "rgba(255,255,255,0.85)" : col, background: col === "#181C22" ? "rgba(255,255,255,0.35)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
+                              <div className={"gcol" + (col === "#181C22" ? " black-grade" : "")} style={col ? { "--gcol-color": col === "#181C22" ? "#181C22" : col, background: col === "#181C22" ? "rgba(255,255,255,0.9)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
                                 <span className="ggrade">{r.grade}</span>
                               </div>
                               <div className="rname">
@@ -3348,7 +3354,7 @@ export default function App() {
               {hallStats.popularRoutes.map((r, i) => (
                 <div key={r.id} className="hpop-row" onClick={() => { setTab("routes"); setTimeout(() => jumpToRoute(r.id), 80); }} style={{ cursor: "pointer" }}>
                   <span className="hrank">{medal(i) || (i + 1)}</span>
-                  <div className={"gcol" + (colorOf(r.name) === "#181C22" ? " black-grade" : "")} style={colorOf(r.name) ? { "--gcol-color": colorOf(r.name) === "#181C22" ? "rgba(255,255,255,0.85)" : colorOf(r.name), background: colorOf(r.name) === "#181C22" ? "rgba(255,255,255,0.35)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
+                  <div className={"gcol" + (colorOf(r.name) === "#181C22" ? " black-grade" : "")} style={colorOf(r.name) ? { "--gcol-color": colorOf(r.name) === "#181C22" ? "#181C22" : colorOf(r.name), background: colorOf(r.name) === "#181C22" ? "rgba(255,255,255,0.9)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
                     <span className="ggrade">{r.grade}</span>
                   </div>
                   <div className="hrname">
