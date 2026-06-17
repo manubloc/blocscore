@@ -68,6 +68,48 @@ function initials(n) { const p = (n || "?").trim().split(/\s+/); return (p[0][0]
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function fmtDate(iso) { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}.${m}.${y}`; }
 function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+
+/* ── PIN-Sicherheit: Hashing statt Klartext (PBKDF2/SHA-256, Salt pro Account) ── */
+const CRYPTO_OK = typeof crypto !== "undefined" && !!crypto.subtle && typeof TextEncoder !== "undefined";
+function _b64(buf) { let s = ""; const b = new Uint8Array(buf); for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+function _unb64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+function genSalt() { const a = new Uint8Array(16); crypto.getRandomValues(a); return _b64(a); }
+async function hashPin(pin, saltB64) {
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(String(pin)), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: _unb64(saltB64), iterations: 120000, hash: "SHA-256" }, km, 256);
+  return _b64(bits);
+}
+async function verifyPin(pin, acc) {
+  if (acc && acc.pinHash && acc.pinSalt) {
+    if (!CRYPTO_OK) return false;
+    try { return (await hashPin(pin, acc.pinSalt)) === acc.pinHash; } catch (e) { return false; }
+  }
+  if (acc && acc.pin) return pin === acc.pin; // Legacy-Fallback (noch nicht migriert)
+  return true; // kein PIN gesetzt → offen
+}
+// Liefert die zu speichernden PIN-Felder (gehasht); ohne Crypto-Kontext Fallback auf Klartext
+async function makePinFields(pin) {
+  if (!pin) return { pinHash: "", pinSalt: "" };
+  if (!CRYPTO_OK) return { pin };
+  const salt = genSalt();
+  return { pinHash: await hashPin(pin, salt), pinSalt: salt };
+}
+// Einmalige Migration: bestehende Klartext-PINs → Hash (Daten bleiben erhalten, PIN funktioniert weiter)
+async function migrateAccountPins(c) {
+  if (!c || !c.accounts || !CRYPTO_OK) return c;
+  let changed = false;
+  const accounts = [];
+  for (const a of c.accounts) {
+    if (a.pin && !a.pinHash) {
+      const salt = genSalt();
+      const pinHash = await hashPin(a.pin, salt);
+      const { pin, ...rest } = a;
+      accounts.push({ ...rest, pinHash, pinSalt: salt });
+      changed = true;
+    } else accounts.push(a);
+  }
+  return changed ? { ...c, accounts } : c;
+}
 function fmtPts(n) { return (Math.round(n * 100) / 100).toLocaleString("de-DE", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
 function avColor(name) { let h = 0; for (let i = 0; i < (name || "").length; i++) h = (h * 31 + name.charCodeAt(i)) % 360; return `hsl(${h} 45% 62%)`; }
 function ago(ts) { const s = (Date.now() - ts) / 1000; if (s < 60) return "gerade eben"; if (s < 3600) return Math.floor(s / 60) + " min"; if (s < 86400) return Math.floor(s / 3600) + " h"; return Math.floor(s / 86400) + " d"; }
@@ -1088,8 +1130,9 @@ function downscale(file, maxDim = 1080, targetKB = 70) {
 }
 const SEED_COMMUNITY = {
   accounts: [
-    { id: "acc-admin", name: "admin", role: "admin", pin: "12345", staff: true },
-    { id: "acc-superadmin", name: "superadmin", role: "superadmin", pin: "einsalamibrotbitte", staff: true },
+    // Standard-Logins (nur für die Erst-Einrichtung) — BITTE nach dem ersten Login in der App ändern!
+    { id: "acc-admin", name: "admin", role: "admin", pin: "bloc-admin-2748", staff: true },
+    { id: "acc-superadmin", name: "superadmin", role: "superadmin", pin: "bloc-crux-superadmin-5193", staff: true },
   ],
   routes: SEED.routes.map(r => ({ ...r, results: {} })),
   groups: [],
@@ -1872,10 +1915,10 @@ function LoginScreen({ accounts, onLogin, onSignup, lang, onLang }) {
   const [priv, setPriv] = useState(false);
   const [err, setErr] = useState("");
 
-  function doLogin() {
+  async function doLogin() {
     const acc = accounts.find(a => a.name.toLowerCase() === name.trim().toLowerCase());
     if (!acc) return setErr(t("login.errNoAcc"));
-    if ((acc.pin || "") && pin !== acc.pin) return setErr(t("login.errPin"));
+    if (!(await verifyPin(pin, acc))) return setErr(t("login.errPin"));
     onLogin(acc.id);
   }
   function doSignup() {
@@ -1989,7 +2032,7 @@ export default function App() {
     else if (isIOS) { setIosInstallOpen(true); }
   }
 
-  useEffect(() => { (async () => { const c = await loadCommunity(); setCommunity(c && c.accounts ? c : SEED_COMMUNITY); setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
+  useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
   useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
 
   const accounts = community?.accounts || [];
@@ -2349,7 +2392,7 @@ export default function App() {
       pushSyncLog("❌ Fehler beim Sync: " + (err.message || err), "err");
     }
   }
-  function setMyPin(p) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, pin: p } : a) })); }
+  async function setMyPin(p) { const f = await makePinFields(p); setCommunity(c => ({ ...c, accounts: c.accounts.map(a => { if (a.id !== me.id) return a; const { pin, pinHash, pinSalt, ...rest } = a; return { ...rest, ...f }; }) })); }
   function setScrewDate(wall, date) {
     setCommunity(c => ({ ...c, screwDates: { ...c.screwDates, [wall]: date } }));
   }
@@ -2370,7 +2413,7 @@ export default function App() {
     const acc = accounts.find(a => a.id === id);
     if (!acc?.skipIntro) setShowIntro(true);
   }
-  function handleSignup({ name, pin, role, private: priv, emoji }) { const acc = { id: uid(), name, pin, role, private: !!priv, emoji: emoji || "", lastSeen: todayISO() }; setCommunity(c => ({ ...c, accounts: [...c.accounts, acc] })); handleLogin(acc.id); }
+  async function handleSignup({ name, pin, role, private: priv, emoji }) { const f = await makePinFields(pin); const acc = { id: uid(), name, ...f, role, private: !!priv, emoji: emoji || "", lastSeen: todayISO() }; setCommunity(c => ({ ...c, accounts: [...c.accounts, acc] })); handleLogin(acc.id); }
   function logout() { setSession(null); saveSession(null); setTab("routes"); }
   function dismissIntro() {
     setShowIntro(false);
