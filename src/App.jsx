@@ -1229,25 +1229,25 @@ const LEVEL_NAMES = [
   "Friction Deity","Boulder Legend","Crux Immortal","The Sender of Senders","Boulder Deity",
 ];
 const TOTAL_SKILLPOINTS = ACH_DE.reduce((s, a) => s + a.pts, 0);
+const ACH_COUNT = ACH_DE.length;
 /* ── LEVEL-KURVE ──────────────────────────────────────────────────────────────
- * Level basieren auf den gesammelten KLETTER-PUNKTEN (wachsen gleichmäßig, ~1–2
- * pro Route), NICHT auf Skillpoints (die sprunghaft durch Tages-/Speed-Achievements
- * steigen und das Level sonst explodieren lassen).
- * Kalibrierung: ~2 Sessions ≈ Level 2 · Level 100 = jahrelanges Lebenswerk.
- * Justierbar: LEVEL_BASE = Punkte für Level 2, LEVEL_POWER = Steilheit (höher = steiler). */
-const LEVEL_BASE = 25;
-const LEVEL_POWER = 1.6;
+ * Level = Anzahl freigeschalteter ERFOLGE (direkt proportional zu den Erfolgen).
+ * Kalibrierung: Level 90 ≈ 300 Erfolge · Level 100 = alle Erfolge (~ACH_COUNT).
+ * Bewusst langsam: die hohen Erfolge (tausende Tops, hunderte Klettertage) brauchen
+ * mehrere Hundert Sessions — nicht in 100 Sessions erledigbar.
+ * Justierbar: LEVEL_POWER (kleiner = oben dichter). Kurve skaliert automatisch mit ACH_COUNT. */
+const LEVEL_POWER = 0.7;
 function buildLevels() {
   const out = [];
   for (let i = 1; i <= 100; i++) {
-    const need = i === 1 ? 0 : Math.round(LEVEL_BASE * Math.pow(i - 1, LEVEL_POWER));
+    const need = i === 1 ? 0 : Math.round(ACH_COUNT * Math.pow((i - 1) / 99, LEVEL_POWER));
     out.push({ level: i, name: LEVEL_NAMES[i - 1] || ("Level " + i), need });
   }
   return out;
 }
 const LEVELS = buildLevels();
 const LEVEL_MAX_XP = LEVELS[LEVELS.length - 1].need;
-// Liefert das aktuelle Level + das nächste (oder null bei Max) für einen Punkte-Stand
+// Liefert das aktuelle Level + das nächste (oder null bei Max) für eine Erfolge-Anzahl
 function levelFor(xp) {
   const x = xp || 0;
   let cur = LEVELS[0];
@@ -2629,8 +2629,8 @@ export default function App() {
   }, [myAgg, lang]);
   const nextUp = useMemo(() => achState.evald.filter(a => !a.done).sort((a, b) => (b.ratio - a.ratio) || (a.target - b.target)).slice(0, 10), [achState]);
   const achScore = achState.score;
-  // Level basiert auf den gesammelten Kletter-Punkten (gleichmäßiges Wachstum)
-  const levelXp = myAgg.points || 0;
+  // Level = Anzahl freigeschalteter Erfolge (proportional zu den Erfolgen)
+  const levelXp = achState.unlocked;
   const myLevelInfo = levelFor(levelXp);
   const [levelUp, setLevelUp] = useState(null);
   const lvlBaseRef = useRef({ uid: null, level: null });
@@ -3166,22 +3166,21 @@ export default function App() {
               const into = levelXp - lv.need;
               const span = lv.next ? (lv.next.need - lv.need) : 1;
               const pct = lv.next ? Math.max(2, Math.min(100, (into / span) * 100)) : 100;
-              const ptsR = Math.round(levelXp);
               return (
                 <div className="lvlcard">
                   <div className="lvlhead">
                     <div className="lvlnum">{lv.level}<span>/100</span></div>
                     <div className="lvlname">
                       <div className="lvltitle">{lv.name}</div>
-                      <div className="lvlsub">{ptsR} {LANG === "en" ? "points" : "Punkte"}</div>
+                      <div className="lvlsub">{levelXp} / {ACH_COUNT} {LANG === "en" ? "achievements" : "Erfolge"}</div>
                     </div>
                   </div>
                   <div className="lvlbar"><i style={{ width: pct + "%" }} /></div>
                   <div className="lvlnext">
                     {lv.next
                       ? (LANG === "en"
-                          ? <><b>{Math.max(0, Math.ceil(lv.next.need - levelXp))}</b> points to Level {lv.next.level} · {lv.next.name}</>
-                          : <><b>{Math.max(0, Math.ceil(lv.next.need - levelXp))}</b> Punkte bis Level {lv.next.level} · {lv.next.name}</>)
+                          ? <><b>{lv.next.need - levelXp}</b> more achievement{lv.next.need - levelXp === 1 ? "" : "s"} to Level {lv.next.level} · {lv.next.name}</>
+                          : <>noch <b>{lv.next.need - levelXp}</b> Erfolg{lv.next.need - levelXp === 1 ? "" : "e"} bis Level {lv.next.level} · {lv.next.name}</>)
                       : <>🏔 {LANG === "en" ? "Max level reached — you are a legend!" : "Maximales Level erreicht — du bist eine Legende!"}</>}
                   </div>
                 </div>
