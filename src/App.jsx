@@ -1959,6 +1959,14 @@ const CSS = `
 .installhint-bubble::before { content:""; position:absolute; top:-6px; right:20px; width:11px; height:11px; background:#1c2129; border-left:1.4px solid rgba(184,255,0,.65); border-top:1.4px solid rgba(184,255,0,.65); transform:rotate(45deg); }
 .installhint-close { flex:none; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:var(--chalk); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
 .installhint-close:active { background:rgba(255,255,255,.16); }
+.autoarchive-toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:200; background:#1c2129; border:1.4px solid rgba(184,255,0,.6); border-radius:11px; color:#b8ff00; font-size:13px; font-weight:700; padding:10px 16px; white-space:nowrap; box-shadow:0 6px 20px rgba(0,0,0,.4); pointer-events:none; animation:ihIn .3s cubic-bezier(.2,1,.4,1); }
+.edit.infobtn { opacity:0.65; }
+.ri-date-chip { margin-left:auto; display:flex; align-items:center; gap:5px; font-size:12px; color:var(--muted); background:var(--panel2); border-radius:7px; padding:4px 8px; }
+.ri-grade-row { display:flex; align-items:center; gap:12px; padding:14px 0 10px; border-bottom:1px solid var(--line); margin-bottom:12px; }
+.ri-names { flex:1; min-width:0; }
+.ri-nick { font-size:19px; font-weight:800; color:var(--chalk); line-height:1.2; }
+.ri-color { font-size:13px; color:var(--muted); margin-top:2px; }
+.ri-note { font-size:14px; color:var(--muted); padding:9px 12px; background:var(--panel2); border-radius:9px; margin-bottom:12px; }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -2659,6 +2667,28 @@ export default function App() {
   useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) }; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
   useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
 
+  // Auto-Archivierung: wenn heute ein Umschraubdatum ist, alle Routen dieser Wand archivieren
+  const [autoArchiveMsg, setAutoArchiveMsg] = useState("");
+  const didAutoArchiveRef = useRef(false);
+  useEffect(() => {
+    if (!ready || !community || didAutoArchiveRef.current) return;
+    didAutoArchiveRef.current = true;
+    const tod = todayISO();
+    const wallsToArchive = Object.entries(community.screwDates || {})
+      .filter(([w, d]) => d === tod && (community.autoArchived || {})[w] !== tod)
+      .map(([w]) => w);
+    if (!wallsToArchive.length) return;
+    const wallSet = new Set(wallsToArchive);
+    const toArchiveIds = new Set((community.routes || []).filter(r => !r.archived && wallSet.has(wallCanon(r.gym))).map(r => r.id));
+    if (!toArchiveIds.size) return;
+    const newAutoArchived = { ...(community.autoArchived || {}) };
+    wallsToArchive.forEach(w => { newAutoArchived[w] = tod; });
+    setCommunity(c => ({ ...c, routes: c.routes.map(r => toArchiveIds.has(r.id) ? { ...r, archived: true } : r), autoArchived: newAutoArchived }));
+    const names = wallsToArchive.map(w => wallName(w)).join(", ");
+    setAutoArchiveMsg(`🗃 ${toArchiveIds.size} Route${toArchiveIds.size !== 1 ? "n" : ""} automatisch archiviert (${names})`);
+  }, [ready]);
+  useEffect(() => { if (autoArchiveMsg) { const t = setTimeout(() => setAutoArchiveMsg(""), 7000); return () => clearTimeout(t); } }, [autoArchiveMsg]);
+
   const accounts = community?.accounts || [];
   const routes = community?.routes || [];
   const today = todayISO();
@@ -3090,8 +3120,7 @@ export default function App() {
         </button>
       </div>
 
-      {showInstall && !installHintDismissed && (
-        <div className="installhint">
+      {showInstall && !installHintDismissed && (        <div className="installhint">
           <div className="installhint-bubble" onClick={doInstall} role="button" tabIndex={0}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" /></svg>
             <span>{LANG === "en" ? "Install App" : "App installieren"}</span>
@@ -3101,6 +3130,8 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {autoArchiveMsg && <div className="autoarchive-toast">{autoArchiveMsg}</div>}
 
       {/* BOARD */}
       {tab === "board" && (<>
@@ -3212,7 +3243,12 @@ export default function App() {
                                 <span className={"rschip top" + (topN > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
                                 <span className={"rschip flash" + (flashN > 0 ? " has" : "")}><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flashN}</span>
                               </div>
-                              {canSetRoutes && <button className="edit" onClick={(e) => { e.stopPropagation(); setEditing(r); }} title={LANG==="en"?"Edit route":"Route bearbeiten"}><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l3.5-1L17 5.5 14.5 3 4 13.5 3 17z"/></svg></button>}
+                              <button className={"edit" + (canSetRoutes ? "" : " infobtn")} onClick={(e) => { e.stopPropagation(); setEditing(r); }} title={canSetRoutes ? (LANG==="en"?"Edit route":"Route bearbeiten") : (LANG==="en"?"Route info":"Route Info")}>
+                                {canSetRoutes
+                                  ? <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l3.5-1L17 5.5 14.5 3 4 13.5 3 17z"/></svg>
+                                  : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8.5" strokeWidth="2.8"/><line x1="12" y1="11" x2="12" y2="17"/></svg>
+                                }
+                              </button>
                             </div>
                             <div className="rfoot">
                               <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
@@ -3943,7 +3979,7 @@ export default function App() {
 
       {editing && (
         <RouteSheetBoundary onClose={() => setEditing(null)}>
-        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} screwDates={screwDates}
+        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} readOnly={!canSetRoutes && editing && editing !== "new"} screwDates={screwDates}
           onClose={() => setEditing(null)} onSave={(r) => { upsertRoute(r); setEditing(null); }} onDelete={(id) => { deleteRoute(id); setEditing(null); }} />
         </RouteSheetBoundary>
       )}
@@ -4370,7 +4406,7 @@ class RouteSheetBoundary extends React.Component {
   }
 }
 
-function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, onDelete, screwDates }) {
+function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, onClose, onSave, onDelete, screwDates }) {
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
   const [wall, setWall] = useState(route ? (wallOf(route.gym) ? wallCanon(route.gym) : (gyms?.[0] || null)) : null);
@@ -4419,9 +4455,49 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
     <div className={"scrim" + (isNew && !wall ? " full" : "")} onClick={onClose}>
       <div className={"sheet" + (isNew && !wall ? " planmode" : "")} onClick={e => e.stopPropagation()}>
         <div className="grip" />
-        <div className="shead"><h2>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Edit route":"Route bearbeiten")}</h2><div style={{display:"flex",gap:8,alignItems:"center"}}>{!isNew && <button className="shareIcon" onClick={doShareRoute} title={LANG==="en"?"Share route":"Route teilen"}>{shareMsg ? shareMsg : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>}</button>}<button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div></div>
+        <div className="shead">
+          <h2>{readOnly ? (LANG==="en"?"Route Info":"Route Info") : isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Edit route":"Route bearbeiten")}</h2>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            {!isNew && <button className="shareIcon" onClick={doShareRoute} title={LANG==="en"?"Share route":"Route teilen"}>{shareMsg ? shareMsg : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>}</button>}
+            <button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+          </div>
+        </div>
         <div className="sbody">
-          {(!wall && isNew) ? (
+          {readOnly ? (
+            // ── Info-Ansicht für Climber (kein Bearbeiten) ────────────────
+            <>
+              <div className="wallbar">
+                <span className="wallbar-ic"><WallIcon code={wall} size={20} /></span>
+                <span className="wb-name">{wallName(wall)}</span>
+                <span className="ri-date-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>{fmtDate(date)}</span>
+              </div>
+              <div className="ri-grade-row">
+                <div className="gcol" style={{ "--gcol-color": colorOf(route.name) || "#b8ff00", background: colorOf(route.name) === "#181C22" ? "rgba(255,255,255,0.9)" : "transparent", width: 42, height: 42 }}>
+                  <span className="ggrade" style={{ fontSize: 17 }}>{grade}</span>
+                </div>
+                <div className="ri-names">
+                  <div className="ri-nick">{nick}</div>
+                  {route.name && <div className="ri-color">{route.name}</div>}
+                </div>
+              </div>
+              {note && <div className="ri-note">{note}</div>}
+              {photos.length > 0 && (
+                <div className="photos" style={{ marginBottom: 12 }}>
+                  {photos.map(ph => <div className="thumb" key={ph.id}><img src={ph.dataUrl} alt="" /></div>)}
+                </div>
+              )}
+              <div className="field"><label>{LANG==="en"?"My result":"Mein Ergebnis"}</label>
+                <div className="bigtri">
+                  <button onClick={() => { setResults(r => ({ ...r, [me.name]: null })); setResultDates(d => { const nd = { ...d }; delete nd[me.name]; return nd; }); }} className={!myStatus ? "a" : ""}>—<span className="sp">offen</span></button>
+                  <button className={myStatus === "top" ? "a" : ""} onClick={() => setMine("top")}>Top<span className="sp">{fmtPts(topPts(grade))}</span></button>
+                  <button className={myStatus === "flash" ? "f" : ""} onClick={() => setMine("flash")}>Flash<span className="sp">{fmtPts(topPts(grade) + FLASH_BONUS)}</span></button>
+                </div>
+              </div>
+              <button className="save" onClick={commit}>{LANG==="en"?"Save":"Speichern"}</button>
+            </>
+          ) : (
+            // ── Edit-Ansicht für Schrauber / Admin ────────────────────────
+            (!wall && isNew) ? (
             <div className="planpick">
               <div className="planpick-ttl">{LANG==="en"?"Where is the route?":"Wo hängt die Route?"}</div>
               <div className="planpick-sub">{LANG==="en"?"Tap the area on the gym map":"Tippe auf den Bereich im Hallenplan"}</div>
@@ -4495,7 +4571,8 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
           <button className={"save" + (valid ? "" : " disabled")} onClick={commit}>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Save":"Speichern")}</button>
           {!isNew && isAdmin && <button className="del" onClick={() => { if (confirm(LANG==="en"?"Really delete this route? All results and photos will be lost.":"Diese Route wirklich löschen? Alle Ergebnisse und Fotos gehen verloren.")) onDelete(route.id); }}>🗑 {LANG==="en"?"Delete route":"Route löschen"}</button>}
           {!isNew && !isAdmin && !canSetRoutes && <div className="phint" style={{ textAlign: "center", marginTop: 12 }}>{LANG==="en"?"Only Route Creators and Admins can archive or delete.":"Archivieren und Löschen können nur Route Creator und Admins."}</div>}
-          </>)}
+          </>)
+          )} {/* end readOnly ternary */}
         </div>
       </div>
     </div>
