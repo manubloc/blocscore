@@ -67,6 +67,7 @@ function colorOf(name) { const t = (name || "").toLowerCase(); for (const k of O
 function initials(n) { const p = (n || "?").trim().split(/\s+/); return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase(); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function fmtDate(iso) { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}.${m}.${y}`; }
+function fmtDateTime(ts) { if (!ts) return ""; const d = new Date(ts); const p = n => String(n).padStart(2, "0"); return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
 function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 
 /* ── PIN-Sicherheit: Hashing statt Klartext (PBKDF2/SHA-256, Salt pro Account) ── */
@@ -1245,6 +1246,15 @@ function buildAchievements(lang) {
   [[5,en?"Weekend Warrior 5":"Wochenend-Krieger 5"],[15,en?"Weekend Warrior 15":"Wochenend-Krieger 15"],[40,en?"Weekend Warrior 40":"Wochenend-Krieger 40"],[90,en?"Weekend Warrior 90":"Wochenend-Krieger 90"],[150,en?"Weekend Warrior 150":"Wochenend-Krieger 150"],[250,en?"Weekend Warrior 250":"Wochenend-Krieger 250"]]
     .forEach(([k,nm])=>push(WE,"📅",nm,en?`Climb on ${k} weekend days`:`Klettere an ${k} Wochenend-Tagen`,k,"weekendDays",pts(k*4)+20));
 
+  // MACHER — eigene Beiträge zur Community (bewusst KLEINE Punkte: minimaler Level-Einfluss)
+  const MK = en?"Contributor":"Community";
+  [[1,en?"First Route Set":"Erste Route geschraubt",8],[5,en?"Route Setter":"Routenbauer",10],[15,en?"Active Setter":"Aktiver Schrauber",14],[40,en?"Prolific Setter":"Vielschrauber",18],[80,en?"Master Setter":"Schraub-Meister",24],[150,en?"Route Architect":"Routen-Architekt",30],[300,en?"Setting Legend":"Schraub-Legende",40],[600,en?"Setting Deity":"Schraub-Gottheit",55]]
+    .forEach(([k,nm,p])=>push(MK,"🔧",nm,en?`Set ${k} route${k>1?"s":""} for the community`:`Lege ${k} Route${k>1?"n":""} für die Community an`,k,"createdRoutes",p));
+  [[5,en?"Photographer":"Fotograf",8],[20,en?"Photo Reporter":"Foto-Reporter",12],[50,en?"Photo Archivist":"Foto-Archivar",18],[120,en?"Photo Legend":"Foto-Legende",28],[250,en?"Photo Deity":"Foto-Gottheit",42]]
+    .forEach(([k,nm,p])=>push(MK,"📸",nm,en?`Add ${k} route photos`:`Füge ${k} Routenfotos hinzu`,k,"photosAdded",p));
+  [[3,en?"Commentator":"Kommentator",6],[15,en?"Beta Sprayer":"Beta-Geber",10],[40,en?"Tip Master":"Tipp-Meister",16],[100,en?"Beta Legend":"Beta-Legende",26],[220,en?"Beta Deity":"Beta-Gottheit",40]]
+    .forEach(([k,nm,p])=>push(MK,"💬",nm,en?`Write ${k} comments`:`Schreibe ${k} Kommentare`,k,"commentsAdded",p));
+
   return A;
 }
 
@@ -1621,6 +1631,15 @@ function computeAgg(routes, name) {
   };
   agg.maxWeekOfAKind = slideGrade(7);
   agg.maxMonthOfAKind = slideGrade(30);
+  // Macher-Metriken: eigene Beiträge zur Community
+  let createdRoutes = 0, photosAdded = 0, commentsAdded = 0;
+  routes.forEach(r => {
+    if (r.createdBy === name) { createdRoutes++; photosAdded += (r.photos || []).length; }
+    (r.tips || []).forEach(t => { if (t.by === name) commentsAdded++; });
+  });
+  agg.createdRoutes = createdRoutes;
+  agg.photosAdded = photosAdded;
+  agg.commentsAdded = commentsAdded;
   return agg;
 }
 function achValue(agg, key) {
@@ -1651,6 +1670,9 @@ function achValue(agg, key) {
   if (key === "maxConsecutiveDays") return agg.maxConsecutiveDays || 0;
   if (key === "bestAllFlashDay") return agg.bestAllFlashDay || 0;
   if (key === "weekendDays") return agg.weekendDays || 0;
+  if (key === "createdRoutes") return agg.createdRoutes || 0;
+  if (key === "photosAdded") return agg.photosAdded || 0;
+  if (key === "commentsAdded") return agg.commentsAdded || 0;
   const p = key.split(":");
   if (p[0] === "grade") return (agg.grade[p[1]]?.[p[2]]) || 0;
   if (p[0] === "color") return (agg.color[p[1]]?.[p[2]]) || 0;
@@ -1967,6 +1989,20 @@ const CSS = `
 .ri-nick { font-size:19px; font-weight:800; color:var(--chalk); line-height:1.2; }
 .ri-color { font-size:13px; color:var(--muted); margin-top:2px; }
 .ri-note { font-size:14px; color:var(--muted); padding:9px 12px; background:var(--panel2); border-radius:9px; margin-bottom:12px; }
+.carebadge { flex:none; display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(255,170,40,.16); border:1px solid rgba(255,170,40,.5); color:#ffaa28; letter-spacing:.02em; }
+.carebox { background:linear-gradient(150deg,rgba(255,170,40,.12),var(--panel2)); border:1.4px solid rgba(255,170,40,.45); border-radius:12px; padding:13px 15px; margin-bottom:12px; }
+.carebox-ttl { font-family:'Barlow Condensed'; font-weight:700; font-size:16px; color:#ffaa28; letter-spacing:.02em; margin-bottom:5px; }
+.carebox-txt { font-size:13px; color:var(--chalk); line-height:1.5; opacity:.9; }
+.metabox { background:var(--panel2); border:1px solid var(--line); border-radius:11px; padding:11px 13px; margin:6px 0 12px; }
+.metabox-row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.metabox-k { font-size:12px; color:var(--muted); font-weight:600; }
+.metabox-v { font-size:14px; color:var(--chalk); font-weight:800; }
+.metahist { margin-top:9px; padding-top:9px; border-top:1px solid var(--line); }
+.metahist-ttl { font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+.metahist-row { display:flex; align-items:center; gap:7px; font-size:12.5px; padding:2px 0; }
+.metahist-act { flex:none; font-weight:700; color:#b8ff00; min-width:62px; }
+.metahist-by { flex:1; color:var(--chalk); font-weight:600; }
+.metahist-ts { flex:none; color:var(--muted); font-size:11px; }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -2730,6 +2766,17 @@ export default function App() {
   function setWallHeight(h) { setCommunity(c => ({ ...c, wallHeight: Number(h) })); }
   const newestWall = useMemo(() => { let best = null, bd = ""; Object.entries(screwDates).forEach(([w, d]) => { if (d <= today && d > bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
   const nextWall = useMemo(() => { let best = null, bd = "9999"; Object.entries(screwDates).forEach(([w, d]) => { if (d > today && d < bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
+  // Pflege-Bedarf: Umschraubdatum erreicht/überschritten, aber keine aktuellen (nicht-archivierten) Routen mehr
+  const needsCare = useMemo(() => {
+    const m = {};
+    Object.entries(screwDates).forEach(([w, d]) => {
+      if (d && d <= today) {
+        const activeN = routes.filter(r => !r.archived && wallCanon(r.gym) === w).length;
+        if (activeN === 0) m[w] = d;
+      }
+    });
+    return m;
+  }, [screwDates, routes, today]);
   const groupStats = useMemo(() => groups.filter(g => (g.members || []).length > 0).map(g => {
     let aktuell = 0, gesamt = 0, erfolge = 0; const mem = [];
     (g.members || []).forEach(id => { const a = accById[id]; if (!a || a.staff) return; if (a.private && a.id !== me?.id) return; const t = totals[a.name] || {}; aktuell += t.aktuell || 0; gesamt += t.gesamt || 0; erfolge += t.erfolge || 0; mem.push({ acc: a, pts: t }); });
@@ -2758,8 +2805,19 @@ export default function App() {
     rs.forEach(r => { const w = wallCanon(r.gym); if (!map.has(w)) map.set(w, { wall: w, items: [] }); map.get(w).items.push(r); });
     const arr = Array.from(map.values()).filter(s => s.items.length > 0);
     arr.forEach(s => s.items.sort((a, b) => a.grade - b.grade || (a.date || "").localeCompare(b.date || "")));
+    // Pflegebedürftige Wände (Datum erreicht, keine aktuellen Routen) als leere Sektion zeigen
+    if (scope === "aktuell" && !fGrade && !q) {
+      Object.keys(needsCare).forEach(w => {
+        if ((fWall === "alle" || fWall === w) && !arr.some(s => s.wall === w)) {
+          arr.push({ wall: w, items: [], careOnly: true });
+        }
+      });
+      // in WALLS-Reihenfolge sortieren
+      const ord = WALLS.map(x => x.code);
+      arr.sort((a, b) => ord.indexOf(a.wall) - ord.indexOf(b.wall));
+    }
     return arr;
-  }, [routes, filterScope, fWall, fGrade, q, canSetRoutes]);
+  }, [routes, filterScope, fWall, fGrade, q, canSetRoutes, needsCare]);
 
   function cycleMine(routeId) {
     if (!me) return;
@@ -2773,7 +2831,24 @@ export default function App() {
       return { ...r, results: { ...r.results, [me.name]: next }, resultDates };
     }) }));
   }
-  function upsertRoute(route) { setCommunity(c => { const ex = c.routes.some(r => r.id === route.id); return { ...c, routes: ex ? c.routes.map(r => r.id === route.id ? route : r) : [route, ...c.routes] }; }); }
+  function upsertRoute(route) {
+    setCommunity(c => {
+      const ex = c.routes.find(r => r.id === route.id);
+      const now = Date.now();
+      const meName = me?.name || "?";
+      if (!ex) {
+        // Neu angelegt
+        const withMeta = { ...route, createdBy: route.createdBy || meName, createdAt: route.createdAt || now, history: [{ by: meName, ts: now, action: "create" }] };
+        return { ...c, routes: [withMeta, ...c.routes] };
+      }
+      // Änderung: Historie fortschreiben (letzte 3 behalten)
+      const changed = ex.grade !== route.grade || (ex.name || "") !== (route.name || "") || (ex.nick || "") !== (route.nick || "") || !!ex.archived !== !!route.archived || (ex.note || "") !== (route.note || "") || (ex.photos || []).length !== (route.photos || []).length;
+      const prevHist = ex.history || (ex.createdBy ? [{ by: ex.createdBy, ts: ex.createdAt || now, action: "create" }] : []);
+      const newHist = changed ? [{ by: meName, ts: now, action: "edit" }, ...prevHist].slice(0, 3) : prevHist;
+      const merged = { ...route, createdBy: ex.createdBy || meName, createdAt: ex.createdAt || now, history: newHist };
+      return { ...c, routes: c.routes.map(r => r.id === route.id ? merged : r) };
+    });
+  }
   function deleteRoute(id) { setCommunity(c => ({ ...c, routes: c.routes.filter(r => r.id !== id) })); }
   const MAX_MEMBERS = 10;
   const myGroup = useMemo(() => groups.find(g => (g.members || []).includes(me?.id)) || null, [groups, me]);
@@ -3208,6 +3283,7 @@ export default function App() {
                   <span className="waname">{wallName(s.wall)}</span>
                   {newestWall === s.wall && <span className="freshbadge">{t("plan.fresh")}</span>}
                   {nextWall === s.wall && <span className="nextbadge">{t("plan.next")}</span>}
+                  {needsCare[s.wall] && <span className="carebadge">🔧 {LANG==="en"?"needs setting":"braucht Pflege"}</span>}
                   {myWallDone[s.wall] > 0 && <span className="wadone"><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{myWallDone[s.wall]}</span>}
                   {(() => { const flN = s.items.filter(r => r.results?.[me.name] === "flash").length; return flN > 0 ? <span className="waflash"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flN}</span> : null; })()}
                   <span className="wacount">{s.items.length} Routen</span>
@@ -3215,7 +3291,22 @@ export default function App() {
                 </button>
                 {isOpen && (
                   <div className="wallbody">
-                    {screwDates[s.wall] && <div className="lhsub">{t("routes.rescrewed")} {fmtDate(screwDates[s.wall])}</div>}
+                    {needsCare[s.wall] && (
+                      <div className="carebox">
+                        <div className="carebox-ttl">🔧 {LANG==="en"?"This sector needs setting":"Dieser Bereich muss neu geschraubt werden"}</div>
+                        <div className="carebox-txt">
+                          {LANG==="en"
+                            ? <>The rescrew date ({fmtDate(needsCare[s.wall])}) has passed and the old routes were archived. Routes still need to be set here.</>
+                            : <>Das Umschraubdatum ({fmtDate(needsCare[s.wall])}) ist erreicht und die alten Routen wurden archiviert. Hier müssen noch Routen geschraubt werden.</>}
+                        </div>
+                        <div className="carebox-txt" style={{ marginTop: 6 }}>
+                          {canSetRoutes
+                            ? (LANG==="en" ? "You can set routes here — tap the “+ Add route” button." : "Du kannst hier Routen anlegen — tippe oben auf den Plus-Button.")
+                            : (LANG==="en" ? "Want to help? Anyone from the community can set routes — just request the Route Creator role under Profile from an admin." : "Du willst helfen? Jeder aus der Community kann mithelfen — frage dafür einfach beim Admin die Route-Creator-Rolle an (unter Profil).")}
+                        </div>
+                      </div>
+                    )}
+                    {screwDates[s.wall] && !s.careOnly && <div className="lhsub">{t("routes.rescrewed")} {fmtDate(screwDates[s.wall])}</div>}
                     <div className="route-grid">
                     {s.items.map(r => {
                       const myStatus = r.results?.[me.name] || null;
@@ -3979,7 +4070,7 @@ export default function App() {
 
       {editing && (
         <RouteSheetBoundary onClose={() => setEditing(null)}>
-        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} readOnly={!canSetRoutes && editing && editing !== "new"} screwDates={screwDates}
+        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} readOnly={!canSetRoutes && editing && editing !== "new"} canSeeMeta={canSetRoutes} screwDates={screwDates}
           onClose={() => setEditing(null)} onSave={(r) => { upsertRoute(r); setEditing(null); }} onDelete={(id) => { deleteRoute(id); setEditing(null); }} />
         </RouteSheetBoundary>
       )}
@@ -4406,7 +4497,7 @@ class RouteSheetBoundary extends React.Component {
   }
 }
 
-function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, onClose, onSave, onDelete, screwDates }) {
+function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMeta, onClose, onSave, onDelete, screwDates }) {
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
   const [wall, setWall] = useState(route ? (wallOf(route.gym) ? wallCanon(route.gym) : (gyms?.[0] || null)) : null);
@@ -4451,6 +4542,28 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, onClose,
     if (res === "copied") { setShareMsg("✓"); setTimeout(() => setShareMsg(""), 1800); }
   }
 
+  // Macher-Info + Änderungshistorie (nur Route Creator / Admin)
+  const histList = (route?.history && route.history.length)
+    ? route.history
+    : (route?.createdBy ? [{ by: route.createdBy, ts: route.createdAt, action: "create" }] : []);
+  const metaBlock = (!isNew && canSeeMeta && route) ? (
+    <div className="metabox">
+      <div className="metabox-row"><span className="metabox-k">{LANG==="en"?"Set by":"Angelegt von"}</span><span className="metabox-v">{route.createdBy || (LANG==="en"?"unknown":"unbekannt")}</span></div>
+      {histList.length > 0 && (
+        <div className="metahist">
+          <div className="metahist-ttl">{LANG==="en"?"Last changes":"Letzte Änderungen"}</div>
+          {histList.slice(0, 3).map((h, i) => (
+            <div className="metahist-row" key={i}>
+              <span className="metahist-act">{h.action === "create" ? (LANG==="en"?"created":"angelegt") : (LANG==="en"?"edited":"bearbeitet")}</span>
+              <span className="metahist-by">{h.by}</span>
+              <span className="metahist-ts">{h.ts ? fmtDateTime(h.ts) : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className={"scrim" + (isNew && !wall ? " full" : "")} onClick={onClose}>
       <div className={"sheet" + (isNew && !wall ? " planmode" : "")} onClick={e => e.stopPropagation()}>
@@ -4486,6 +4599,7 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, onClose,
                   {photos.map(ph => <div className="thumb" key={ph.id}><img src={ph.dataUrl} alt="" /></div>)}
                 </div>
               )}
+              {metaBlock}
               <div className="field"><label>{LANG==="en"?"My result":"Mein Ergebnis"}</label>
                 <div className="bigtri">
                   <button onClick={() => { setResults(r => ({ ...r, [me.name]: null })); setResultDates(d => { const nd = { ...d }; delete nd[me.name]; return nd; }); }} className={!myStatus ? "a" : ""}>—<span className="sp">offen</span></button>
@@ -4567,6 +4681,8 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, onClose,
               {!isAdmin && <div className="phint" style={{ marginTop: 6 }}>Archivierte Routen bleiben gespeichert — nur ein Admin kann sie endgültig löschen.</div>}
             </div>
           )}
+
+          {!isNew && metaBlock}
 
           <button className={"save" + (valid ? "" : " disabled")} onClick={commit}>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Save":"Speichern")}</button>
           {!isNew && isAdmin && <button className="del" onClick={() => { if (confirm(LANG==="en"?"Really delete this route? All results and photos will be lost.":"Diese Route wirklich löschen? Alle Ergebnisse und Fotos gehen verloren.")) onDelete(route.id); }}>🗑 {LANG==="en"?"Delete route":"Route löschen"}</button>}
