@@ -1125,8 +1125,18 @@ function buildAchievements(lang) {
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
-  [20,28,38,50,64,80,100,125,155,190].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
-  [10,15,22,30,40,52,66,82,100,120].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
+  // Tagesform — Tag (realistisch: ~60 Routen in der Halle, max ~50 Tops/Tag)
+  [20,28,38,50].forEach(n=>push(L.Tagesform,"🔥",en?`${n} in one day`:`${n} an einem Tag`,en?`Climb ${n} routes in one day`:`Schaffe ${n} Routen an einem Tag`,n,"maxDayTops",pts(n)*2));
+  // Tagesform — Woche (7 Tage gleitendes Fenster)
+  [60,100,160,250,380,550].forEach(n=>push(L.Tagesform,"🗓",en?`${n} in a week`:`${n} in einer Woche`,en?`Climb ${n} routes in any 7-day window`:`Schaffe ${n} Routen in 7 Tagen`,n,"maxWeekTops",pts(n)*2+20));
+  // Tagesform — Monat (30 Tage gleitendes Fenster)
+  [200,400,700,1100,1700].forEach(n=>push(L.Tagesform,"📆",en?`${n} in a month`:`${n} in einem Monat`,en?`Climb ${n} routes in any 30-day window`:`Schaffe ${n} Routen in 30 Tagen`,n,"maxMonthTops",pts(n)*2+40));
+  // Flash — Tag
+  [10,15,22,30].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in one day`:`${n} Flashes an einem Tag`,en?`Flash ${n} routes in one day`:`Flashe ${n} Routen an einem Tag`,n,"maxDayFlashes",pts(n)*3));
+  // Flash — Woche
+  [40,65,100,160].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in a week`:`${n} Flashes in einer Woche`,en?`Flash ${n} routes in any 7 days`:`Flashe ${n} Routen in 7 Tagen`,n,"maxWeekFlashes",pts(n)*3+20));
+  // Flash — Monat
+  [80,160,300,500].forEach(n=>push(L.Tagesform,"⚡",en?`Flash ${n} in a month`:`${n} Flashes in einem Monat`,en?`Flash ${n} routes in any 30 days`:`Flashe ${n} Routen in 30 Tagen`,n,"maxMonthFlashes",pts(n)*3+40));
 
   // KOMBI / SPEZIAL
   [1,3,5,10,25].forEach((n,i)=>push(L.Spezial,"🌈",tier(en?["Rainbow","Double Rainbow","Rainbow Collector","Rainbow Pro","Rainbow Legend"]:["Regenbogen","Doppel-Regenbogen","Regenbogen-Sammler","Regenbogen-Profi","Regenbogen-Legende"],i,""),en?`On ${n} day(s) climb blue+green+red+yellow+purple`:`An ${n} Tag(en) blau+grün+rot+gelb+lila`,n,"rainbowDays",40+i*18));
@@ -1137,7 +1147,12 @@ function buildAchievements(lang) {
   [[4,45],[5,65],[6,90],[7,120]].forEach(([k,p])=>push(L.Straßen,"🛤️",en?`${k} consecutive grades`:`${k} aufein­ander­folgende Grade`,en?`Climb ${k} consecutive grades in one day`:`Schaffe ${k} aufeinanderfolgende Grade`,k,"maxRun",p));
 
   // MEHRLING
-  [[6,50],[9,90],[13,130],[18,175],[24,230],[32,320],[42,420],[56,560],[72,720]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind`:`${k}er-Ling`,en?`Climb ${k} routes of same grade in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+  // Mehrling — Tag (realistisch: selten mehr als 15-18 gleicher Grad in einer Halle)
+  [[6,50],[9,90],[13,130],[18,175]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind (day)`:`${k}er-Ling (Tag)`,en?`Climb ${k} same-grade routes in one day`:`Schaffe ${k} Routen im selben Grad an einem Tag`,k,"maxOfAKind",p));
+  // Mehrling — Woche
+  [[25,260],[45,320],[75,390],[120,480],[200,600],[320,750]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind (week)`:`${k}er-Ling (Woche)`,en?`Climb ${k} same-grade routes in any 7 days`:`Schaffe ${k} gleicher Grad in 7 Tagen`,k,"maxWeekOfAKind",p));
+  // Mehrling — Monat
+  [[60,340],[130,440],[250,560],[450,700],[750,900]].forEach(([k,p])=>push(L.Mehrling,"🎲",en?`${k} of a kind (month)`:`${k}er-Ling (Monat)`,en?`Climb ${k} same-grade routes in any 30 days`:`Schaffe ${k} gleicher Grad in 30 Tagen`,k,"maxMonthOfAKind",p));
 
   // TREUE — Anfänger: 50 Tage nach ~50 Sessions, Pro viel schneller
   [[5,8],[10,14],[20,20],[40,30],[65,42],[95,55],[130,68],[175,85],[230,105],[300,135],[380,168],[480,220],[600,300],[800,360],[1100,430],[1500,520],[2000,640],[2700,800]].forEach(([n,p])=>push(L.Treue,"📅",en?`${n} climbing day${n>1?"s":""}`:`${n} Klettertag${n>1?"e":""}`,en?`Climb on ${n} different days`:`Klettere an ${n} verschiedenen Tagen`,n,"distinctDays",p));
@@ -1572,6 +1587,40 @@ function computeAgg(routes, name) {
   let weekendDays = 0;
   Object.keys(agg.days).forEach(d => { if (d && d !== "?") { const wd = new Date(d).getUTCDay(); if (wd === 0 || wd === 6) weekendDays++; } });
   agg.weekendDays = weekendDays;
+  // Gleitfenster Tops/Flashes/Mehrling für Wochen- und Monats-Erfolge
+  const dayTF = Object.entries(agg.days)
+    .filter(([d]) => d && d !== "?")
+    .map(([d, D]) => ({ n: Math.floor(Date.parse(d) / 86400000), t: D.t, f: D.f, gc: D.gc }))
+    .filter(x => !isNaN(x.n))
+    .sort((a, b) => a.n - b.n);
+  const slideWin = span => {
+    let bT = 0, bF = 0, sT = 0, sF = 0, l = 0;
+    for (let r = 0; r < dayTF.length; r++) {
+      sT += dayTF[r].t; sF += dayTF[r].f;
+      while (dayTF[r].n - dayTF[l].n >= span) { sT -= dayTF[l].t; sF -= dayTF[l].f; l++; }
+      bT = Math.max(bT, sT); bF = Math.max(bF, sF);
+    }
+    return { tops: bT, flashes: bF };
+  };
+  const w7 = slideWin(7); agg.maxWeekTops = w7.tops; agg.maxWeekFlashes = w7.flashes;
+  const w30 = slideWin(30); agg.maxMonthTops = w30.tops; agg.maxMonthFlashes = w30.flashes;
+  const gradeNums = {};
+  dayTF.forEach(({ n, gc }) => { Object.entries(gc).forEach(([g, cnt]) => { (gradeNums[g] = gradeNums[g] || []).push([n, cnt]); }); });
+  const slideGrade = span => {
+    let best = 0;
+    Object.values(gradeNums).forEach(arr => {
+      arr.sort((a, b) => a[0] - b[0]);
+      let sum = 0, l = 0;
+      for (let r = 0; r < arr.length; r++) {
+        sum += arr[r][1];
+        while (arr[r][0] - arr[l][0] >= span) { sum -= arr[l][1]; l++; }
+        best = Math.max(best, sum);
+      }
+    });
+    return best;
+  };
+  agg.maxWeekOfAKind = slideGrade(7);
+  agg.maxMonthOfAKind = slideGrade(30);
   return agg;
 }
 function achValue(agg, key) {
@@ -1580,11 +1629,17 @@ function achValue(agg, key) {
   if (key === "points") return Math.floor(agg.points);
   if (key === "maxDayTops") return agg.maxDayTops;
   if (key === "maxDayFlashes") return agg.maxDayFlashes;
+  if (key === "maxWeekTops") return agg.maxWeekTops || 0;
+  if (key === "maxWeekFlashes") return agg.maxWeekFlashes || 0;
+  if (key === "maxMonthTops") return agg.maxMonthTops || 0;
+  if (key === "maxMonthFlashes") return agg.maxMonthFlashes || 0;
   if (key === "rainbowDays") return agg.rainbowDays;
   if (key === "allGradeDays") return agg.allGradeDays;
   if (key === "maxFrom1") return agg.maxFrom1;
   if (key === "maxRun") return agg.maxRun;
   if (key === "maxOfAKind") return agg.maxOfAKind;
+  if (key === "maxWeekOfAKind") return agg.maxWeekOfAKind || 0;
+  if (key === "maxMonthOfAKind") return agg.maxMonthOfAKind || 0;
   if (key === "totalRoutes") return agg.totalRoutes || 0;
   if (key === "weekStreak1") return agg.weekStreak1 || 0;
   if (key === "weekStreak2") return agg.weekStreak2 || 0;
