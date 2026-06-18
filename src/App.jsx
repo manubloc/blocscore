@@ -1701,6 +1701,16 @@ function BrandMark({ size = 20, sw = 2.6 }) {
 const KEY_COMMUNITY = "boulder:community:v11";
 const KEY_SESSION = "boulder:session";
 async function loadCommunity() { try { const r = await window.storage.get(KEY_COMMUNITY, true); if (r && r.value) return JSON.parse(r.value); } catch (e) {} return null; }
+// Strikte Variante für den Erst-Load: WIRFT bei Verbindungs-/Parse-Fehler (statt still null),
+// damit wir NIEMALS Seed-Daten über möglicherweise vorhandene echte Daten schreiben.
+//   -> { empty:true }  wirklich leere DB (Erststart, Seed erlaubt)
+//   -> { data }        vorhandene Daten
+//   -> wirft           Fehler (Aufrufer muss abbrechen, NICHT überschreiben)
+async function loadCommunityStrict() {
+  const r = await window.storage.get(KEY_COMMUNITY, true);
+  if (r && r.value) return { data: JSON.parse(r.value) };
+  return { empty: true };
+}
 async function saveCommunity(d) { try { await window.storage.set(KEY_COMMUNITY, JSON.stringify(d), true); } catch (e) {} }
 async function loadSession() { try { const r = await window.storage.get(KEY_SESSION, false); if (r && r.value) return JSON.parse(r.value); } catch (e) {} return null; }
 async function saveSession(s) { try { if (s) await window.storage.set(KEY_SESSION, JSON.stringify(s), false); else await window.storage.delete(KEY_SESSION, false); } catch (e) {} }
@@ -2746,7 +2756,38 @@ export default function App() {
   const [installHintDismissed, setInstallHintDismissed] = useState(true);
   useEffect(() => { (async () => { try { const r = await window.storage.get("blocscore:installhint", false); setInstallHintDismissed(!!(r && r.value === "1")); } catch (e) { setInstallHintDismissed(false); } })(); }, []);
   async function dismissInstallHint() { setInstallHintDismissed(true); try { await window.storage.set("blocscore:installhint", "1", false); } catch (e) {} }
-  useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) }; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
+  const [loadError, setLoadError] = useState(false);
+  useEffect(() => { (async () => {
+    let res;
+    try {
+      res = await loadCommunityStrict();
+    } catch (e) {
+      // Verbindungs-/Parse-Fehler: NICHT mit Seed überschreiben — sonst gehen alle Nutzer/Daten verloren!
+      console.error("loadCommunity failed", e);
+      setLoadError(true);
+      return; // ready bleibt false; KEIN setCommunity, KEIN Save
+    }
+    let c, haveReal;
+    if (res.empty) {
+      // Wirklich leere DB (Erststart) -> Seed ist ok
+      c = SEED_COMMUNITY; haveReal = false;
+    } else if (res.data && res.data.accounts) {
+      c = res.data; haveReal = true;
+    } else {
+      // Wert vorhanden, aber kein accounts-Feld -> anormal. Lieber Fehler zeigen als überschreiben.
+      console.error("community payload without accounts — refusing to overwrite");
+      setLoadError(true);
+      return;
+    }
+    if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) };
+    const mig = await migrateAccountPins(c);
+    setCommunity(mig);
+    // Nur speichern, wenn echte Daten geladen wurden (nie Seed automatisch über die DB schreiben)
+    if (haveReal && mig !== c) { try { await saveCommunity(mig); } catch (e) {} }
+    setSession(await loadSession());
+    try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {}
+    setReady(true);
+  })(); }, []);
   useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
 
   // Auto-Archivierung: wenn heute ein Umschraubdatum ist, alle Routen dieser Wand archivieren
@@ -3158,7 +3199,8 @@ export default function App() {
       // Async: Bilder nachladen + komprimieren
       pushSyncLog("⏳ Lade Bilder im Hintergrund (komprimiert auf max. 1080px)...");
       setTimeout(async () => {
-        const community = JSON.parse(JSON.stringify(await loadCommunity() || {}));
+        let community;
+        try { community = JSON.parse(JSON.stringify(await loadCommunity() || {})); } catch (e) { pushSyncLog("⚠️ Bilder-Nachladen abgebrochen (Ladefehler).", "warn"); return; }
         if (!community.routes) return;
         let imgOk = 0, imgFail = 0;
         for (const r of community.routes) {
@@ -3224,6 +3266,12 @@ export default function App() {
     if (me) setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, skipIntro: true } : a) }));
   }
 
+  if (loadError) return <div className="bld"><style>{CSS}</style><div className="empty" style={{ margin: "auto", textAlign: "center", padding: 22, maxWidth: 360 }}>
+    <div className="big">⚠️</div>
+    <div style={{ fontWeight: 800, fontSize: 19, margin: "6px 0 8px" }}>Daten konnten nicht geladen werden</div>
+    <div style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.55 }}>Die Verbindung zur Datenbank hat nicht geklappt. Aus Sicherheitsgründen wurde <b>nichts überschrieben</b> — deine Daten sind nicht verloren. Bitte Internetverbindung prüfen und neu laden.</div>
+    <button className="save" style={{ marginTop: 18 }} onClick={() => location.reload()}>Neu laden</button>
+  </div></div>;
   if (!ready) return <div className="bld"><style>{CSS}</style><div className="empty" style={{ margin: "auto" }}>Lädt…</div></div>;
   if (!me) return <LoginScreen accounts={accounts} onLogin={handleLogin} onSignup={handleSignup} lang={lang} onLang={changeLang} />;
   const introEl = showIntro && !me?.skipIntro ? <IntroModal me={me} onClose={() => setShowIntro(false)} onDismiss={dismissIntro} /> : null;
