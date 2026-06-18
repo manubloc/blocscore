@@ -67,6 +67,7 @@ function colorOf(name) { const t = (name || "").toLowerCase(); for (const k of O
 function initials(n) { const p = (n || "?").trim().split(/\s+/); return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase(); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function fmtDate(iso) { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}.${m}.${y}`; }
+function fmtDateTime(ts) { if (!ts) return ""; const d = new Date(ts); const p = n => String(n).padStart(2, "0"); return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
 function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 
 /* ── PIN-Sicherheit: Hashing statt Klartext (PBKDF2/SHA-256, Salt pro Account) ── */
@@ -1245,6 +1246,15 @@ function buildAchievements(lang) {
   [[5,en?"Weekend Warrior 5":"Wochenend-Krieger 5"],[15,en?"Weekend Warrior 15":"Wochenend-Krieger 15"],[40,en?"Weekend Warrior 40":"Wochenend-Krieger 40"],[90,en?"Weekend Warrior 90":"Wochenend-Krieger 90"],[150,en?"Weekend Warrior 150":"Wochenend-Krieger 150"],[250,en?"Weekend Warrior 250":"Wochenend-Krieger 250"]]
     .forEach(([k,nm])=>push(WE,"📅",nm,en?`Climb on ${k} weekend days`:`Klettere an ${k} Wochenend-Tagen`,k,"weekendDays",pts(k*4)+20));
 
+  // MACHER — eigene Beiträge zur Community (bewusst KLEINE Punkte: minimaler Level-Einfluss)
+  const MK = en?"Contributor":"Community";
+  [[1,en?"First Route Set":"Erste Route geschraubt",8],[5,en?"Route Setter":"Routenbauer",10],[15,en?"Active Setter":"Aktiver Schrauber",14],[40,en?"Prolific Setter":"Vielschrauber",18],[80,en?"Master Setter":"Schraub-Meister",24],[150,en?"Route Architect":"Routen-Architekt",30],[300,en?"Setting Legend":"Schraub-Legende",40],[600,en?"Setting Deity":"Schraub-Gottheit",55]]
+    .forEach(([k,nm,p])=>push(MK,"🔧",nm,en?`Set ${k} route${k>1?"s":""} for the community`:`Lege ${k} Route${k>1?"n":""} für die Community an`,k,"createdRoutes",p));
+  [[5,en?"Photographer":"Fotograf",8],[20,en?"Photo Reporter":"Foto-Reporter",12],[50,en?"Photo Archivist":"Foto-Archivar",18],[120,en?"Photo Legend":"Foto-Legende",28],[250,en?"Photo Deity":"Foto-Gottheit",42]]
+    .forEach(([k,nm,p])=>push(MK,"📸",nm,en?`Add ${k} route photos`:`Füge ${k} Routenfotos hinzu`,k,"photosAdded",p));
+  [[3,en?"Commentator":"Kommentator",6],[15,en?"Beta Sprayer":"Beta-Geber",10],[40,en?"Tip Master":"Tipp-Meister",16],[100,en?"Beta Legend":"Beta-Legende",26],[220,en?"Beta Deity":"Beta-Gottheit",40]]
+    .forEach(([k,nm,p])=>push(MK,"💬",nm,en?`Write ${k} comments`:`Schreibe ${k} Kommentare`,k,"commentsAdded",p));
+
   return A;
 }
 
@@ -1621,6 +1631,15 @@ function computeAgg(routes, name) {
   };
   agg.maxWeekOfAKind = slideGrade(7);
   agg.maxMonthOfAKind = slideGrade(30);
+  // Macher-Metriken: eigene Beiträge zur Community
+  let createdRoutes = 0, photosAdded = 0, commentsAdded = 0;
+  routes.forEach(r => {
+    if (r.createdBy === name) { createdRoutes++; photosAdded += (r.photos || []).length; }
+    (r.tips || []).forEach(t => { if (t.by === name) commentsAdded++; });
+  });
+  agg.createdRoutes = createdRoutes;
+  agg.photosAdded = photosAdded;
+  agg.commentsAdded = commentsAdded;
   return agg;
 }
 function achValue(agg, key) {
@@ -1651,6 +1670,9 @@ function achValue(agg, key) {
   if (key === "maxConsecutiveDays") return agg.maxConsecutiveDays || 0;
   if (key === "bestAllFlashDay") return agg.bestAllFlashDay || 0;
   if (key === "weekendDays") return agg.weekendDays || 0;
+  if (key === "createdRoutes") return agg.createdRoutes || 0;
+  if (key === "photosAdded") return agg.photosAdded || 0;
+  if (key === "commentsAdded") return agg.commentsAdded || 0;
   const p = key.split(":");
   if (p[0] === "grade") return (agg.grade[p[1]]?.[p[2]]) || 0;
   if (p[0] === "color") return (agg.color[p[1]]?.[p[2]]) || 0;
@@ -1679,7 +1701,47 @@ function BrandMark({ size = 20, sw = 2.6 }) {
 const KEY_COMMUNITY = "boulder:community:v11";
 const KEY_SESSION = "boulder:session";
 async function loadCommunity() { try { const r = await window.storage.get(KEY_COMMUNITY, true); if (r && r.value) return JSON.parse(r.value); } catch (e) {} return null; }
+// Strikte Variante für den Erst-Load: WIRFT bei Verbindungs-/Parse-Fehler (statt still null),
+// damit wir NIEMALS Seed-Daten über möglicherweise vorhandene echte Daten schreiben.
+//   -> { empty:true }  wirklich leere DB (Erststart, Seed erlaubt)
+//   -> { data }        vorhandene Daten
+//   -> wirft           Fehler (Aufrufer muss abbrechen, NICHT überschreiben)
+async function loadCommunityStrict() {
+  const r = await window.storage.get(KEY_COMMUNITY, true);
+  if (r && r.value) return { data: JSON.parse(r.value) };
+  return { empty: true };
+}
 async function saveCommunity(d) { try { await window.storage.set(KEY_COMMUNITY, JSON.stringify(d), true); } catch (e) {} }
+
+// ── Automatische rollende Backups ───────────────────────────────────────────
+// Bei jedem Speichern wird (gedrosselt) ein Snapshot in einen Ring aus SNAP_SLOTS
+// Slots geschrieben. So lässt sich der Stand jederzeit wiederherstellen — selbst
+// wenn der Hauptdatensatz überschrieben/geleert wurde. Snapshots leerer Stände
+// werden übersprungen, damit ein Datenverlust die Sicherungen nicht verdrängt.
+const KEY_SNAP_META = "boulder:community:snapmeta";
+const KEY_SNAP_PREFIX = "boulder:community:snap:";
+const SNAP_SLOTS = 20;
+const SNAP_MIN_INTERVAL_MS = 12 * 60 * 1000; // höchstens alle 12 Min ein Auto-Snapshot
+async function loadSnapMeta() { try { const r = await window.storage.get(KEY_SNAP_META, true); if (r && r.value) return JSON.parse(r.value); } catch (e) {} return { idx: 0, list: [] }; }
+async function writeSnapshot(communityObj, force) {
+  try {
+    if (!communityObj || !(communityObj.accounts || []).length) return; // keine leeren Stände sichern
+    const meta = await loadSnapMeta();
+    const last = meta.list.length ? meta.list[meta.list.length - 1] : null;
+    const now = Date.now();
+    if (!force && last && now - last.ts < SNAP_MIN_INTERVAL_MS) return; // Drosselung
+    const slot = meta.idx % SNAP_SLOTS;
+    const accounts = (communityObj.accounts || []).length;
+    const routes = (communityObj.routes || []).length;
+    await window.storage.set(KEY_SNAP_PREFIX + slot, JSON.stringify({ ts: now, accounts, routes, data: communityObj }), true);
+    meta.idx = meta.idx + 1;
+    meta.list.push({ slot, ts: now, accounts, routes });
+    if (meta.list.length > SNAP_SLOTS) meta.list = meta.list.slice(-SNAP_SLOTS);
+    await window.storage.set(KEY_SNAP_META, JSON.stringify(meta), true);
+  } catch (e) {}
+}
+async function listSnapshots() { const meta = await loadSnapMeta(); return [...meta.list].sort((a, b) => b.ts - a.ts); }
+async function loadSnapshot(slot) { try { const r = await window.storage.get(KEY_SNAP_PREFIX + slot, true); if (r && r.value) return JSON.parse(r.value); } catch (e) {} return null; }
 async function loadSession() { try { const r = await window.storage.get(KEY_SESSION, false); if (r && r.value) return JSON.parse(r.value); } catch (e) {} return null; }
 async function saveSession(s) { try { if (s) await window.storage.set(KEY_SESSION, JSON.stringify(s), false); else await window.storage.delete(KEY_SESSION, false); } catch (e) {} }
 async function loadPhotoBlob(id) { try { const r = await window.storage.get("boulder:photo:" + id, true); return r && r.value ? r.value : null; } catch (e) { return null; } }
@@ -1768,41 +1830,44 @@ function RoutePhoto({ photoId, className, style, onClick }) {
   );
   return <img className={className} style={{ ...style, cursor: "zoom-in" }} src={src} alt="" onClick={onClick} loading="lazy" decoding="async" />;
 }
-function PhotoLightbox({ src, onClose }) {
+function PhotoLightbox({ src, images, startIndex = 0, onClose }) {
+  const imgs = (images && images.length) ? images : (src ? [src] : []);
+  const [idx, setIdx] = useState(Math.min(startIndex, Math.max(0, imgs.length - 1)));
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
   const lastTouchDist = useRef(null);
+  const swipeStart = useRef(null);
   const imgRef = useRef(null);
+  const cur = imgs[idx];
+  const multi = imgs.length > 1;
+  const reset = () => { setScale(1); setPos({ x: 0, y: 0 }); };
+  const go = d => { setIdx(i => { const n = (i + d + imgs.length) % imgs.length; return n; }); reset(); };
 
   useEffect(() => {
-    const fn = e => { if (e.key === "Escape") onClose(); };
+    const fn = e => { if (e.key === "Escape") onClose(); else if (e.key === "ArrowRight" && multi) go(1); else if (e.key === "ArrowLeft" && multi) go(-1); };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
-  }, []);
+  }, [multi, imgs.length]);
 
-  // Wheel zoom
   function onWheel(e) {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.85 : 1.18;
     setScale(s => Math.min(6, Math.max(1, s * delta)));
   }
 
-  // Double-tap / double-click to toggle zoom
   const lastTap = useRef(0);
   function onImgClick(e) {
     e.stopPropagation();
     const now = Date.now();
     if (now - lastTap.current < 300) {
-      // double tap
       setScale(s => s > 1.5 ? 1 : 2.5);
       setPos({ x: 0, y: 0 });
     }
     lastTap.current = now;
   }
 
-  // Mouse drag
   function onMouseDown(e) {
     if (scale <= 1) return;
     e.preventDefault();
@@ -1815,20 +1880,24 @@ function PhotoLightbox({ src, onClose }) {
   }
   function onMouseUp() { setDragging(false); setDragStart(null); }
 
-  // Touch pinch zoom + pan
   function onTouchStart(e) {
     if (e.touches.length === 2) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       lastTouchDist.current = Math.sqrt(dx*dx + dy*dy);
+      swipeStart.current = null;
     } else if (e.touches.length === 1 && scale > 1) {
       setDragging(true);
       setDragStart({ x: e.touches[0].clientX - pos.x, y: e.touches[0].clientY - pos.y });
+      swipeStart.current = null;
+    } else if (e.touches.length === 1) {
+      // potenzielle Swipe-Geste (nur bei scale==1)
+      swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   }
   function onTouchMove(e) {
-    e.preventDefault();
     if (e.touches.length === 2 && lastTouchDist.current) {
+      e.preventDefault();
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.sqrt(dx*dx + dy*dy);
@@ -1836,11 +1905,26 @@ function PhotoLightbox({ src, onClose }) {
       setScale(s => Math.min(6, Math.max(1, s * ratio)));
       lastTouchDist.current = dist;
     } else if (e.touches.length === 1 && dragging && dragStart) {
+      e.preventDefault();
       setPos({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
     }
   }
-  function onTouchEnd() { lastTouchDist.current = null; setDragging(false); }
+  function onTouchEnd(e) {
+    lastTouchDist.current = null;
+    setDragging(false);
+    // Swipe auswerten (nur wenn nicht gezoomt)
+    if (swipeStart.current && scale <= 1 && multi) {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (t) {
+        const dx = t.clientX - swipeStart.current.x;
+        const dy = t.clientY - swipeStart.current.y;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { go(dx < 0 ? 1 : -1); }
+      }
+    }
+    swipeStart.current = null;
+  }
 
+  if (!cur) return null;
   return (
     <div className="lightbox"
       onClick={scale <= 1 ? onClose : undefined}
@@ -1849,11 +1933,14 @@ function PhotoLightbox({ src, onClose }) {
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
     >
-      <button className="lb-close" onClick={onClose} style={{zIndex:201}}>✕</button>
+      <button className="lb-close" onClick={onClose} style={{zIndex:202}}>✕</button>
+      {multi && <div className="lb-count" onClick={e => e.stopPropagation()}>{idx + 1} / {imgs.length}</div>}
+      {multi && <button className="lb-nav lb-prev" onClick={e => { e.stopPropagation(); go(-1); }} aria-label="Vorheriges"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7"/></svg></button>}
+      {multi && <button className="lb-nav lb-next" onClick={e => { e.stopPropagation(); go(1); }} aria-label="Nächstes"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>}
       {scale > 1 && <div className="lb-hint">{LANG==="en"?"Double-tap to reset":"Doppeltippen zum Zurücksetzen"}</div>}
       <img
         ref={imgRef}
-        src={src}
+        src={cur}
         alt=""
         className="lb-img"
         style={{
@@ -1869,6 +1956,11 @@ function PhotoLightbox({ src, onClose }) {
         onTouchEnd={onTouchEnd}
         draggable={false}
       />
+      {multi && (
+        <div className="lb-dots" onClick={e => e.stopPropagation()}>
+          {imgs.map((_, i) => <span key={i} className={"lb-dot" + (i === idx ? " on" : "")} onClick={() => { setIdx(i); reset(); }} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -1959,6 +2051,33 @@ const CSS = `
 .installhint-bubble::before { content:""; position:absolute; top:-6px; right:20px; width:11px; height:11px; background:#1c2129; border-left:1.4px solid rgba(184,255,0,.65); border-top:1.4px solid rgba(184,255,0,.65); transform:rotate(45deg); }
 .installhint-close { flex:none; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:var(--chalk); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
 .installhint-close:active { background:rgba(255,255,255,.16); }
+.autoarchive-toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:200; background:#1c2129; border:1.4px solid rgba(184,255,0,.6); border-radius:11px; color:#b8ff00; font-size:13px; font-weight:700; padding:10px 16px; white-space:nowrap; box-shadow:0 6px 20px rgba(0,0,0,.4); pointer-events:none; animation:ihIn .3s cubic-bezier(.2,1,.4,1); }
+.edit.infobtn { opacity:0.65; }
+.ri-date-chip { margin-left:auto; display:flex; align-items:center; gap:5px; font-size:12px; color:var(--muted); background:var(--panel2); border-radius:7px; padding:4px 8px; }
+.ri-grade-row { display:flex; align-items:center; gap:12px; padding:14px 0 10px; border-bottom:1px solid var(--line); margin-bottom:12px; }
+.ri-names { flex:1; min-width:0; }
+.ri-nick { font-size:19px; font-weight:800; color:var(--chalk); line-height:1.2; }
+.ri-color { font-size:13px; color:var(--muted); margin-top:2px; }
+.ri-note { font-size:14px; color:var(--muted); padding:9px 12px; background:var(--panel2); border-radius:9px; margin-bottom:12px; }
+.carebadge { flex:none; display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(255,170,40,.16); border:1px solid rgba(255,170,40,.5); color:#ffaa28; letter-spacing:.02em; }
+.carebox { background:linear-gradient(150deg,rgba(255,170,40,.12),var(--panel2)); border:1.4px solid rgba(255,170,40,.45); border-radius:12px; padding:13px 15px; margin-bottom:12px; }
+.carebox-ttl { font-family:'Barlow Condensed'; font-weight:700; font-size:16px; color:#ffaa28; letter-spacing:.02em; margin-bottom:5px; }
+.carebox-txt { font-size:13px; color:var(--chalk); line-height:1.5; opacity:.9; }
+.metabox { background:var(--panel2); border:1px solid var(--line); border-radius:11px; padding:11px 13px; margin:6px 0 12px; }
+.metabox-row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.metabox-k { font-size:12px; color:var(--muted); font-weight:600; }
+.metabox-v { font-size:14px; color:var(--chalk); font-weight:800; }
+.metahist { margin-top:9px; padding-top:9px; border-top:1px solid var(--line); }
+.metahist-ttl { font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+.metahist-row { display:flex; align-items:center; gap:7px; font-size:12.5px; padding:2px 0; }
+.metahist-act { flex:none; font-weight:700; color:#b8ff00; min-width:62px; }
+.metahist-by { flex:1; color:var(--chalk); font-weight:600; }
+.metahist-ts { flex:none; color:var(--muted); font-size:11px; }
+.delwarn { font-size:14px; color:var(--chalk); line-height:1.55; padding:12px 14px; background:rgba(233,139,125,.1); border:1.3px solid rgba(233,139,125,.4); border-radius:11px; }
+.creatorinfo { display:flex; gap:11px; align-items:flex-start; padding:12px 14px; margin-bottom:12px; background:linear-gradient(150deg,rgba(184,255,0,.1),var(--panel2)); border:1.3px solid rgba(184,255,0,.4); border-radius:12px; }
+.creatorinfo-ic { flex:none; font-size:22px; line-height:1.2; }
+.creatorinfo-txt { font-size:13px; color:var(--chalk); line-height:1.5; opacity:.92; }
+.creatortag { font-size:12px; margin-left:6px; opacity:.85; }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -2283,6 +2402,23 @@ const CSS = `
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 .lb-img { max-width:100%; max-height:100%; object-fit:contain; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
 .lb-close { position:absolute; top:18px; right:18px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.2); z-index:201; }
+.lb-count { position:absolute; top:24px; left:50%; transform:translateX(-50%); font-size:13px; font-weight:700; color:#fff; background:rgba(0,0,0,.45); padding:5px 13px; border-radius:20px; z-index:202; backdrop-filter:blur(6px); }
+.lb-nav { position:absolute; top:50%; transform:translateY(-50%); width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,.13); color:#fff; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,.2); backdrop-filter:blur(6px); z-index:202; cursor:pointer; }
+.lb-nav:active { background:rgba(255,255,255,.28); }
+.lb-prev { left:14px; }
+.lb-next { right:14px; }
+.lb-dots { position:absolute; bottom:22px; left:50%; transform:translateX(-50%); display:flex; gap:8px; z-index:202; }
+.lb-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.35); cursor:pointer; transition:all .15s; }
+.lb-dot.on { background:#b8ff00; transform:scale(1.25); }
+.thumb-click { cursor:pointer; }
+.lockbox { font-size:13px; color:var(--muted); line-height:1.5; padding:11px 13px; background:var(--panel2); border:1px dashed var(--line); border-radius:11px; }
+.lockbox b { color:var(--chalk); }
+.snaprow { display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:11px 13px; margin-bottom:8px; cursor:pointer; }
+.snaprow:active { background:var(--panel2); }
+.snapmain { flex:1; min-width:0; }
+.snapdate { font-weight:700; font-size:14.5px; color:var(--chalk); }
+.snapmeta { font-size:12px; color:var(--muted); margin-top:2px; }
+.snaprestore { flex:none; font-size:12px; font-weight:700; color:#b8ff00; border:1px solid rgba(184,255,0,.4); border-radius:7px; padding:5px 9px; }
 .colpicker { display:grid; grid-template-columns:repeat(auto-fill,minmax(44px,1fr)); gap:8px; padding:4px 0; }
 .colbtn { width:100%; aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:0; transition:all .12s; cursor:pointer; }
 .colbtn:hover { transform:scale(1.05); }
@@ -2656,8 +2792,61 @@ export default function App() {
   const [installHintDismissed, setInstallHintDismissed] = useState(true);
   useEffect(() => { (async () => { try { const r = await window.storage.get("blocscore:installhint", false); setInstallHintDismissed(!!(r && r.value === "1")); } catch (e) { setInstallHintDismissed(false); } })(); }, []);
   async function dismissInstallHint() { setInstallHintDismissed(true); try { await window.storage.set("blocscore:installhint", "1", false); } catch (e) {} }
-  useEffect(() => { (async () => { let c = await loadCommunity(); c = c && c.accounts ? c : SEED_COMMUNITY; if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) }; const mig = await migrateAccountPins(c); setCommunity(mig); if (mig !== c) { try { await saveCommunity(mig); } catch (e) {} } setSession(await loadSession()); try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {} setReady(true); })(); }, []);
-  useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); }, [community, ready]);
+  const [loadError, setLoadError] = useState(false);
+  useEffect(() => { (async () => {
+    let res;
+    try {
+      res = await loadCommunityStrict();
+    } catch (e) {
+      // Verbindungs-/Parse-Fehler: NICHT mit Seed überschreiben — sonst gehen alle Nutzer/Daten verloren!
+      console.error("loadCommunity failed", e);
+      setLoadError(true);
+      return; // ready bleibt false; KEIN setCommunity, KEIN Save
+    }
+    let c, haveReal;
+    if (res.empty) {
+      // Wirklich leere DB (Erststart) -> Seed ist ok
+      c = SEED_COMMUNITY; haveReal = false;
+    } else if (res.data && res.data.accounts) {
+      c = res.data; haveReal = true;
+    } else {
+      // Wert vorhanden, aber kein accounts-Feld -> anormal. Lieber Fehler zeigen als überschreiben.
+      console.error("community payload without accounts — refusing to overwrite");
+      setLoadError(true);
+      return;
+    }
+    if (c.groups) c = { ...c, groups: c.groups.filter(g => (g.members || []).length > 0) };
+    const mig = await migrateAccountPins(c);
+    setCommunity(mig);
+    // Nur speichern, wenn echte Daten geladen wurden (nie Seed automatisch über die DB schreiben)
+    if (haveReal && mig !== c) { try { await saveCommunity(mig); } catch (e) {} }
+    setSession(await loadSession());
+    try { const lr = await window.storage.get("blocscore:lang", false); if (lr && lr.value) { setLang(lr.value); setLangG(lr.value); } } catch (e) {}
+    setReady(true);
+  })(); }, []);
+  useEffect(() => { if (!ready || !community) return; if (!firstSave.current) { firstSave.current = true; return; } saveCommunity(community); writeSnapshot(community); }, [community, ready]);
+
+  // Auto-Archivierung: wenn heute ein Umschraubdatum ist, alle Routen dieser Wand archivieren
+  const [autoArchiveMsg, setAutoArchiveMsg] = useState("");
+  const didAutoArchiveRef = useRef(false);
+  useEffect(() => {
+    if (!ready || !community || didAutoArchiveRef.current) return;
+    didAutoArchiveRef.current = true;
+    const tod = todayISO();
+    const wallsToArchive = Object.entries(community.screwDates || {})
+      .filter(([w, d]) => d === tod && (community.autoArchived || {})[w] !== tod)
+      .map(([w]) => w);
+    if (!wallsToArchive.length) return;
+    const wallSet = new Set(wallsToArchive);
+    const toArchiveIds = new Set((community.routes || []).filter(r => !r.archived && wallSet.has(wallCanon(r.gym))).map(r => r.id));
+    if (!toArchiveIds.size) return;
+    const newAutoArchived = { ...(community.autoArchived || {}) };
+    wallsToArchive.forEach(w => { newAutoArchived[w] = tod; });
+    setCommunity(c => ({ ...c, routes: c.routes.map(r => toArchiveIds.has(r.id) ? { ...r, archived: true } : r), autoArchived: newAutoArchived }));
+    const names = wallsToArchive.map(w => wallName(w)).join(", ");
+    setAutoArchiveMsg(`🗃 ${toArchiveIds.size} Route${toArchiveIds.size !== 1 ? "n" : ""} automatisch archiviert (${names})`);
+  }, [ready]);
+  useEffect(() => { if (autoArchiveMsg) { const t = setTimeout(() => setAutoArchiveMsg(""), 7000); return () => clearTimeout(t); } }, [autoArchiveMsg]);
 
   const accounts = community?.accounts || [];
   const routes = community?.routes || [];
@@ -2700,6 +2889,17 @@ export default function App() {
   function setWallHeight(h) { setCommunity(c => ({ ...c, wallHeight: Number(h) })); }
   const newestWall = useMemo(() => { let best = null, bd = ""; Object.entries(screwDates).forEach(([w, d]) => { if (d <= today && d > bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
   const nextWall = useMemo(() => { let best = null, bd = "9999"; Object.entries(screwDates).forEach(([w, d]) => { if (d > today && d < bd) { bd = d; best = w; } }); return best; }, [screwDates, today]);
+  // Pflege-Bedarf: Umschraubdatum erreicht/überschritten, aber keine aktuellen (nicht-archivierten) Routen mehr
+  const needsCare = useMemo(() => {
+    const m = {};
+    Object.entries(screwDates).forEach(([w, d]) => {
+      if (d && d <= today) {
+        const activeN = routes.filter(r => !r.archived && wallCanon(r.gym) === w).length;
+        if (activeN === 0) m[w] = d;
+      }
+    });
+    return m;
+  }, [screwDates, routes, today]);
   const groupStats = useMemo(() => groups.filter(g => (g.members || []).length > 0).map(g => {
     let aktuell = 0, gesamt = 0, erfolge = 0; const mem = [];
     (g.members || []).forEach(id => { const a = accById[id]; if (!a || a.staff) return; if (a.private && a.id !== me?.id) return; const t = totals[a.name] || {}; aktuell += t.aktuell || 0; gesamt += t.gesamt || 0; erfolge += t.erfolge || 0; mem.push({ acc: a, pts: t }); });
@@ -2728,8 +2928,19 @@ export default function App() {
     rs.forEach(r => { const w = wallCanon(r.gym); if (!map.has(w)) map.set(w, { wall: w, items: [] }); map.get(w).items.push(r); });
     const arr = Array.from(map.values()).filter(s => s.items.length > 0);
     arr.forEach(s => s.items.sort((a, b) => a.grade - b.grade || (a.date || "").localeCompare(b.date || "")));
+    // Pflegebedürftige Wände (Datum erreicht, keine aktuellen Routen) als leere Sektion zeigen
+    if (scope === "aktuell" && !fGrade && !q) {
+      Object.keys(needsCare).forEach(w => {
+        if ((fWall === "alle" || fWall === w) && !arr.some(s => s.wall === w)) {
+          arr.push({ wall: w, items: [], careOnly: true });
+        }
+      });
+      // in WALLS-Reihenfolge sortieren
+      const ord = WALLS.map(x => x.code);
+      arr.sort((a, b) => ord.indexOf(a.wall) - ord.indexOf(b.wall));
+    }
     return arr;
-  }, [routes, filterScope, fWall, fGrade, q, canSetRoutes]);
+  }, [routes, filterScope, fWall, fGrade, q, canSetRoutes, needsCare]);
 
   function cycleMine(routeId) {
     if (!me) return;
@@ -2743,7 +2954,24 @@ export default function App() {
       return { ...r, results: { ...r.results, [me.name]: next }, resultDates };
     }) }));
   }
-  function upsertRoute(route) { setCommunity(c => { const ex = c.routes.some(r => r.id === route.id); return { ...c, routes: ex ? c.routes.map(r => r.id === route.id ? route : r) : [route, ...c.routes] }; }); }
+  function upsertRoute(route) {
+    setCommunity(c => {
+      const ex = c.routes.find(r => r.id === route.id);
+      const now = Date.now();
+      const meName = me?.name || "?";
+      if (!ex) {
+        // Neu angelegt
+        const withMeta = { ...route, createdBy: route.createdBy || meName, createdAt: route.createdAt || now, history: [{ by: meName, ts: now, action: "create" }] };
+        return { ...c, routes: [withMeta, ...c.routes] };
+      }
+      // Änderung: Historie fortschreiben (letzte 3 behalten)
+      const changed = ex.grade !== route.grade || (ex.name || "") !== (route.name || "") || (ex.nick || "") !== (route.nick || "") || !!ex.archived !== !!route.archived || (ex.note || "") !== (route.note || "") || (ex.photos || []).length !== (route.photos || []).length;
+      const prevHist = ex.history || (ex.createdBy ? [{ by: ex.createdBy, ts: ex.createdAt || now, action: "create" }] : []);
+      const newHist = changed ? [{ by: meName, ts: now, action: "edit" }, ...prevHist].slice(0, 3) : prevHist;
+      const merged = { ...route, createdBy: ex.createdBy || meName, createdAt: ex.createdAt || now, history: newHist };
+      return { ...c, routes: c.routes.map(r => r.id === route.id ? merged : r) };
+    });
+  }
   function deleteRoute(id) { setCommunity(c => ({ ...c, routes: c.routes.filter(r => r.id !== id) })); }
   const MAX_MEMBERS = 10;
   const myGroup = useMemo(() => groups.find(g => (g.members || []).includes(me?.id)) || null, [groups, me]);
@@ -2772,11 +3000,12 @@ export default function App() {
       lvlBaseRef.current = { uid: me.id, level: myLevelInfo.level };
     }
   }, [myLevelInfo.level, ready, me]);
-  const NEED_COMMENT = 100, NEED_GROUP = 200, NEED_CREATOR = 0;
+  const NEED_COMMENT = 100, NEED_PHOTO = 300, NEED_GROUP = 200, NEED_CREATOR = 0;
   // Max groups: 1 ab 200 Pts, 2 ab 500 Pts, 3 ab 1500 Pts
   const maxGroupsAllowed = isAdmin ? 3 : achScore >= 1500 ? 3 : achScore >= 500 ? 2 : achScore >= 200 ? 1 : 0;
   const myGroupIds = groups.filter(g => (g.members||[]).includes(me?.id)).map(g => g.id);
   const canComment = isAdmin || canSetRoutes || achScore >= NEED_COMMENT;
+  const canPhoto = isAdmin || canSetRoutes || achScore >= NEED_PHOTO;
   const canCreateGroup = isAdmin || canSetRoutes || achScore >= NEED_GROUP;
   const canJoinGroup = isAdmin || myGroupsList.length < maxGroupsAllowed;
   const canRequestCreator = achScore >= NEED_CREATOR;
@@ -3006,7 +3235,8 @@ export default function App() {
       // Async: Bilder nachladen + komprimieren
       pushSyncLog("⏳ Lade Bilder im Hintergrund (komprimiert auf max. 1080px)...");
       setTimeout(async () => {
-        const community = JSON.parse(JSON.stringify(await loadCommunity() || {}));
+        let community;
+        try { community = JSON.parse(JSON.stringify(await loadCommunity() || {})); } catch (e) { pushSyncLog("⚠️ Bilder-Nachladen abgebrochen (Ladefehler).", "warn"); return; }
         if (!community.routes) return;
         let imgOk = 0, imgFail = 0;
         for (const r of community.routes) {
@@ -3047,7 +3277,50 @@ export default function App() {
   function delTip(routeId, tipId) { setCommunity(c => ({ ...c, routes: c.routes.map(r => r.id === routeId ? { ...r, tips: (r.tips || []).filter(t => t.id !== tipId) } : r) })); }
   function setAccRole(id, role) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === id ? { ...a, role, roleRequest: null } : a) })); }
   function removeAccount(id) { setCommunity(c => ({ ...c, accounts: c.accounts.filter(a => a.id !== id) })); }
-  function deleteMyAccount() { if (confirm("Dein Konto wirklich löschen? Alle deine Ergebnisse bleiben erhalten, du kannst dich aber nicht mehr einloggen.")) { removeAccount(me.id); logout(); } }
+
+  // ── Backup / Wiederherstellung ──────────────────────────────────────────────
+  function exportCommunity() {
+    try {
+      const blob = new Blob([JSON.stringify(community, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      a.href = url; a.download = `blocscore-backup-${stamp}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { alert("Export fehlgeschlagen."); }
+  }
+  async function importCommunityFile(file) {
+    if (!file) return;
+    let data;
+    try { data = JSON.parse(await file.text()); } catch (e) { alert("Datei ist kein gültiges JSON."); return; }
+    if (!data || !Array.isArray(data.accounts) || !Array.isArray(data.routes)) { alert("Datei enthält keine gültigen blocscore-Daten (accounts/routes fehlen)."); return; }
+    if (!confirm(`Backup wiederherstellen?\n\n${data.accounts.length} Nutzer · ${data.routes.length} Routen\n\nDas ersetzt die aktuellen Daten. Der jetzige Stand wird vorher als Snapshot gesichert.`)) return;
+    await writeSnapshot(community, true);
+    setCommunity(data);
+    alert("Wiederhergestellt.");
+  }
+  const [snapOpen, setSnapOpen] = useState(false);
+  const [snaps, setSnaps] = useState(null);
+  async function openSnapshots() { setSnapOpen(true); setSnaps(null); try { setSnaps(await listSnapshots()); } catch (e) { setSnaps([]); } }
+  async function restoreSnapshot(slot) {
+    const snap = await loadSnapshot(slot);
+    if (!snap || !snap.data) { alert("Snapshot nicht lesbar."); return; }
+    if (!confirm(`Snapshot von ${fmtDateTime(snap.ts)} wiederherstellen?\n\n${snap.accounts} Nutzer · ${snap.routes} Routen\n\nDer jetzige Stand wird vorher gesichert.`)) return;
+    await writeSnapshot(community, true);
+    setCommunity(snap.data);
+    setSnapOpen(false);
+    alert("Snapshot wiederhergestellt.");
+  }
+  const [delConfirm, setDelConfirm] = useState(false);
+  async function confirmDeleteMyAccount(pin) {
+    const ok = await verifyPin(pin, me);
+    if (!ok) return false;
+    setDelConfirm(false);
+    removeAccount(me.id);
+    logout();
+    return true;
+  }
   function handleLogin(id) {
     const s = { accountId: id };
     setSession(s);
@@ -3064,6 +3337,12 @@ export default function App() {
     if (me) setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, skipIntro: true } : a) }));
   }
 
+  if (loadError) return <div className="bld"><style>{CSS}</style><div className="empty" style={{ margin: "auto", textAlign: "center", padding: 22, maxWidth: 360 }}>
+    <div className="big">⚠️</div>
+    <div style={{ fontWeight: 800, fontSize: 19, margin: "6px 0 8px" }}>Daten konnten nicht geladen werden</div>
+    <div style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.55 }}>Die Verbindung zur Datenbank hat nicht geklappt. Aus Sicherheitsgründen wurde <b>nichts überschrieben</b> — deine Daten sind nicht verloren. Bitte Internetverbindung prüfen und neu laden.</div>
+    <button className="save" style={{ marginTop: 18 }} onClick={() => location.reload()}>Neu laden</button>
+  </div></div>;
   if (!ready) return <div className="bld"><style>{CSS}</style><div className="empty" style={{ margin: "auto" }}>Lädt…</div></div>;
   if (!me) return <LoginScreen accounts={accounts} onLogin={handleLogin} onSignup={handleSignup} lang={lang} onLang={changeLang} />;
   const introEl = showIntro && !me?.skipIntro ? <IntroModal me={me} onClose={() => setShowIntro(false)} onDismiss={dismissIntro} /> : null;
@@ -3090,8 +3369,7 @@ export default function App() {
         </button>
       </div>
 
-      {showInstall && !installHintDismissed && (
-        <div className="installhint">
+      {showInstall && !installHintDismissed && (        <div className="installhint">
           <div className="installhint-bubble" onClick={doInstall} role="button" tabIndex={0}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" /></svg>
             <span>{LANG === "en" ? "Install App" : "App installieren"}</span>
@@ -3101,6 +3379,8 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {autoArchiveMsg && <div className="autoarchive-toast">{autoArchiveMsg}</div>}
 
       {/* BOARD */}
       {tab === "board" && (<>
@@ -3177,6 +3457,7 @@ export default function App() {
                   <span className="waname">{wallName(s.wall)}</span>
                   {newestWall === s.wall && <span className="freshbadge">{t("plan.fresh")}</span>}
                   {nextWall === s.wall && <span className="nextbadge">{t("plan.next")}</span>}
+                  {needsCare[s.wall] && <span className="carebadge">🔧 {LANG==="en"?"needs setting":"braucht Pflege"}</span>}
                   {myWallDone[s.wall] > 0 && <span className="wadone"><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{myWallDone[s.wall]}</span>}
                   {(() => { const flN = s.items.filter(r => r.results?.[me.name] === "flash").length; return flN > 0 ? <span className="waflash"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flN}</span> : null; })()}
                   <span className="wacount">{s.items.length} Routen</span>
@@ -3184,7 +3465,22 @@ export default function App() {
                 </button>
                 {isOpen && (
                   <div className="wallbody">
-                    {screwDates[s.wall] && <div className="lhsub">{t("routes.rescrewed")} {fmtDate(screwDates[s.wall])}</div>}
+                    {needsCare[s.wall] && (
+                      <div className="carebox">
+                        <div className="carebox-ttl">🔧 {LANG==="en"?"This sector needs setting":"Dieser Bereich muss neu geschraubt werden"}</div>
+                        <div className="carebox-txt">
+                          {LANG==="en"
+                            ? <>The rescrew date ({fmtDate(needsCare[s.wall])}) has passed and the old routes were archived. Routes still need to be set here.</>
+                            : <>Das Umschraubdatum ({fmtDate(needsCare[s.wall])}) ist erreicht und die alten Routen wurden archiviert. Hier müssen noch Routen geschraubt werden.</>}
+                        </div>
+                        <div className="carebox-txt" style={{ marginTop: 6 }}>
+                          {canSetRoutes
+                            ? (LANG==="en" ? "You can set routes here — tap the “+ Add route” button." : "Du kannst hier Routen anlegen — tippe oben auf den Plus-Button.")
+                            : (LANG==="en" ? "Want to help? Anyone from the community can set routes — just request the Route Creator role under Profile from an admin." : "Du willst helfen? Jeder aus der Community kann mithelfen — frage dafür einfach beim Admin die Route-Creator-Rolle an (unter Profil).")}
+                        </div>
+                      </div>
+                    )}
+                    {screwDates[s.wall] && !s.careOnly && <div className="lhsub">{t("routes.rescrewed")} {fmtDate(screwDates[s.wall])}</div>}
                     <div className="route-grid">
                     {s.items.map(r => {
                       const myStatus = r.results?.[me.name] || null;
@@ -3197,7 +3493,7 @@ export default function App() {
                       const tipsN = (r.tips || []).length;
                       return (
                         <div key={r.id} id={"r-" + r.id} className={"rc" + (col ? " rccol" : "") + (r.archived ? " arch" : "") + (flashId === r.id ? " flash" : "")} style={col ? { "--rcol": col } : undefined}>
-                          {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const inline = r.photos[0].startsWith("data:"); const src = inline ? r.photos[0] : await loadPhotoBlob(r.photos[0]); setLightbox(src); }} />}
+                          {hasPhoto && <RoutePhoto photoId={r.photos[0]} className="rbanner" onClick={async () => { const all = []; for (const pid of (r.photos || [])) { const inline = typeof pid === "string" && pid.startsWith("data:"); const s = inline ? pid : await loadPhotoBlob(pid); if (s) all.push(s); } if (all.length) setLightbox({ images: all, startIndex: 0 }); }} />}
                           <div className="rbody">
                             <div className="rchead">
                               <div className={"gcol" + (col === "#181C22" ? " black-grade" : "")} style={col ? { "--gcol-color": col === "#181C22" ? "#181C22" : col, background: col === "#181C22" ? "rgba(255,255,255,0.9)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
@@ -3212,7 +3508,12 @@ export default function App() {
                                 <span className={"rschip top" + (topN > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
                                 <span className={"rschip flash" + (flashN > 0 ? " has" : "")}><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flashN}</span>
                               </div>
-                              {canSetRoutes && <button className="edit" onClick={(e) => { e.stopPropagation(); setEditing(r); }} title={LANG==="en"?"Edit route":"Route bearbeiten"}><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l3.5-1L17 5.5 14.5 3 4 13.5 3 17z"/></svg></button>}
+                              <button className={"edit" + (canSetRoutes ? "" : " infobtn")} onClick={(e) => { e.stopPropagation(); setEditing(r); }} title={canSetRoutes ? (LANG==="en"?"Edit route":"Route bearbeiten") : (LANG==="en"?"Route info":"Route Info")}>
+                                {canSetRoutes
+                                  ? <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l3.5-1L17 5.5 14.5 3 4 13.5 3 17z"/></svg>
+                                  : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8.5" strokeWidth="2.8"/><line x1="12" y1="11" x2="12" y2="17"/></svg>
+                                }
+                              </button>
                             </div>
                             <div className="rfoot">
                               <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
@@ -3330,10 +3631,10 @@ export default function App() {
             ))}
 
             <h3 className="ssec">{t("ach.cats")}</h3>
-            {achState.catList.map(c => { const full = c.total > 0 && c.done === c.total; return (
+            {achState.catList.map(c => { const full = c.total > 0 && c.done === c.total; const isContrib = c.cat === "Community" || c.cat === "Contributor"; return (
               <button key={c.cat} className={"catrow" + (full ? " catrow-done" : "")} onClick={() => setAchCat(c.cat)}>
                 <span className="achic">{c.icon}</span>
-                <div className="achinfo"><div className="achn">{c.cat}</div><div className="achbar"><i style={{ width: `${(c.done / c.total) * 100}%` }} /></div></div>
+                <div className="achinfo"><div className="achn">{c.cat}{isContrib && <span className="creatortag" title={LANG==="en"?"Some need Route Creator":"Teils Route-Creator nötig"}>🛠</span>}</div><div className="achbar"><i style={{ width: `${(c.done / c.total) * 100}%` }} /></div></div>
                 {full
                   ? <div className="catprog-done"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8ff00" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></div>
                   : <div className="achprog">{c.done}/{c.total}</div>}
@@ -3781,7 +4082,7 @@ export default function App() {
               <button className="miniaction" style={{ marginTop: 0 }} onClick={() => setChangePinOpen(true)}><span className="mi-ic">🔑</span>{t("acc.changePw")}</button>
               <button className="miniaction danger" style={{ marginTop: 0 }} onClick={logout}><span className="mi-ic">🚪</span>{t("acc.logout")}</button>
             </div>
-            {!isAdmin && <button className="miniaction" style={{ marginTop: 8, color: "#e98b7d", borderColor: "rgba(233,139,125,.3)", background: "rgba(233,139,125,.08)" }} onClick={deleteMyAccount}><span className="mi-ic">🗑</span>Konto löschen</button>}
+            {!isAdmin && <button className="miniaction" style={{ marginTop: 8, color: "#e98b7d", borderColor: "rgba(233,139,125,.3)", background: "rgba(233,139,125,.08)" }} onClick={() => setDelConfirm(true)}><span className="mi-ic">🗑</span>Konto löschen</button>}
           </div>
           <div className="stcard">
             <h3><span>🔗 {LANG==="en"?"Share blocscore":"blocscore teilen"}</span></h3>
@@ -3873,9 +4174,27 @@ export default function App() {
                   </div>
                 )}
               </div>
+              <div className="stcard"><h3><span>💾 Datensicherung</span></h3>
+                <div className="note">Lade regelmäßig ein Backup herunter — das ist deine Sicherung außerhalb der Datenbank. Automatische Snapshots werden zusätzlich im Hintergrund angelegt.</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                  <button className="miniaction" style={{ marginTop: 0 }} onClick={exportCommunity}><span className="mi-ic">⬇️</span>Backup herunterladen (JSON)</button>
+                  <label className="miniaction" style={{ marginTop: 0, cursor: "pointer" }}>
+                    <input type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => { importCommunityFile(e.target.files?.[0]); e.target.value = ""; }} />
+                    <span className="mi-ic">⬆️</span>Aus Backup-Datei wiederherstellen
+                  </label>
+                  <button className="miniaction" style={{ marginTop: 0 }} onClick={openSnapshots}><span className="mi-ic">🕘</span>Automatische Snapshots…</button>
+                </div>
+              </div>
               <div className="stcard"><h3><span>⚠️ Hard Reset</span></h3>
-                <div className="note">Vorsicht: setzt das Board auf die importierten Original-Daten zurück.</div>
-                <button className="miniaction danger" onClick={() => { const pw = prompt("Sicherheitspasswort eingeben:"); if (pw === "1234567890") { if (confirm("Board wirklich zurücksetzen? Alle Daten gehen verloren.")) setCommunity(SEED_COMMUNITY); } else if (pw !== null) alert("Falsches Passwort."); }}>Board zurücksetzen</button>
+                <div className="note">Setzt das Board auf die Original-Seed-Daten zurück — <b>alle</b> Nutzer, Routen und Ergebnisse gehen verloren. {isSuperAdmin ? "Lade vorher ein Backup herunter." : "Nur der Superadmin kann das Board zurücksetzen."}</div>
+                {isSuperAdmin && <button className="miniaction danger" onClick={() => {
+                  const phrase = prompt("Zum Zurücksetzen exakt eintippen:  BOARD ZURUECKSETZEN");
+                  if (phrase === null) return;
+                  if (phrase.trim() !== "BOARD ZURUECKSETZEN") { alert("Falsche Eingabe — abgebrochen."); return; }
+                  if (!confirm("Wirklich ALLES auf Seed zurücksetzen? Der jetzige Stand wird vorher als Snapshot gesichert.")) return;
+                  writeSnapshot(community, true);
+                  setCommunity(SEED_COMMUNITY);
+                }}>Board zurücksetzen</button>}
               </div>
             </>
           )}
@@ -3943,7 +4262,7 @@ export default function App() {
 
       {editing && (
         <RouteSheetBoundary onClose={() => setEditing(null)}>
-        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} screwDates={screwDates}
+        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} readOnly={!canSetRoutes && editing && editing !== "new"} canSeeMeta={canSetRoutes} canPhoto={canPhoto} achScore={achScore} screwDates={screwDates}
           onClose={() => setEditing(null)} onSave={(r) => { upsertRoute(r); setEditing(null); }} onDelete={(id) => { deleteRoute(id); setEditing(null); }} />
         </RouteSheetBoundary>
       )}
@@ -3969,7 +4288,7 @@ export default function App() {
           </div>
         </div>
       )}
-      {lightbox && <PhotoLightbox src={lightbox} onClose={() => setLightbox(null)} />}
+      {lightbox && <PhotoLightbox src={typeof lightbox === "string" ? lightbox : undefined} images={typeof lightbox === "object" ? lightbox.images : undefined} startIndex={typeof lightbox === "object" ? (lightbox.startIndex || 0) : 0} onClose={() => setLightbox(null)} />}
       {emojiOpen && <ProfileEmojiSheet me={me} achScore={achScore} isAdmin={isAdmin} onClose={() => setEmojiOpen(false)} onPick={(e) => { setMyEmoji(e); setEmojiOpen(false); }} />}
       {confirmCreator && (
         <div className="scrim" onClick={() => setConfirmCreator(false)}>
@@ -3985,6 +4304,26 @@ export default function App() {
         </div>
       )}
       {achCat && <CategorySheet cat={achCat} items={achState.evald.filter(a => a.cat === achCat)} onClose={() => setAchCat(null)} />}
+      {delConfirm && <DeleteAccountSheet me={me} onClose={() => setDelConfirm(false)} onConfirm={confirmDeleteMyAccount} />}
+      {snapOpen && (
+        <div className="scrim" onClick={() => setSnapOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="grip" />
+            <div className="shead"><h2>🕘 Automatische Snapshots</h2><button className="x" onClick={() => setSnapOpen(false)}>✕</button></div>
+            <div className="sbody">
+              <div className="note" style={{ marginBottom: 12 }}>Im Hintergrund gesicherte Stände (max. {SNAP_SLOTS}). Tippe einen an, um ihn wiederherzustellen — der aktuelle Stand wird vorher gesichert.</div>
+              {snaps === null && <div className="empty" style={{ padding: 20 }}>Lädt…</div>}
+              {snaps && snaps.length === 0 && <div className="empty" style={{ padding: 20, textAlign: "center" }}>Noch keine Snapshots vorhanden.</div>}
+              {snaps && snaps.map((s, i) => (
+                <button key={i} className="snaprow" onClick={() => restoreSnapshot(s.slot)}>
+                  <div className="snapmain"><div className="snapdate">{fmtDateTime(s.ts)}</div><div className="snapmeta">{s.accounts} Nutzer · {s.routes} Routen</div></div>
+                  <span className="snaprestore">Wiederherstellen</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {openGroupId && (() => {
         const g = groupStats.find(x => x.id === openGroupId); if (!g) return null;
         const isMember = (g.members || []).includes(me.id);
@@ -4128,12 +4467,23 @@ function CategorySheet({ cat, items, onClose }) {
   const shown = sorted.slice(0, 150);
   const done = items.filter(a => a.done).length;
   const headIcon = items[0]?.icon || "🏅";
+  const isContributor = cat === "Community" || cat === "Contributor";
   return (
     <div className="scrim" onClick={onClose}>
       <div className="sheet" onClick={e => e.stopPropagation()}>
         <div className="grip" />
         <div className="shead"><h2>{headIcon} {cat}</h2><button className="x" onClick={onClose}>✕</button></div>
         <div className="sbody">
+          {isContributor && (
+            <div className="creatorinfo">
+              <div className="creatorinfo-ic">🛠</div>
+              <div className="creatorinfo-txt">
+                {LANG === "en"
+                  ? <>Setting routes requires the <b>Route Creator</b> role. Comments unlock at <b>100</b> skillpoints, adding photos at <b>300</b>. Want to set routes? Request the role under <b>Profile</b> from an admin.</>
+                  : <>Routen anlegen erfordert die <b>Route-Creator</b>-Rolle. Kommentare werden ab <b>100</b> Skillpoints freigeschaltet, Fotos ab <b>300</b>. Du willst Routen schrauben? Frag die Rolle unter <b>Profil</b> beim Admin an.</>}
+              </div>
+            </div>
+          )}
           <div className="note" style={{ marginBottom: 12 }}>{done} / {items.length} {t("ach.unlocked")}</div>
           {shown.map(a => (
             <div key={a.id} className={"achrow" + (a.done ? " done" : "")}>
@@ -4150,6 +4500,46 @@ function CategorySheet({ cat, items, onClose }) {
 }
 
 /* ============================ Konto: Passwort ändern ============================ */
+function DeleteAccountSheet({ me, onClose, onConfirm }) {
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const hasPin = !!(me?.pinHash || me?.pin);
+  async function go() {
+    setBusy(true); setErr("");
+    const ok = await onConfirm(pin);
+    setBusy(false);
+    if (!ok) setErr(LANG === "en" ? "Wrong password." : "Falsches Passwort.");
+  }
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="grip" />
+        <div className="shead"><h2>🗑 {LANG === "en" ? "Delete account" : "Konto löschen"}</h2><button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
+        <div className="sbody">
+          <div className="delwarn">
+            {LANG === "en"
+              ? <>This deletes your account <b>{me?.name}</b>. Your logged results stay on the board, but you can no longer log in. This cannot be undone.</>
+              : <>Damit wird dein Konto <b>{me?.name}</b> gelöscht. Deine eingetragenen Ergebnisse bleiben auf dem Board, aber du kannst dich nicht mehr einloggen. Das lässt sich nicht rückgängig machen.</>}
+          </div>
+          {hasPin ? (
+            <div className="field" style={{ marginTop: 14 }}>
+              <label>{LANG === "en" ? "Enter your password to confirm" : "Zur Bestätigung dein Passwort eingeben"}</label>
+              <input type="password" inputMode="numeric" value={pin} autoFocus onChange={e => { setPin(e.target.value); setErr(""); }} onKeyDown={e => { if (e.key === "Enter" && pin) go(); }} placeholder={LANG === "en" ? "Password" : "Passwort"} />
+              {err && <div className="phint" style={{ color: "#e98b7d", marginTop: 6 }}>{err}</div>}
+            </div>
+          ) : (
+            <div className="phint" style={{ marginTop: 10 }}>{LANG === "en" ? "Your account has no password set." : "Für dein Konto ist kein Passwort gesetzt."}</div>
+          )}
+          <button className="del" style={{ marginTop: 16, opacity: (busy || (hasPin && !pin)) ? .5 : 1 }} disabled={busy || (hasPin && !pin)} onClick={go}>
+            {busy ? "…" : <>🗑 {LANG === "en" ? "Delete permanently" : "Endgültig löschen"}</>}
+          </button>
+          <button className="miniaction" style={{ marginTop: 8, width: "100%", justifyContent: "center" }} onClick={onClose}>{LANG === "en" ? "Cancel" : "Abbrechen"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function ProfileEmojiSheet({ me, achScore, isAdmin, onClose, onPick }) {
   const unlocked = getUnlockedEmojis(achScore, isAdmin);
   const next = getNextEmojiUnlock(achScore);
@@ -4370,7 +4760,9 @@ class RouteSheetBoundary extends React.Component {
   }
 }
 
-function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, onDelete, screwDates }) {
+function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMeta, canPhoto, achScore, onClose, onSave, onDelete, screwDates }) {
+  const MAX_PHOTOS = 3;
+  const [sheetLb, setSheetLb] = useState(null);
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
   const isNew = !route;
   const [wall, setWall] = useState(route ? (wallOf(route.gym) ? wallCanon(route.gym) : (gyms?.[0] || null)) : null);
@@ -4393,7 +4785,7 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
   const myStatus = results[me.name] || null;
 
   useEffect(() => { let on = true; (async () => { try { if (!route?.photos?.length) return; const out = []; for (const id of route.photos) { if (!id) continue; if (typeof id === "string" && id.startsWith("data:")) { out.push({ id, dataUrl: id }); } else { try { const b = await loadPhotoBlob(id); if (b) out.push({ id, dataUrl: b }); } catch(_){} } } if (on) setPhotos(out); } catch(e) { console.error("photo load error", e); } })(); return () => { on = false; }; }, []);
-  async function onPickFiles(e) { const files = Array.from(e.target.files || []); e.target.value = ""; if (!files.length) return; setPhotoBusy(true); const add = []; for (const f of files) { try { add.push({ id: uid(), dataUrl: await downscale(f) }); } catch (_) {} } setPhotos(p => [...p, ...add]); setPhotoBusy(false); }
+  async function onPickFiles(e) { const files = Array.from(e.target.files || []); e.target.value = ""; if (!files.length) return; setPhotoBusy(true); const add = []; const room = MAX_PHOTOS - photos.length; for (const f of files.slice(0, Math.max(0, room))) { try { add.push({ id: uid(), dataUrl: await downscale(f) }); } catch (_) {} } setPhotos(p => [...p, ...add].slice(0, MAX_PHOTOS)); setPhotoBusy(false); }
   function removePhoto(id) { setPhotos(p => p.filter(x => x.id !== id)); }
   function setMine(s) {
     const next = results[me.name] === s ? null : s;
@@ -4415,13 +4807,76 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
     if (res === "copied") { setShareMsg("✓"); setTimeout(() => setShareMsg(""), 1800); }
   }
 
+  // Macher-Info + Änderungshistorie (nur Route Creator / Admin)
+  const histList = (route?.history && route.history.length)
+    ? route.history
+    : (route?.createdBy ? [{ by: route.createdBy, ts: route.createdAt, action: "create" }] : []);
+  const metaBlock = (!isNew && canSeeMeta && route) ? (
+    <div className="metabox">
+      <div className="metabox-row"><span className="metabox-k">{LANG==="en"?"Set by":"Angelegt von"}</span><span className="metabox-v">{route.createdBy || (LANG==="en"?"unknown":"unbekannt")}</span></div>
+      {histList.length > 0 && (
+        <div className="metahist">
+          <div className="metahist-ttl">{LANG==="en"?"Last changes":"Letzte Änderungen"}</div>
+          {histList.slice(0, 3).map((h, i) => (
+            <div className="metahist-row" key={i}>
+              <span className="metahist-act">{h.action === "create" ? (LANG==="en"?"created":"angelegt") : (LANG==="en"?"edited":"bearbeitet")}</span>
+              <span className="metahist-by">{h.by}</span>
+              <span className="metahist-ts">{h.ts ? fmtDateTime(h.ts) : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className={"scrim" + (isNew && !wall ? " full" : "")} onClick={onClose}>
       <div className={"sheet" + (isNew && !wall ? " planmode" : "")} onClick={e => e.stopPropagation()}>
         <div className="grip" />
-        <div className="shead"><h2>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Edit route":"Route bearbeiten")}</h2><div style={{display:"flex",gap:8,alignItems:"center"}}>{!isNew && <button className="shareIcon" onClick={doShareRoute} title={LANG==="en"?"Share route":"Route teilen"}>{shareMsg ? shareMsg : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>}</button>}<button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div></div>
+        <div className="shead">
+          <h2>{readOnly ? (LANG==="en"?"Route Info":"Route Info") : isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Edit route":"Route bearbeiten")}</h2>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            {!isNew && <button className="shareIcon" onClick={doShareRoute} title={LANG==="en"?"Share route":"Route teilen"}>{shareMsg ? shareMsg : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>}</button>}
+            <button className="x" onClick={onClose} aria-label="Schließen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+          </div>
+        </div>
         <div className="sbody">
-          {(!wall && isNew) ? (
+          {readOnly ? (
+            // ── Info-Ansicht für Climber (kein Bearbeiten) ────────────────
+            <>
+              <div className="wallbar">
+                <span className="wallbar-ic"><WallIcon code={wall} size={20} /></span>
+                <span className="wb-name">{wallName(wall)}</span>
+                <span className="ri-date-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>{fmtDate(date)}</span>
+              </div>
+              <div className="ri-grade-row">
+                <div className="gcol" style={{ "--gcol-color": colorOf(route.name) || "#b8ff00", background: colorOf(route.name) === "#181C22" ? "rgba(255,255,255,0.9)" : "transparent", width: 42, height: 42 }}>
+                  <span className="ggrade" style={{ fontSize: 17 }}>{grade}</span>
+                </div>
+                <div className="ri-names">
+                  <div className="ri-nick">{nick}</div>
+                  {route.name && <div className="ri-color">{route.name}</div>}
+                </div>
+              </div>
+              {note && <div className="ri-note">{note}</div>}
+              {photos.length > 0 && (
+                <div className="photos" style={{ marginBottom: 12 }}>
+                  {photos.map((ph, i) => <div className="thumb thumb-click" key={ph.id} onClick={() => setSheetLb({ images: photos.map(p => p.dataUrl), startIndex: i })}><img src={ph.dataUrl} alt="" /></div>)}
+                </div>
+              )}
+              {metaBlock}
+              <div className="field"><label>{LANG==="en"?"My result":"Mein Ergebnis"}</label>
+                <div className="bigtri">
+                  <button onClick={() => { setResults(r => ({ ...r, [me.name]: null })); setResultDates(d => { const nd = { ...d }; delete nd[me.name]; return nd; }); }} className={!myStatus ? "a" : ""}>—<span className="sp">offen</span></button>
+                  <button className={myStatus === "top" ? "a" : ""} onClick={() => setMine("top")}>Top<span className="sp">{fmtPts(topPts(grade))}</span></button>
+                  <button className={myStatus === "flash" ? "f" : ""} onClick={() => setMine("flash")}>Flash<span className="sp">{fmtPts(topPts(grade) + FLASH_BONUS)}</span></button>
+                </div>
+              </div>
+              <button className="save" onClick={commit}>{LANG==="en"?"Save":"Speichern"}</button>
+            </>
+          ) : (
+            // ── Edit-Ansicht für Schrauber / Admin ────────────────────────
+            (!wall && isNew) ? (
             <div className="planpick">
               <div className="planpick-ttl">{LANG==="en"?"Where is the route?":"Wo hängt die Route?"}</div>
               <div className="planpick-sub">{LANG==="en"?"Tap the area on the gym map":"Tippe auf den Bereich im Hallenplan"}</div>
@@ -4465,13 +4920,22 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
             <div className="phint">{t("route.noteHint")}</div>
           </div>
 
-          <div className="field"><label>Fotos {photos.length ? `(${photos.length})` : ""}</label>
-            <div className="photos">
-              {photos.map(ph => <div className="thumb" key={ph.id}><img src={ph.dataUrl} alt="" /><button className="thx" onClick={() => removePhoto(ph.id)}>✕</button></div>)}
-              <button className="addphoto" onClick={() => fileRef.current?.click()}>{photoBusy ? "…" : <><span style={{ fontSize: 22, lineHeight: 1 }}>＋</span><span>Foto</span></>}</button>
-            </div>
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple style={{ display: "none" }} onChange={onPickFiles} />
-            <div className="phint">Kamera oder Galerie. Bilder werden verkleinert gespeichert.</div>
+          <div className="field"><label>Fotos {photos.length ? `(${photos.length}/${MAX_PHOTOS})` : `(max. ${MAX_PHOTOS})`}</label>
+            {!canPhoto && photos.length === 0 ? (
+              <div className="lockbox">🔒 {LANG==="en"
+                ? <>Adding photos unlocks at <b>{NEED_PHOTO} skillpoints</b> (you have {Math.round(achScore||0)}).</>
+                : <>Fotos hinzufügen wird ab <b>{NEED_PHOTO} Skillpoints</b> freigeschaltet (du hast {Math.round(achScore||0)}).</>}
+              </div>
+            ) : (
+              <>
+                <div className="photos">
+                  {photos.map(ph => <div className="thumb" key={ph.id}><img src={ph.dataUrl} alt="" /><button className="thx" onClick={() => removePhoto(ph.id)}>✕</button></div>)}
+                  {canPhoto && photos.length < MAX_PHOTOS && <button className="addphoto" onClick={() => fileRef.current?.click()}>{photoBusy ? "…" : <><span style={{ fontSize: 22, lineHeight: 1 }}>＋</span><span>Foto</span></>}</button>}
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple style={{ display: "none" }} onChange={onPickFiles} />
+                <div className="phint">{photos.length >= MAX_PHOTOS ? (LANG==="en"?`Maximum of ${MAX_PHOTOS} photos reached.`:`Maximal ${MAX_PHOTOS} Fotos erreicht.`) : (LANG==="en"?"Camera or gallery. Images are downscaled.":"Kamera oder Galerie. Bilder werden verkleinert gespeichert.")}</div>
+              </>
+            )}
           </div>
 
           <div className="field"><label>Dein Ergebnis</label>
@@ -4492,12 +4956,16 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, onClose, onSave, o
             </div>
           )}
 
+          {!isNew && metaBlock}
+
           <button className={"save" + (valid ? "" : " disabled")} onClick={commit}>{isNew ? (LANG==="en"?"Add route":"Route anlegen") : (LANG==="en"?"Save":"Speichern")}</button>
           {!isNew && isAdmin && <button className="del" onClick={() => { if (confirm(LANG==="en"?"Really delete this route? All results and photos will be lost.":"Diese Route wirklich löschen? Alle Ergebnisse und Fotos gehen verloren.")) onDelete(route.id); }}>🗑 {LANG==="en"?"Delete route":"Route löschen"}</button>}
           {!isNew && !isAdmin && !canSetRoutes && <div className="phint" style={{ textAlign: "center", marginTop: 12 }}>{LANG==="en"?"Only Route Creators and Admins can archive or delete.":"Archivieren und Löschen können nur Route Creator und Admins."}</div>}
-          </>)}
+          </>)
+          )} {/* end readOnly ternary */}
         </div>
       </div>
+      {sheetLb && <PhotoLightbox images={sheetLb.images} startIndex={sheetLb.startIndex || 0} onClose={() => setSheetLb(null)} />}
     </div>
   );
 }
