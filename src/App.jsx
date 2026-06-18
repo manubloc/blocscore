@@ -3165,62 +3165,78 @@ export default function App() {
 
       pushSyncLog(`🔍 ${normalized.length} valide Routen (Farbe + Grade + Sektor vorhanden)`);
 
-      let matched = 0, created = 0, archived = 0, imageAdded = 0;
+      let matched = 0, created = 0, archived = 0;
       const today = todayISO();
 
-      setCommunity(c => {
-        let newRoutes = [...(c.routes || [])];
-        let newAccounts = c.accounts;
-        const usedIds = new Set();
+      // ── Bilder VORAB als separate Blobs speichern — NIEMALS base64 in die Community!
+      //    (Sonst wird der Community-Datensatz riesig (~8 MB) und das Speichern schlägt fehl.)
+      let imgOk = 0, imgFail = 0;
+      const totalImg = normalized.filter(n => n.imageUrl).length;
+      if (totalImg) pushSyncLog(`⏳ Speichere ${totalImg} Bilder…`);
+      let imgDone = 0;
+      for (const inc of normalized) {
+        if (!inc.imageUrl) continue;
+        try {
+          let dataUrl = inc.imageUrl;
+          const isData = typeof dataUrl === "string" && dataUrl.startsWith("data:");
+          if (!isData) {
+            // http(s)-URL → laden + verkleinern
+            const resp = await fetch(dataUrl, { mode: "cors" });
+            const blob = await resp.blob();
+            dataUrl = await downscale(new File([blob], "img.jpg", { type: blob.type }));
+          } else if (dataUrl.length > 200000) {
+            // großes eingebettetes Bild (> ~150 KB) → verkleinern
+            const blob = await (await fetch(dataUrl)).blob();
+            dataUrl = await downscale(new File([blob], "img.jpg", { type: blob.type }));
+          }
+          const pid = uid();
+          await savePhotoBlob(pid, dataUrl);
+          inc._photoId = pid;
+          imgOk++;
+        } catch (e) { imgFail++; }
+        imgDone++;
+        if (imgDone % 15 === 0) pushSyncLog(`   …${imgDone}/${totalImg}`);
+      }
+      if (totalImg) pushSyncLog(`📸 ${imgOk} Bilder gespeichert` + (imgFail ? ` (${imgFail} fehlgeschlagen)` : ""), imgFail ? "warn" : "");
 
-        // FULL RESET: alle bisherigen Routen entfernen (Ergebnisse werden mit Route weggeschmissen)
-        if (fullReset) {
-          archived = newRoutes.filter(r => !r.archived).length;
-          newRoutes = [];
-          pushSyncLog(`🗑️ Hard-Reset: ${archived} alte Routen entfernt`, "warn");
-        }
+      setCommunity(c => {
+        const original = [...(c.routes || [])];
+        let newRoutes = fullReset ? [] : [...original];
+        const usedIds = new Set();
+        if (fullReset) archived = original.filter(r => !r.archived).length;
 
         for (const inc of normalized) {
-          // Suche Match: gleiche Farbe + Sektor + Schwierigkeit, nicht archiviert
-          const matchIdx = newRoutes.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && !usedIds.has(r.id));
+          // WICHTIG: nur gegen vorhandene Original-Routen matchen, NICHT gegen in diesem
+          // Lauf neu erstellte — sonst werden Routen mit gleicher Farbe+Grad+Sektor verschmolzen.
+          let matchIdx = -1;
+          if (!fullReset) {
+            matchIdx = original.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && !usedIds.has(r.id));
+          }
           if (matchIdx >= 0) {
-            // MATCH: Bild übertragen falls vorhanden
-            usedIds.add(newRoutes[matchIdx].id);
+            const mr = original[matchIdx];
+            usedIds.add(mr.id);
             matched++;
-            if (inc.imageUrl && (!newRoutes[matchIdx].photos || newRoutes[matchIdx].photos.length === 0)) {
-              // Bild später async laden
-              newRoutes[matchIdx] = { ...newRoutes[matchIdx], _pendingImageUrl: inc.imageUrl };
+            if (inc._photoId) {
+              const ni = newRoutes.findIndex(r => r.id === mr.id);
+              if (ni >= 0 && (!newRoutes[ni].photos || newRoutes[ni].photos.length === 0)) {
+                newRoutes[ni] = { ...newRoutes[ni], photos: [inc._photoId] };
+              }
             }
           } else if (fullReset || (inc.date && inc.date >= today)) {
-            // Kein Match aber aktuelles Datum → neue Route
             const nick = genName(uid() + "|" + inc.color, inc.grade);
-            const newRoute = {
-              id: uid(),
-              date: inc.date || today,
-              gym: inc.sector,
-              grade: inc.grade,
-              name: inc.color,
-              nick: nick,
-              note: "",
-              archived: false,
-              results: {},
-              photos: [],
-              tips: [],
-            };
-            if (inc.imageUrl) newRoute._pendingImageUrl = inc.imageUrl;
-            newRoutes.push(newRoute);
+            newRoutes.push({
+              id: uid(), date: inc.date || today, gym: inc.sector, grade: inc.grade,
+              name: inc.color, nick, note: "", archived: false, results: {},
+              photos: inc._photoId ? [inc._photoId] : [], tips: [],
+            });
             created++;
           }
         }
 
-        // Archiviere alte Routen die nicht gematcht wurden (nur bei Additivem Sync mit gleichem Sektor)
         if (!fullReset) {
           const sectorsInSync = new Set(normalized.map(n => n.sector));
           newRoutes = newRoutes.map(r => {
-            if (!r.archived && sectorsInSync.has(r.gym) && !usedIds.has(r.id)) {
-              archived++;
-              return { ...r, archived: true };
-            }
+            if (!r.archived && sectorsInSync.has(r.gym) && !usedIds.has(r.id)) { archived++; return { ...r, archived: true }; }
             return r;
           });
         }
@@ -3230,37 +3246,8 @@ export default function App() {
 
       pushSyncLog(`✓ ${matched} bestehende Routen aktualisiert`);
       pushSyncLog(`✓ ${created} neue Routen angelegt`);
-      if (archived > 0) pushSyncLog(`⏸ ${archived} alte Routen archiviert`, "warn");
-
-      // Async: Bilder nachladen + komprimieren
-      pushSyncLog("⏳ Lade Bilder im Hintergrund (komprimiert auf max. 1080px)...");
-      setTimeout(async () => {
-        let community;
-        try { community = JSON.parse(JSON.stringify(await loadCommunity() || {})); } catch (e) { pushSyncLog("⚠️ Bilder-Nachladen abgebrochen (Ladefehler).", "warn"); return; }
-        if (!community.routes) return;
-        let imgOk = 0, imgFail = 0;
-        for (const r of community.routes) {
-          if (r._pendingImageUrl && (!r.photos || r.photos.length === 0)) {
-            try {
-              const resp = await fetch(r._pendingImageUrl, { mode: "cors" });
-              const blob = await resp.blob();
-              const f = new File([blob], "img.jpg", { type: blob.type });
-              const dataUrl = await downscale(f);
-              const photoId = uid();
-              await savePhotoBlob(photoId, dataUrl);
-              r.photos = [photoId];
-              delete r._pendingImageUrl;
-              imgOk++;
-            } catch (err) {
-              imgFail++;
-              delete r._pendingImageUrl;
-            }
-          }
-        }
-        setCommunity(c => ({ ...c, routes: community.routes }));
-        pushSyncLog(`📸 ${imgOk} Bilder geladen` + (imgFail ? ` (${imgFail} fehlgeschlagen — vermutlich CORS-Block)` : ""), imgFail ? "warn" : "");
-        pushSyncLog("✅ Sync abgeschlossen.", "ok");
-      }, 200);
+      if (archived > 0) pushSyncLog(`⏸ ${archived} alte Routen ${fullReset ? "entfernt" : "archiviert"}`, "warn");
+      pushSyncLog("✅ Sync abgeschlossen.", "ok");
 
     } catch (err) {
       pushSyncLog("❌ Fehler beim Sync: " + (err.message || err), "err");
