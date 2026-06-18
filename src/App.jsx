@@ -1206,6 +1206,9 @@ function buildAchievements(lang) {
   const SEK = en?"Sectors":"Sektoren";
   [[2,en?"Sector Curious":"Sektor-Neugier"],[3,en?"Sector Tour":"Sektor-Tour"],[4,en?"Sector Connoisseur":"Sektor-Kenner"],[5,en?"All Sectors":"Alle Sektoren"]]
     .forEach(([k,nm])=>push(SEK,"🧭",nm,en?`Climb on ${k} different sectors`:`Klettere an ${k} verschiedenen Sektoren`,k,"distinctWalls",30+(k-2)*35));
+  // Sektor-Ausdauer: unique (Sektor × Tag) Kombinationen — wächst unbegrenzt
+  [[10,en?"Sector Regular":"Sektor-Gast",60],[25,en?"Sector Dweller":"Sektor-Stammgast",90],[60,en?"Sector Devotee":"Sektor-Liebhaber",130],[130,en?"Sector Veteran":"Sektor-Veteran",180],[280,en?"Sector Obsessed":"Sektor-Besessen",240],[550,en?"Sector Legend":"Sektor-Legende",320],[1000,en?"Sector Immortal":"Sektor-Unsterblich",420]]
+    .forEach(([k,nm,p])=>push(SEK,"🧭",nm,en?`${k} sector×day combos`:`${k} Sektor-Tage`,k,"totalWallDays",p));
 
   // GRAD-ENTDECKER — verschiedene Schwierigkeitsgrade insgesamt
   const GE = en?"Grade Explorer":"Grad-Entdecker";
@@ -1523,6 +1526,7 @@ const RAINBOW = ["blau", "grün", "rot", "gelb", "lila"];
 function normColor(c) { return c === "gruen" ? "grün" : c === "weiss" ? "weiß" : c === "violett" ? "lila" : c; }
 function computeAgg(routes, name) {
   const agg = { tops: 0, flashes: 0, points: 0, grade: {}, color: {}, wall: {}, gradeColor: {}, days: {} };
+  const wallDaySet = new Set();
   routes.forEach(r => {
     const st = r.results?.[name]; if (!st) return;
     const g = r.grade, w = wallCanon(r.gym), isF = st === "flash";
@@ -1533,6 +1537,7 @@ function computeAgg(routes, name) {
     if (c) { (agg.color[c] = agg.color[c] || { t: 0, f: 0 }).t++; if (isF) agg.color[c].f++; const k = g + "|" + c; (agg.gradeColor[k] = agg.gradeColor[k] || { t: 0, f: 0 }).t++; if (isF) agg.gradeColor[k].f++; }
     const day = (r.resultDates && r.resultDates[name]) || r.date || "?"; const D = agg.days[day] = agg.days[day] || { t: 0, f: 0, colors: new Set(), grades: new Set(), cc: {}, gc: {} };
     D.t++; if (isF) D.f++; D.grades.add(g); D.gc[g] = (D.gc[g] || 0) + 1; if (c) { D.colors.add(c); D.cc[c] = (D.cc[c] || 0) + 1; }
+    if (w && day && day !== "?") wallDaySet.add(w + ":" + day);
   });
   agg.maxDayTops = 0; agg.maxDayFlashes = 0; agg.maxColorDay = {}; agg.maxGradeDay = {}; agg.rainbowDays = 0; agg.allGradeDays = 0;
   agg.maxFrom1 = 0; agg.maxRun = 0; agg.maxOfAKind = 0;
@@ -1556,6 +1561,7 @@ function computeAgg(routes, name) {
   });
   // Neue Metriken
   agg.distinctWalls = Object.keys(agg.wall).length;
+  agg.totalWallDays = wallDaySet.size;
   agg.distinctGrades = Object.keys(agg.grade).length;
   let bestAllFlashDay = 0;
   Object.values(agg.days).forEach(D => { if (D.t > 0 && D.f === D.t) bestAllFlashDay = Math.max(bestAllFlashDay, D.t); });
@@ -1585,6 +1591,7 @@ function achValue(agg, key) {
   if (key === "daysIn100") return agg.daysIn100 || 0;
   if (key === "daysIn365") return agg.daysIn365 || 0;
   if (key === "distinctWalls") return agg.distinctWalls || 0;
+  if (key === "totalWallDays") return agg.totalWallDays || 0;
   if (key === "distinctGrades") return agg.distinctGrades || 0;
   if (key === "maxConsecutiveDays") return agg.maxConsecutiveDays || 0;
   if (key === "bestAllFlashDay") return agg.bestAllFlashDay || 0;
@@ -1889,6 +1896,8 @@ const CSS = `
 .seg.full, .segwrap .seg { width:fit-content; }
 .addtop-tb { flex:none; height:34px; padding:0 14px 0 10px; border-radius:9px; background:var(--amber); border:1px solid rgba(255,255,255,.18); color:#13161a; font-weight:700; font-size:13px; display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
 .installhint { position:absolute; top:64px; right:10px; z-index:60; display:flex; align-items:center; gap:5px; animation:ihIn .35s cubic-bezier(.2,1,.4,1); }
+.installprofilebtn { width:100%; margin:10px 0 4px; height:42px; border-radius:10px; background:rgba(184,255,0,.13); border:1.5px solid rgba(184,255,0,.6); color:#b8ff00; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-family:'Barlow Condensed'; font-weight:700; font-size:15px; letter-spacing:.04em; }
+.installprofilebtn:active { background:rgba(184,255,0,.24); }
 @keyframes ihIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
 .installhint-bubble { position:relative; display:flex; align-items:center; gap:7px; padding:9px 13px; background:#1c2129; border:1.4px solid rgba(184,255,0,.65); border-radius:11px; color:#b8ff00; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 8px 24px rgba(0,0,0,.42), 0 0 18px rgba(184,255,0,.12); }
 .installhint-bubble:active { background:#222833; }
@@ -3675,6 +3684,12 @@ export default function App() {
         <div className="scroll"><div className="stats">
           <div className="stcard meCard">
             <h3><span>{me.name}</span><span className="r">{roleLabel(me.role)}</span></h3>
+            {showInstall && (
+              <button className="installprofilebtn" onClick={doInstall}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v11"/><path d="M8 11l4 4 4-4"/><path d="M5 20h14"/></svg>
+                {LANG === "en" ? "Install App" : "App installieren"}
+              </button>
+            )}
             <div className="note" style={{ marginBottom: 0 }}>{canSetRoutes ? t("acc.canSet") : t("acc.cannotSet")}</div>
             <button className="privtoggle" style={{ marginTop: 10 }} onClick={() => setPrivate(!me.private)}>
               <span className={"switch" + (me.private ? " on" : "")}><span className="knob" /></span>
