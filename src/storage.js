@@ -71,7 +71,10 @@ function lsList(prefix, shared) {
 async function sbGet(key) {
   const client = await sb(); if (!client) return null;
   const { data, error } = await client.from(TABLE).select("value").eq("key", key).maybeSingle();
-  if (error) { console.warn("blocscore/storage: get error", error.message); return null; }
+  // WICHTIG: bei einem echten Fehler WERFEN — nicht null zurückgeben. Sonst kann die App
+  // einen Verbindungsfehler nicht von "Zeile existiert nicht" unterscheiden und überschreibt
+  // im schlimmsten Fall echte Daten mit Seed-Daten. null bedeutet ausschließlich: Zeile fehlt.
+  if (error) { throw new Error("blocscore/storage: get failed — " + (error.message || "unknown")); }
   return data ? { key, value: data.value, shared: true } : null;
 }
 
