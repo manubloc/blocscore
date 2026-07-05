@@ -180,15 +180,15 @@ const STR = {
   de: {
     "nav.routes": "Routen", "nav.ach": "Erfolge", "nav.groups": "Gruppen", "nav.board": "Board", "nav.account": "Konto",
     "common.save": "Speichern", "common.cancel": "Abbrechen", "common.delete": "Löschen", "common.back": "Zurück", "common.all": "Alle",
-    "login.signin": "Anmelden", "login.signup": "Registrieren", "login.name": "Name", "login.pin": "PIN",
-    "login.namePh": "Dein Name", "login.pinPh": "PIN", "login.pinSet": "PIN festlegen (mind. 4 Zeichen)",
+    "login.signin": "Anmelden", "login.signup": "Registrieren", "login.name": "Name", "login.pin": "Passwort",
+    "login.namePh": "Dein Name", "login.pinPh": "Passwort", "login.pinSet": "Passwort festlegen (mind. 4 Zeichen)",
     "login.suggest": "🎲 Vorschlag", "login.create": "Konto erstellen",
     "login.privTitle": "Privater Modus", "login.privDesc": "Du trackst alles, erscheinst aber für niemanden in Ranglisten — nur du siehst deine Platzierung.",
     "login.demoShow": "Demo-Konten anzeigen", "login.demoHide": "Demo-Konten ausblenden",
     "login.demoHint": "Beispiel-Konten · PIN für alle: 1234 · Admin: Login admin, Passwort admin",
     "login.foot": "Lokaler Prototyp · Daten bleiben in diesem Browser",
     "login.errNoAcc": "Kein Konto mit diesem Namen.", "login.errPin": "PIN stimmt nicht.",
-    "login.errName": "Bitte einen Namen eingeben.", "login.errTaken": "Name ist schon vergeben.", "login.errShort": "PIN braucht mindestens 4 Zeichen.",
+    "login.errName": "Bitte einen Namen eingeben.", "login.errTaken": "Name ist schon vergeben.", "login.errShort": "Passwort braucht mindestens 4 Zeichen.",
     "board.einzel": "Einzel", "board.gruppen": "Gruppen", "board.aktuell": "Aktuell", "board.gesamt": "Gesamt", "board.erfolge": "Erfolge", "board.achpts": "Erfolge",
     "board.points": "Punkte", "board.members": "Mitglieder", "board.noGroups": "Noch keine Gruppen. Erstell im Tab „Gruppen“ die erste.",
     "routes.map": "Karte", "routes.list": "Liste", "routes.tapHint": "Tippe einen Bereich oder eine farbige Grad-Bubble an, um die Routen zu sehen.",
@@ -229,15 +229,15 @@ const STR = {
   en: {
     "nav.routes": "Routes", "nav.ach": "Achievements", "nav.groups": "Groups", "nav.board": "Board", "nav.account": "Account", "nav.hall": "Stats",
     "common.save": "Save", "common.cancel": "Cancel", "common.delete": "Delete", "common.back": "Back", "common.all": "All",
-    "login.signin": "Sign in", "login.signup": "Sign up", "login.name": "Name", "login.pin": "PIN",
-    "login.namePh": "Your name", "login.pinPh": "PIN", "login.pinSet": "Set a PIN (min. 4 characters)",
+    "login.signin": "Sign in", "login.signup": "Sign up", "login.name": "Name", "login.pin": "Password",
+    "login.namePh": "Your name", "login.pinPh": "Password", "login.pinSet": "Set a password (min. 4 characters)",
     "login.suggest": "🎲 Suggest", "login.create": "Create account",
     "login.privTitle": "Private mode", "login.privDesc": "You track everything but won't appear in anyone's leaderboards — only you see your rank.",
     "login.demoShow": "Show demo accounts", "login.demoHide": "Hide demo accounts",
     "login.demoHint": "Example accounts · PIN for all: 1234 · Admin: login admin, password admin",
     "login.foot": "Local prototype · Data stays in this browser",
     "login.errNoAcc": "No account with this name.", "login.errPin": "Wrong PIN.", "login.errName": "Please enter a name.",
-    "login.errTaken": "Name is already taken.", "login.errShort": "PIN needs at least 4 characters.",
+    "login.errTaken": "Name is already taken.", "login.errShort": "Password needs at least 4 characters.",
     "board.einzel": "Solo", "board.gruppen": "Groups", "board.aktuell": "Current", "board.gesamt": "All time",
     "board.erfolge": "Achievements", "board.achpts": "Ach. pts", "board.points": "Points", "board.members": "Members",
     "board.noGroups": "No groups yet. Create the first one in the Groups tab.",
@@ -847,6 +847,29 @@ function LevelUpModal({ level, name, story, onClose }) {
         <div className="lvlup-title">{name}</div>
         <div className="lvlup-story">{story}</div>
         <button className="lvlup-btn" onClick={onClose}>{en ? "Let's go! 🚀" : "Weiter geht's! 🚀"}</button>
+      </div>
+    </div>
+  );
+}
+
+/* Erfolg freigeschaltet: kleines Feier-Modal + Boulder-Wissen als Belohnung */
+function AchUnlockModal({ items, extra, fact, onClose }) {
+  const en = LANG === "en";
+  return (
+    <div className="scrim lvlup-scrim" onClick={onClose}>
+      <div className="achup-card" onClick={e => e.stopPropagation()}>
+        <div className="achup-kicker">{items.length + (extra || 0) > 1 ? (en ? `${items.length + extra} ACHIEVEMENTS UNLOCKED` : `${items.length + extra} ERFOLGE FREIGESCHALTET`) : (en ? "ACHIEVEMENT UNLOCKED" : "ERFOLG FREIGESCHALTET")}</div>
+        <div className="achup-list">
+          {items.map(a => (
+            <div className="achup-item" key={a.id}><span className="achup-ic">{a.icon}</span><div className="achup-txt"><div className="achup-name">{a.name}</div><div className="achup-desc">{a.desc}</div></div></div>
+          ))}
+          {extra > 0 && <div className="achup-more">+{extra} {en ? "more" : "weitere"}</div>}
+        </div>
+        <div className="achup-fact">
+          <div className="achup-fact-head">🧗 {en ? "Boulder knowledge" : "Boulder-Wissen"} <span className="achup-fact-no">#{fact.no}/{fact.total}</span></div>
+          <div className="achup-fact-text">{fact.text}</div>
+        </div>
+        <button className="lvlup-btn" onClick={onClose}>{en ? "Nice!" : "Stark!"}</button>
       </div>
     </div>
   );
@@ -1543,6 +1566,105 @@ const LEVEL_STORIES_EN = [
 function levelStory(level) {
   const arr = LANG === "en" ? LEVEL_STORIES_EN : LEVEL_STORIES_DE;
   return arr[level - 1] || (LANG === "en" ? "New level reached — keep crushing!" : "Neues Level erreicht — weiter so!");
+}
+
+// ── Boulder-Wissen: kleine Belohnung beim Freischalten von Erfolgen ─────────
+const CLIMB_FACTS_DE = [
+  "Der Name „Bouldern“ kommt vom englischen „boulder“ (Felsblock). Die Wiege des Sports liegt in Fontainebleau bei Paris — dort trainieren Kletterer schon seit über 120 Jahren an den Sandsteinblöcken.",
+  "Chalk ist Magnesiumcarbonat und wurde in den 1950ern vom US-Turner John Gill ins Klettern gebracht — er gilt als Vater des modernen Boulderns.",
+  "„Beta“ (Infos zur Lösung eines Boulders) kommt von Betamax-Videokassetten: Kletterer Jack Mileski filmte in den 80ern Routen und teilte die Aufnahmen.",
+  "Ein „Flash“ ist eine Begehung im ersten Versuch MIT Vorwissen. Kletterst du eine Route im ersten Versuch ganz ohne Infos, heißt das „Onsight“.",
+  "Boulderprobleme heißen „Probleme“, weil sie wie Rätsel gelöst werden — oft ist der Kopf wichtiger als die Kraft.",
+  "Die V-Skala für Bouldergrade ist nach John „Vermin“ Sherman benannt, der in Hueco Tanks (Texas) hunderte Boulder erschloss.",
+  "Crashpads sind erst seit den 1990ern verbreitet. Davor boulderte man über Grasbüscheln, Sand — oder gar nichts.",
+  "Wolfgang Güllich erfand für „Action Directe“ (1991, erste 9a der Welt) das Campusboard-Training. Das Original-Board hing im „Campus Centre“ in Nürnberg.",
+  "Der Rekord im Speedklettern liegt unter 5 Sekunden — für eine 15 Meter hohe, weltweit genormte Route. Das sind über 3 Meter pro Sekunde, senkrecht!",
+  "Adam Ondras „Silence“ in der Flatanger-Höhle (Norwegen) war 2017 die erste 9c der Welt — bis heute eine der schwersten Routen überhaupt.",
+  "Lynn Hill kletterte 1993 als erster Mensch die legendäre „Nose“ am El Capitan frei — und sagte danach: „It goes, boys!“",
+  "Alex Honnold kletterte 2017 den fast 1000 Meter hohen El Capitan komplett ohne Seil. Der Film darüber, „Free Solo“, gewann einen Oscar.",
+  "„Freiklettern“ heißt NICHT ohne Seil: Es bedeutet nur, dass das Seil ausschließlich zur Sicherung dient — nicht zum Fortbewegen. Ohne Seil heißt „Free Solo“.",
+  "Kalter Fels bedeutet mehr Reibung: Deshalb sprechen Kletterer von „guten Bedingungen“ oder „Sending Temps“, wenn es kühl und trocken ist.",
+  "Sandstein saugt Wasser wie ein Schwamm: Nach Regen ist er brüchig — deshalb gilt: mindestens 24–48 Stunden warten, sonst brechen Griffe ab.",
+  "Im Elbsandsteingebirge wird seit über 150 Jahren geklettert — mit strengen Regeln: Chalk und Metallsicherungen sind dort teils bis heute verboten.",
+  "Der „Mantle“ (Aufstemmen auf einen Absatz) ist nach dem englischen Wort für Kaminsims benannt — die Bewegung ähnelt dem Hochdrücken auf einen Sims.",
+  "Ein „Dyno“ ist ein Sprungzug, bei dem du kurz komplett in der Luft bist. Der Moment ohne Kontakt heißt „Deadpoint“ — dort ist dein Körper schwerelos.",
+  "Griffarten im Überblick: Leiste (crimp), Sloper (abgerundet), Zange (pinch), Loch (pocket) und Henkel (jug) — jeder fordert andere Muskeln.",
+  "Der „Pump“ in den Unterarmen entsteht, wenn die Muskeln mehr Blut brauchen, als durchfließen kann — kurzes Ausschütteln hilft mehr als Weiterkrallen.",
+  "Sehnen und Bänder passen sich viel langsamer an als Muskeln — deshalb sind Aufwärmen und Geduld der beste Schutz vor Fingerverletzungen.",
+  "Die Ringbänder (z.B. A2) halten deine Beugesehnen am Fingerknochen. Das „Plopp“ bei Überlastung kennt jeder Kletterer vom Hörensagen — aufwärmen!",
+  "Antagonistentraining (Liegestütze, Schulterübungen) beugt Verletzungen vor: Klettern trainiert fast nur die Zugmuskulatur.",
+  "Kletterschuhe sind absichtlich eng und vorgespannt („downturned“), damit die Zehenkraft direkt auf kleinste Tritte übertragen wird.",
+  "Der moderne Reibungsgummi wurde 1979 mit dem Boreal Firé eingeführt — davor kletterte man auf harten Sohlen mit einem Bruchteil des Grips.",
+  "„Sandbagging“ nennt man es, wenn eine Route deutlich schwerer ist als angegeben. Jede Halle hat mindestens einen berüchtigten Sandbag …",
+  "Hautpflege ist Training: Profis feilen ihre Schwielen glatt und cremen abends — rissige Haut kostet Reibung und damit Grade.",
+  "Das MoonBoard (von Ben Moon) war das erste weltweit genormte Trainingsboard: Gleiche Griffe, gleiche Winkel — deine Benchmark gilt überall.",
+  "Ben Moons „Hubble“ (1990) gilt rückblickend als womöglich erste 9a der Geschichte — damals noch als 8c+ eingestuft.",
+  "Klettern war 2021 in Tokio erstmals olympisch. Janja Garnbret holte Gold — und verteidigte es 2024 in Paris.",
+  "Ashima Shiraishi kletterte mit 14 Jahren als jüngste Person einen Boulder im Grad V15 — viele Profis erreichen den nie.",
+  "Angela Eiter kletterte 2017 als erste Frau eine 9b („La Planta de Shiva“) — die Österreicherin begann als Wettkampfkletterin.",
+  "Nalle Hukkataivals „Burden of Dreams“ (2016, Finnland) war der erste Boulder mit Grad 9A (V17) — 5 Züge, jahrelange Arbeit.",
+  "„Highballs“ sind Boulder ab etwa 5 Metern Höhe — die Grenze zum Free Solo ist fließend, Fallen verboten.",
+  "Auf Platten (senkrecht oder flacher) zählt fast nur Fußtechnik und Reibung — Kraft hilft dort erstaunlich wenig.",
+  "Granit bietet Reibung und Risse, Kalkstein Löcher und Sinter, Sandstein Sloper und Dachkanten — jedes Gestein klettert sich anders.",
+  "Die Boulderhallen-Welle: Seit den 2010ern boomen seillose Hallen weltweit — Bouldern ist der am schnellsten wachsende Klettersport.",
+  "Beim „Toprope“ hängt das Seil schon oben — ideal zum Lernen. Im „Vorstieg“ clippst du selbst, Stürze werden dadurch länger (und lehrreicher).",
+  "Der Begriff „Crux“ bezeichnet die Schlüsselstelle einer Route — den schwersten Einzelabschnitt. Manche Routen haben auch zwei …",
+  "„Send“ kommt vom US-Slang „to send it“ — eine Route erfolgreich und sturzfrei durchsteigen. Danach: „Sent!“",
+  "Kletterer „lesen“ Routen vor dem Einstieg: Wer die Zugfolge visualisiert, spart Kraft und Versuche — Profis üben das wie eine eigene Disziplin.",
+  "Ruhetage machen stärker: Muskeln, Sehnen und Haut wachsen in der Pause, nicht beim Training. Zwei Boulder-Tage hintereinander? Gern. Fünf? Autsch.",
+  "Fontainebleau bewertet mit Farben und Zahlen (die Fb-Skala) — deine Hallen-Grade 1–8 sind an genau diese Tradition angelehnt.",
+  "Der höchste künstliche Kletterturm der Welt ist über 30 m hoch — aber die meisten Weltklasse-Boulder sind unter 5 m. Schwer heißt nicht hoch.",
+];
+const CLIMB_FACTS_EN = [
+  "The name 'bouldering' comes from climbing boulders. The sport's cradle is Fontainebleau near Paris — climbers have trained on its sandstone blocks for over 120 years.",
+  "Chalk is magnesium carbonate, introduced to climbing in the 1950s by US gymnast John Gill — the father of modern bouldering.",
+  "'Beta' (info about how to solve a boulder) comes from Betamax tapes: climber Jack Mileski filmed routes in the 80s and shared the footage.",
+  "A 'flash' is a first-try ascent WITH prior knowledge. Climb a route first try without any info and it's called an 'onsight'.",
+  "Boulder problems are called 'problems' because they're solved like puzzles — often the head matters more than the muscles.",
+  "The V-scale for boulder grades is named after John 'Vermin' Sherman, who established hundreds of problems at Hueco Tanks, Texas.",
+  "Crash pads only became common in the 1990s. Before that, people bouldered above grass tufts, sand — or nothing at all.",
+  "Wolfgang Güllich invented campus board training for 'Action Directe' (1991, the world's first 9a). The original board hung in Nuremberg's 'Campus Centre'.",
+  "The speed climbing world record is under 5 seconds — on a standardized 15-meter route. That's over 3 meters per second, straight up!",
+  "Adam Ondra's 'Silence' in Norway's Flatanger cave became the world's first 9c in 2017 — still one of the hardest routes ever.",
+  "Lynn Hill made the first free ascent of El Capitan's legendary 'Nose' in 1993 — then famously said: 'It goes, boys!'",
+  "Alex Honnold climbed the nearly 1000-meter El Capitan without a rope in 2017. The documentary 'Free Solo' won an Oscar.",
+  "'Free climbing' does NOT mean without a rope: it means the rope is only for protection, not progress. Without a rope it's 'free solo'.",
+  "Cold rock means more friction: that's why climbers talk about 'good conditions' or 'sending temps' when it's cool and dry.",
+  "Sandstone soaks up water like a sponge: after rain it gets brittle — wait 24–48 hours or holds will snap off.",
+  "People have climbed in Saxony's Elbsandstein for over 150 years — with strict ethics: chalk and metal protection are partly banned to this day.",
+  "The 'mantle' is named after the mantelpiece — the move resembles pressing yourself up onto a ledge.",
+  "A 'dyno' is a jump move where you're briefly fully airborne. The weightless moment is called the 'deadpoint'.",
+  "Grip types: crimp, sloper, pinch, pocket and jug — each one loads your muscles differently.",
+  "Forearm 'pump' happens when muscles need more blood than can flow through — shaking out helps more than gripping on.",
+  "Tendons and ligaments adapt much slower than muscles — warming up and patience are the best protection against finger injuries.",
+  "Your pulleys (like the A2) hold the flexor tendons to the finger bone. Every climber has heard about 'the pop' — warm up!",
+  "Antagonist training (push-ups, shoulder work) prevents injury: climbing trains almost only your pulling muscles.",
+  "Climbing shoes are deliberately tight and downturned so toe power transfers directly onto the smallest footholds.",
+  "Modern sticky rubber arrived in 1979 with the Boreal Firé — before that, climbers used hard soles with a fraction of the grip.",
+  "'Sandbagging' is when a route is much harder than its grade claims. Every gym has at least one notorious sandbag …",
+  "Skin care is training: pros file their calluses smooth and moisturize at night — cracked skin costs friction, and friction costs grades.",
+  "The MoonBoard (by Ben Moon) was the first globally standardized training board: same holds, same angle — your benchmark counts everywhere.",
+  "Ben Moon's 'Hubble' (1990) is retrospectively considered possibly the first 9a in history — originally graded 8c+.",
+  "Climbing debuted at the Tokyo Olympics in 2021. Janja Garnbret took gold — and defended it in Paris 2024.",
+  "Ashima Shiraishi climbed a V15 boulder at age 14 — a grade many pros never reach.",
+  "Angela Eiter became the first woman to climb 9b ('La Planta de Shiva') in 2017 — the Austrian started as a competition climber.",
+  "Nalle Hukkataival's 'Burden of Dreams' (2016, Finland) was the first V17 (9A) boulder — 5 moves, years of work.",
+  "'Highballs' are boulders from about 5 meters up — the line to free soloing gets blurry, falling not recommended.",
+  "On slabs (vertical or less) it's almost all footwork and friction — strength helps surprisingly little there.",
+  "Granite offers friction and cracks, limestone pockets and tufas, sandstone slopers and roof lips — every rock climbs differently.",
+  "The bouldering gym wave: rope-free gyms have boomed worldwide since the 2010s — bouldering is climbing's fastest-growing discipline.",
+  "In 'toprope' the rope already hangs above you — ideal for learning. On 'lead' you clip as you go, and falls get longer (and more educational).",
+  "The 'crux' is a route's key passage — its hardest single section. Some routes have two …",
+  "'Send' comes from the US slang 'to send it' — climbing a route cleanly without falling. Afterwards: 'Sent!'",
+  "Climbers 'read' routes before pulling on: visualizing the sequence saves energy and attempts — pros practice it like a discipline of its own.",
+  "Rest days make you stronger: muscles, tendons and skin grow during the break, not the session. Two boulder days in a row? Sure. Five? Ouch.",
+  "Fontainebleau grades with colors and numbers (the Fb scale) — your gym grades 1–8 follow exactly this tradition.",
+  "The world's tallest artificial climbing tower is over 30 m high — but most world-class boulders are under 5 m. Hard doesn't mean high.",
+];
+function climbFact(n) {
+  const arr = LANG === "en" ? CLIMB_FACTS_EN : CLIMB_FACTS_DE;
+  const idx = ((n % arr.length) + arr.length) % arr.length;
+  return { text: arr[idx], no: idx + 1, total: arr.length };
 }
 
 function catIcon(c) { const a = ACHS().find(x => x.cat === c); return a ? a.icon : "🏅"; }
@@ -2611,6 +2733,19 @@ const CSS = `
 .lvlup-title { position:relative; z-index:1; font-family:'Barlow Condensed',sans-serif; font-size:27px; font-weight:800; color:#fff; margin-top:6px; line-height:1.1; }
 .lvlup-story { position:relative; z-index:1; font-size:14px; line-height:1.5; color:rgba(255,255,255,.72); margin-top:12px; }
 .lvlup-btn { position:relative; z-index:1; width:100%; margin-top:22px; padding:13px; border-radius:11px; background:#b8ff00; color:#11151a; font-weight:800; font-size:15px; border:none; cursor:pointer; transition:filter .12s; }
+.achup-card { position:relative; width:min(420px, calc(100vw - 36px)); background:linear-gradient(165deg, #1b2027, #12161c); border:1.4px solid rgba(242,180,65,.5); border-radius:20px; padding:24px 22px 20px; box-shadow:0 24px 70px rgba(0,0,0,.55), 0 0 40px rgba(242,180,65,.08); animation:lvlupIn .42s cubic-bezier(.18,1.1,.35,1); max-height:86vh; overflow:auto; }
+.achup-kicker { text-align:center; font-size:12px; font-weight:800; letter-spacing:.16em; color:#f2b441; margin-bottom:14px; }
+.achup-list { display:flex; flex-direction:column; gap:8px; }
+.achup-item { display:flex; align-items:center; gap:11px; background:rgba(255,255,255,.045); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+.achup-ic { flex:none; font-size:24px; line-height:1; }
+.achup-txt { min-width:0; }
+.achup-name { font-weight:800; font-size:14.5px; color:var(--chalk); }
+.achup-desc { font-size:12px; color:var(--muted); margin-top:1px; }
+.achup-more { text-align:center; font-size:12.5px; font-weight:700; color:var(--muted); padding:2px 0; }
+.achup-fact { margin-top:14px; padding:13px 14px; background:linear-gradient(150deg, rgba(184,255,0,.08), rgba(184,255,0,.02)); border:1.3px solid rgba(184,255,0,.35); border-radius:13px; }
+.achup-fact-head { font-size:12.5px; font-weight:800; color:#b8ff00; letter-spacing:.04em; display:flex; align-items:center; gap:6px; }
+.achup-fact-no { color:var(--muted); font-weight:700; }
+.achup-fact-text { margin-top:7px; font-size:13.5px; line-height:1.55; color:var(--chalk); }
 .lvlup-btn:active { filter:brightness(.92); }
 .ssec { margin:6px 2px 10px; font-size:15px; font-weight:700; }
 .ssecn { color:#5cc97e; font-family:'Barlow Condensed'; font-weight:700; }
@@ -2705,7 +2840,7 @@ function LoginScreen({ accounts, onLogin, onSignup, lang, onLang }) {
         <input className="inp" type="text" value={name} placeholder={t("login.namePh")} onChange={e => { setName(e.target.value); setErr(""); }} />
 
         <label className="flbl" style={{ marginTop: 12 }}>{t("login.pin")}</label>
-        <input className="inp" type="password" inputMode="numeric" value={pin} placeholder={mode === "login" ? t("login.pinPh") : t("login.pinSet")} onChange={e => { setPin(e.target.value); setErr(""); }} onKeyDown={e => { if (e.key === "Enter") (mode === "login" ? doLogin() : doSignup()); }} />
+        <input className="inp" type="password" value={pin} placeholder={mode === "login" ? t("login.pinPh") : t("login.pinSet")} onChange={e => { setPin(e.target.value); setErr(""); }} onKeyDown={e => { if (e.key === "Enter") (mode === "login" ? doLogin() : doSignup()); }} />
 
         {mode === "signup" && (<>
           <button className="privtoggle" onClick={() => setPriv(!priv)}>
@@ -2771,7 +2906,8 @@ export default function App() {
   function jumpToRoute(id) { setFlashId(id); setTimeout(() => { const el = document.getElementById("r-" + id); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); }, 30); setTimeout(() => setFlashId(null), 1700); }
   const firstSave = useRef(false);
 
-  // PWA-Installation: beforeinstallprompt einfangen (Chromium), iOS-Fallback erkennen
+  // PWA-Installation: beforeinstallprompt einfangen (nur Chromium-Browser feuern das Event).
+  // Alle anderen Browser (Firefox, Safari, iOS) bekommen den Button trotzdem — mit Anleitung.
   const [installEvt, setInstallEvt] = useState(null);
   const [iosInstallOpen, setIosInstallOpen] = useState(false);
   useEffect(() => {
@@ -2782,12 +2918,16 @@ export default function App() {
     return () => { window.removeEventListener("beforeinstallprompt", onBip); window.removeEventListener("appinstalled", onInstalled); };
   }, []);
   const isStandalone = typeof window !== "undefined" && ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true);
-  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+  const _ua = typeof navigator !== "undefined" ? (navigator.userAgent || "") : "";
+  const isIOS = /iphone|ipad|ipod/i.test(_ua) || (/macintosh/i.test(_ua) && typeof navigator !== "undefined" && navigator.maxTouchPoints > 1); // iPadOS meldet sich als Mac
+  const isAndroid = /android/i.test(_ua);
+  const isFirefox = /firefox|fxios/i.test(_ua);
+  const isSafariDesktop = !isIOS && !isAndroid && /safari/i.test(_ua) && !/chrome|chromium|crios|edg/i.test(_ua);
   const canInstall = !!installEvt;
-  const showInstall = !isStandalone && (canInstall || isIOS);
+  const showInstall = !isStandalone; // Button in JEDEM Browser zeigen — Fallback ist die Anleitung
   async function doInstall() {
     if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} setInstallEvt(null); }
-    else if (isIOS) { setIosInstallOpen(true); }
+    else { setIosInstallOpen(true); } // Anleitung für iOS / Firefox / Safari / Rest
   }
   const [installHintDismissed, setInstallHintDismissed] = useState(true);
   useEffect(() => { (async () => { try { const r = await window.storage.get("blocscore:installhint", false); setInstallHintDismissed(!!(r && r.value === "1")); } catch (e) { setInstallHintDismissed(false); } })(); }, []);
@@ -3000,6 +3140,20 @@ export default function App() {
       lvlBaseRef.current = { uid: me.id, level: myLevelInfo.level };
     }
   }, [myLevelInfo.level, ready, me]);
+  // Erfolg-freigeschaltet-Erkennung: Baseline pro Nutzer, damit beim Login/Laden nichts aufpoppt
+  const [achUnlock, setAchUnlock] = useState(null);
+  const achBaseRef = useRef({ uid: null, ids: null });
+  useEffect(() => {
+    if (!ready || !me) return;
+    const doneIds = new Set(achState.evald.filter(a => a.done).map(a => a.id));
+    const b = achBaseRef.current;
+    if (b.uid !== me.id || !b.ids) { achBaseRef.current = { uid: me.id, ids: doneIds }; return; }
+    if (doneIds.size > b.ids.size) {
+      const fresh = achState.evald.filter(a => a.done && !b.ids.has(a.id));
+      if (fresh.length) setAchUnlock({ items: fresh.slice(0, 3), extra: Math.max(0, fresh.length - 3), fact: climbFact(doneIds.size) });
+    }
+    achBaseRef.current = { uid: me.id, ids: doneIds };
+  }, [achState, ready, me]);
   const NEED_COMMENT = 100, NEED_PHOTO = 300, NEED_GROUP = 200, NEED_CREATOR = 0;
   // Max groups: 1 ab 200 Pts, 2 ab 500 Pts, 3 ab 1500 Pts
   const maxGroupsAllowed = isAdmin ? 3 : achScore >= 1500 ? 3 : achScore >= 500 ? 2 : achScore >= 200 ? 1 : 0;
@@ -4260,16 +4414,35 @@ export default function App() {
       {changePinOpen && <ChangePinSheet me={me} onClose={() => setChangePinOpen(false)} onSave={(p) => { setMyPin(p); setChangePinOpen(false); }} />}
       {scoringOpen && <ScoringSheet step={STEP} flash={FLASH_BONUS} onClose={() => setScoringOpen(false)} onSave={(s,f) => { setScoring(s,f); setScoringOpen(false); }} />}
       {levelUp && <LevelUpModal level={levelUp.level} name={levelUp.name} story={levelUp.story} onClose={() => setLevelUp(null)} />}
+      {achUnlock && !levelUp && <AchUnlockModal items={achUnlock.items} extra={achUnlock.extra} fact={achUnlock.fact} onClose={() => setAchUnlock(null)} />}
       {iosInstallOpen && (
         <div className="scrim" onClick={() => setIosInstallOpen(false)}>
           <div className="sheet" onClick={e => e.stopPropagation()}>
             <div className="grip" />
             <div className="shead"><h2>{LANG === "en" ? "Install blocscore" : "blocscore installieren"}</h2><button className="x" onClick={() => setIosInstallOpen(false)}>✕</button></div>
             <div className="sbody">
-              <div className="note" style={{ marginBottom: 14 }}>{LANG === "en" ? "On iPhone/iPad, add the app to your home screen via Safari:" : "Auf iPhone/iPad fügst du die App über Safari zum Home-Bildschirm hinzu:"}</div>
-              <div className="iosstep"><span className="iosnum">1</span><span>{LANG === "en" ? <>Tap the <b>Share</b> icon <span style={{whiteSpace:"nowrap"}}>( ⬆️ )</span> in the Safari toolbar.</> : <>Tippe in der Safari-Leiste auf das <b>Teilen</b>-Symbol <span style={{whiteSpace:"nowrap"}}>( ⬆️ )</span>.</>}</span></div>
-              <div className="iosstep"><span className="iosnum">2</span><span>{LANG === "en" ? <>Scroll down and tap <b>“Add to Home Screen”</b>.</> : <>Scrolle nach unten und tippe auf <b>„Zum Home-Bildschirm"</b>.</>}</span></div>
-              <div className="iosstep"><span className="iosnum">3</span><span>{LANG === "en" ? <>Tap <b>“Add”</b> — done!</> : <>Tippe oben rechts auf <b>„Hinzufügen"</b> — fertig!</>}</span></div>
+              {isIOS ? (<>
+                <div className="note" style={{ marginBottom: 14 }}>{LANG === "en" ? "On iPhone/iPad, add the app to your home screen via Safari:" : "Auf iPhone/iPad fügst du die App über Safari zum Home-Bildschirm hinzu:"}</div>
+                <div className="iosstep"><span className="iosnum">1</span><span>{LANG === "en" ? <>Tap the <b>Share</b> icon <span style={{whiteSpace:"nowrap"}}>( ⬆️ )</span> in the Safari toolbar.</> : <>Tippe in der Safari-Leiste auf das <b>Teilen</b>-Symbol <span style={{whiteSpace:"nowrap"}}>( ⬆️ )</span>.</>}</span></div>
+                <div className="iosstep"><span className="iosnum">2</span><span>{LANG === "en" ? <>Scroll down and tap <b>“Add to Home Screen”</b>.</> : <>Scrolle nach unten und tippe auf <b>„Zum Home-Bildschirm"</b>.</>}</span></div>
+                <div className="iosstep"><span className="iosnum">3</span><span>{LANG === "en" ? <>Tap <b>“Add”</b> — done!</> : <>Tippe oben rechts auf <b>„Hinzufügen"</b> — fertig!</>}</span></div>
+              </>) : isFirefox && isAndroid ? (<>
+                <div className="note" style={{ marginBottom: 14 }}>{LANG === "en" ? "In Firefox on Android:" : "In Firefox auf Android:"}</div>
+                <div className="iosstep"><span className="iosnum">1</span><span>{LANG === "en" ? <>Tap the <b>menu</b> (⋮) at the top right.</> : <>Tippe oben rechts auf das <b>Menü</b> (⋮).</>}</span></div>
+                <div className="iosstep"><span className="iosnum">2</span><span>{LANG === "en" ? <>Tap <b>“Install”</b> or <b>“Add to Home screen”</b>.</> : <>Tippe auf <b>„Installieren"</b> bzw. <b>„Zum Startbildschirm hinzufügen"</b>.</>}</span></div>
+                <div className="iosstep"><span className="iosnum">3</span><span>{LANG === "en" ? <>Confirm — done!</> : <>Bestätige — fertig!</>}</span></div>
+              </>) : isFirefox ? (<>
+                <div className="note" style={{ marginBottom: 14 }}>{LANG === "en" ? "Firefox on desktop doesn't support installing web apps. To install blocscore as an app, open it once in Chrome or Edge — or simply bookmark this page (Ctrl+D)." : "Firefox am Desktop unterstützt das Installieren von Web-Apps leider nicht. Um blocscore als App zu installieren, öffne die Seite einmal in Chrome oder Edge — oder setz dir einfach ein Lesezeichen (Strg+D)."}</div>
+              </>) : isSafariDesktop ? (<>
+                <div className="note" style={{ marginBottom: 14 }}>{LANG === "en" ? "In Safari on Mac:" : "In Safari am Mac:"}</div>
+                <div className="iosstep"><span className="iosnum">1</span><span>{LANG === "en" ? <>Click the <b>Share</b> icon in the toolbar (or File menu).</> : <>Klicke auf das <b>Teilen</b>-Symbol in der Symbolleiste (oder Menü „Ablage").</>}</span></div>
+                <div className="iosstep"><span className="iosnum">2</span><span>{LANG === "en" ? <>Choose <b>“Add to Dock”</b>.</> : <>Wähle <b>„Zum Dock hinzufügen"</b>.</>}</span></div>
+                <div className="iosstep"><span className="iosnum">3</span><span>{LANG === "en" ? <>Confirm — done!</> : <>Bestätige — fertig!</>}</span></div>
+              </>) : (<>
+                <div className="note" style={{ marginBottom: 14 }}>{LANG === "en" ? "In your browser menu look for “Install app” or “Add to Home screen”:" : "Suche im Browser-Menü nach „App installieren“ oder „Zum Startbildschirm hinzufügen“:"}</div>
+                <div className="iosstep"><span className="iosnum">1</span><span>{LANG === "en" ? <>Open the <b>browser menu</b> (usually ⋮ or ≡).</> : <>Öffne das <b>Browser-Menü</b> (meist ⋮ oder ≡).</>}</span></div>
+                <div className="iosstep"><span className="iosnum">2</span><span>{LANG === "en" ? <>Tap <b>“Install app”</b> / <b>“Add to Home screen”</b>.</> : <>Tippe auf <b>„App installieren"</b> / <b>„Zum Startbildschirm hinzufügen"</b>.</>}</span></div>
+              </>)}
               <button className="save" style={{ marginTop: 16 }} onClick={() => setIosInstallOpen(false)}>{LANG === "en" ? "Got it" : "Verstanden"}</button>
             </div>
           </div>
@@ -4512,7 +4685,7 @@ function DeleteAccountSheet({ me, onClose, onConfirm }) {
           {hasPin ? (
             <div className="field" style={{ marginTop: 14 }}>
               <label>{LANG === "en" ? "Enter your password to confirm" : "Zur Bestätigung dein Passwort eingeben"}</label>
-              <input type="password" inputMode="numeric" value={pin} autoFocus onChange={e => { setPin(e.target.value); setErr(""); }} onKeyDown={e => { if (e.key === "Enter" && pin) go(); }} placeholder={LANG === "en" ? "Password" : "Passwort"} />
+              <input type="password" value={pin} autoFocus onChange={e => { setPin(e.target.value); setErr(""); }} onKeyDown={e => { if (e.key === "Enter" && pin) go(); }} placeholder={LANG === "en" ? "Password" : "Passwort"} />
               {err && <div className="phint" style={{ color: "#e98b7d", marginTop: 6 }}>{err}</div>}
             </div>
           ) : (
