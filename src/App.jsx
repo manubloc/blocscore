@@ -54,13 +54,13 @@ const COLOR_DOT = {
   rot: "#D93025", gelb: "#F5C800", "weiß": "#EEEEE4", weiss: "#EEEEE4",
   blau: "#1A6FD4", "grün": "#1E9E48", gruen: "#1E9E48", lila: "#7B3FC8",
   violett: "#6E38C0", pink: "#D4287A", schwarz: "#181C22", holz: "#9A5020",
-  orange: "#D46A10", braun: "#6E3C18", "türkis": "#0E8A80",
+  orange: "#D46A10", braun: "#6E3C18", "türkis": "#0E8A80", grau: "#8C939D",
 };
 const COLOR_FG = {
   rot: "#fff", gelb: "#111", "weiß": "#111", weiss: "#111",
   blau: "#fff", "grün": "#111", gruen: "#111", lila: "#fff",
   violett: "#fff", pink: "#fff", schwarz: "#fff", holz: "#fff",
-  orange: "#111", braun: "#fff", "türkis": "#111",
+  orange: "#111", braun: "#fff", "türkis": "#111", grau: "#111",
 };
 function colorFgOf(name) { const t = (name || "").toLowerCase(); for (const k of Object.keys(COLOR_FG)) if (t.includes(k)) return COLOR_FG[k]; return "#fff"; }
 function colorOf(name) { const t = (name || "").toLowerCase(); for (const k of Object.keys(COLOR_DOT)) if (t.includes(k)) return COLOR_DOT[k]; return null; }
@@ -894,7 +894,7 @@ function ShareCard({ me, routes, today, onClose, logoSrc }) {
 
   const COLOR_MAP = {
     blau:"#4a90d9",gelb:"#f5c800",rot:"#d93025",grün:"#2ecc6a",
-    lila:"#9b59b6",schwarz:"#555566",weiß:"#dddddd",pink:"#e5477d"
+    lila:"#9b59b6",schwarz:"#555566",weiß:"#dddddd",pink:"#e5477d",grau:"#8c939d",holz:"#9a5020"
   };
 
   useEffect(() => {
@@ -1106,8 +1106,8 @@ function buildAchievements(lang) {
   const en = lang === "en";
   const A = []; let id = 0;
   const push = (cat, icon, name, desc, target, key, p) => A.push({ id: "a"+(id++), cat, icon, name, desc, target, key, pts: p });
-  const COLORS = ["blau","grün","rot","gelb","lila","pink","holz","schwarz","weiß"];
-  const CEN = {blau:"blue",grün:"green",rot:"red",gelb:"yellow",lila:"purple",pink:"pink",holz:"wood",schwarz:"black",weiß:"white"};
+  const COLORS = ["blau","grün","rot","gelb","lila","pink","holz","schwarz","weiß","grau"];
+  const CEN = {blau:"blue",grün:"green",rot:"red",gelb:"yellow",lila:"purple",pink:"pink",holz:"wood",schwarz:"black",weiß:"white",grau:"gray"};
   const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
   const cName = c => en ? cap(CEN[c]||c) : cap(c);
   const tier = (arr, i, f) => arr[i] || `${f} ${i+1}`;
@@ -1136,16 +1136,16 @@ function buildAchievements(lang) {
   // GRADE — kalibriert: 1er/2er/3er Anfänger, 4er/5er Gut, 6er/7er Fortgeschritten, 8er Pro
   const gScale=[0,1,1.2,1.5,2,3,5,8,15];
   GRADES.forEach(g=>{
-    const tC=g<=2?[25,75,150,300,600,1200,2500,5000,9000]:g<=4?[15,40,100,200,400,750,1500,3000,5500]:g<=6?[5,20,50,120,250,500,1000,2000]:g===7?[2,10,30,75,150,350,700]:[1,5,20,50,100,250,500];
+    const tC=g<=2?[80,200,450,900,1800,3500,6500,10000]:g<=4?[50,130,300,650,1300,2600,5000,8000]:g<=6?[5,20,50,120,250,500,1000,2000]:g===7?[2,10,30,75,150,350,700]:[1,5,20,50,100,250,500];
     tC.forEach((n)=>push(`${g}`,"🪨",en?`${n}× Grade ${g}`:`${n}× ${g}er`,en?`Climb ${n} grade-${g} routes`:`Klettere ${n} ${g}er-Routen`,n,`grade:${g}:t`,Math.round(pts(n)*gScale[g])));
-    const fC=g<=3?[25,75,180,400]:g<=5?[15,50,120,250,500,1000]:g<=7?[5,25,60,150,300,600]:[2,12,40,100,250];
+    const fC=g<=3?[60,160,350,700]:g<=5?[30,90,200,400,800,1500]:g<=7?[5,25,60,150,300,600]:[2,12,40,100,250];
     fC.forEach((n)=>push(`${g}`,"⚡",en?`Flash ${n}× Grade ${g}`:`Flash ${n}× ${g}er`,en?`Flash ${n} grade-${g} routes`:`Flashe ${n} ${g}er-Routen`,n,`grade:${g}:f`,Math.round(pts(n)*gScale[g]*2)));
   });
 
   // FARBE
   COLORS.forEach(c=>{
-    [10,30,75,150,300,600,1200,2400,4800,9000].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
-    [15,40,90,200,400,800,1600].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
+    [35,90,200,450,900,1800,3600,6500,10000].forEach(n=>push(cName(c),"🎨",en?`${n}× ${cName(c)}`:`${n}× ${cName(c)}`,en?`Climb ${n} ${cName(c)} routes`:`Klettere ${n} ${cName(c)}-Routen`,n,`color:${c}:t`,pts(n)+2));
+    [45,120,280,600,1200,2400].forEach(n=>push(cName(c),"⚡",en?`Flash ${n}× ${cName(c)}`:`Flash ${n}× ${cName(c)}`,en?`Flash ${n} ${cName(c)} routes`:`Flashe ${n} ${cName(c)}-Routen`,n,`color:${c}:f`,pts(n)+7));
   });
 
   // TAGESFORM — Anfänger max ~14, Gut ~19, Pro ~32+
@@ -1614,6 +1614,50 @@ const CLIMB_FACTS_DE = [
   "Ruhetage machen stärker: Muskeln, Sehnen und Haut wachsen in der Pause, nicht beim Training. Zwei Boulder-Tage hintereinander? Gern. Fünf? Autsch.",
   "Fontainebleau bewertet mit Farben und Zahlen (die Fb-Skala) — deine Hallen-Grade 1–8 sind an genau diese Tradition angelehnt.",
   "Der höchste künstliche Kletterturm der Welt ist über 30 m hoch — aber die meisten Weltklasse-Boulder sind unter 5 m. Schwer heißt nicht hoch.",
+  "Der Speed-Weltrekord der Männer liegt bei 4,64 Sekunden — aufgestellt von Sam Watson (USA) beim Weltcup 2025 auf Bali. Bei den Frauen hält Aleksandra Mirosław 6,06 s aus Paris 2024.",
+  "Aleksandra Mirosław brach den Speed-Weltrekord am 28. April 2023 viermal — an einem einzigen Tag.",
+  "Die Speed-Wand ist seit 2007 weltweit exakt gleich: 15 Meter, 5 Grad überhängend, 20 Handgriffe, 11 Tritte. Die Route selbst ist nur etwa 6b — Alex Honnold brauchte 22,3 Sekunden, Profis unter 5.",
+  "Wie beim 100-Meter-Sprint gilt im Speedklettern: Wer schneller als 0,1 Sekunden nach dem Startsignal loszieht, hat einen Fehlstart — schnellere Reaktionen gelten als menschlich unmöglich.",
+  "In Paris 2024 gab es erstmals zwei Kletter-Goldmedaillen pro Geschlecht: Boulder&Lead und Speed getrennt. Die Boulder&Lead-Golds holten Toby Roberts und Janja Garnbret.",
+  "„Burden of Dreams“ ist nur 4 Meter hoch und hat 8 Züge — Nalle Hukkataival brauchte trotzdem rund 4.000 Versuche über vier Jahre für die Erstbegehung.",
+  "Will Bosi trainierte für „Burden of Dreams“ an 3D-gedruckten Kopien der Original-Griffe in England — die Wiederholung am echten Fels dauerte dann 52 Sekunden.",
+  "Wäre die 45-Grad-Wand von „Burden of Dreams“ senkrecht, läge der Boulder schätzungsweise nur noch bei Grad 5+ — Steilheit ist ein gewaltiger Schwierigkeitsfaktor.",
+  "2025 war das Rekordjahr des Boulderns: 16 Begehungen im Grad 9A (V17) — und im November schlug Elias Iagnemma mit „Exodia“ in Italien den ersten 9A+ (V18) der Geschichte vor.",
+  "Jakob Schubert (Österreich) ist der erste Mensch, der sowohl einen 9A-Boulder als auch eine 9c-Route geklettert ist.",
+  "Der Begriff „Rotpunkt“ stammt von Kurt Albert: In den 1970ern malte er im Frankenjura rote Punkte an frei geklettere Routen — daraus wurde das internationale „Redpoint“.",
+  "Das Frankenjura in Bayern hat eine der höchsten Dichten an schweren Sportkletterrouten weltweit — und ist Heimat von „Action Directe“.",
+  "Der „Gaston“-Griff (mit dem Daumen nach unten vom Körper wegdrücken) ist nach dem französischen Bergführer Gaston Rébuffat benannt.",
+  "Eindrehen spart Kraft: Hüfte zur Wand und Knie nach innen bringt die Schulter näher an den Griff — plötzlich erreichst du Züge, die frontal unmöglich wirken.",
+  "Ein „Heel Hook“ macht deine Ferse zur dritten Hand — richtig eingesetzt entlastet er die Arme mehr als jeder Muskel.",
+  "„Campusen“ heißt Klettern ganz ohne Füße — als Training extrem effektiv, für die Finger aber nur mit viel Erfahrung zu empfehlen.",
+  "Ein „Kneebar“ (verklemmtes Knie) kann komplette Ruhepositionen ohne Hände schaffen — Profis planen ganze Routen um solche Rests herum.",
+  "Der „Sit-Start“ (assis) macht einen Boulder oft ein bis zwei Grade schwerer — „Return of the Sleepwalker“ (V17) ist nichts anderes als der Sitzstart von „Sleepwalker“ (V16).",
+  "„Morpho“ nennt man Züge, die stark von der Körpergröße abhängen — derselbe Boulder kann für zwei Menschen völlig verschieden schwer sein.",
+  "Ein „Beta-Break“ ist die Entdeckung einer leichteren Lösung — er kann den Grad einer etablierten Route über Nacht senken.",
+  "„Dab“: Berührst du beim Bouldern Matte, Spotter oder Nachbarfels, zählt der Versuch streng genommen nicht — die Community nimmt das erstaunlich ernst.",
+  "Beim Outdoor-Bouldern fängt der Spotter den Fallenden nicht — er lenkt ihn nur so, dass er sicher auf der Matte landet.",
+  "Die ersten Kletterschuhe mit Gummisohle entwickelte Pierre Allain in den 1940ern — für die Boulder von Fontainebleau. Seine „PA“-Schuhe waren jahrzehntelang Standard.",
+  "In Fontainebleau führten schon in den 1940ern farbige Pfeil-Circuits durch die Wälder — nummerierte Boulderrunden mit bis zu 50 Problemen am Stück.",
+  "In Fontainebleau wurde traditionell „Pof“ benutzt — Kolophonium-Säckchen statt Chalk. Heute ist es verpönt, weil es die Griffe glasig poliert.",
+  "Griffe bürsten ist Kletter-Etikette: Chalk-Schichten füllen die Struktur und kosten Reibung — eine saubere Leiste greift sich einen halben Grad leichter.",
+  "Boulderhallen waschen ihre Griffe regelmäßig in Spülmaschinen oder mit Hochdruck — Chalk und Schuhgummi verstopfen sonst jede Struktur.",
+  "Moderne Griffe bestehen meist aus Polyurethan oder Polyester, Volumes aus beschichtetem Holz — und die Menschen, die sie schrauben, heißen Routesetter.",
+  "Im Boulder-Weltcup gibt es pro Boulder zwei Wertungen: die „Zone“ (Zwischengriff) und das „Top“ (beide Hände am Schlussgriff, Kontrolle).",
+  "Für Los Angeles 2028 ist Klettern wieder olympisch — geplant sind erstmals drei getrennte Wettbewerbe: Bouldern, Lead und Speed.",
+  "Alex Megos onsightete 2013 als erster Mensch eine 9a („Estado Critico“, Spanien) — im ersten Versuch, ohne jede Vorab-Info.",
+  "Adam Ondra ist berühmt für seine Schreie beim Klettern — viele Athleten nutzen lautes Ausatmen gezielt zur Aktivierung bei Maximalzügen.",
+  "Top-Kletterer hängen einarmig an 20-Millimeter-Leisten — teils mit Zusatzgewicht. Fingerkraft gilt als der messbarste Einzelfaktor fürs Leistungsklettern.",
+  "Jugendliche Wachstumsfugen an den Fingern sind verletzungsanfällig — deshalb raten Verbände offiziell von intensivem Campusboard-Training vor dem Erwachsenenalter ab.",
+  "Viele leichte Boulder („Mileage“) verbessern deine Technik oft mehr als ständiges Limit-Bouldern — Bewegungsqualität schlägt Ego.",
+  "10 bis 15 Minuten Aufwärmen an leichten Bouldern senken das Risiko von Fingerverletzungen deutlich — die Ringbänder brauchen Vorlauf.",
+  "Bouldern trainiert Maximalkraft, Seilklettern Ausdauer — wer beides mischt, wird an der Wand am komplettesten.",
+  "Die meisten Boulder-Verletzungen passieren nicht an der Wand, sondern beim Abspringen — kontrolliert abklettern schont die Sprunggelenke.",
+  "„Skin Management“ ist bei Profis eine eigene Disziplin: Versuche werden nach Hautlage geplant, denn frische Haut greift messbar besser als polierte.",
+  "Standardisierte Trainingsboards wie MoonBoard, Kilter Board und Tension Board haben LED-beleuchtete Griffe und Apps — dein Benchmark-Ergebnis ist weltweit vergleichbar.",
+  "Ein „Benchmark“ ist ein Standard-Boulder auf solchen Boards, an dem sich Kletterer rund um den Globus mit exakt demselben Problem messen.",
+  "„Lock-off“: einen Griff mit gebeugtem Arm statisch halten, während die andere Hand weiterzieht — eine der wertvollsten Grundfähigkeiten am Fels.",
+  "Der Unterschied zwischen „Toprope“, Vorstieg und Bouldern steckt im Kopf: Gleiche Züge fühlen sich je nach Sturzhöhe komplett anders an — Mentaltraining ist Klettertraining.",
+  "Kletterer zählen Grade gern in „Soft“ und „Hard“: Eine weiche 6 fühlt sich wie eine 5 an, eine harte wie eine 7 — am Ende zählt, dass DU oben warst.",
 ];
 const CLIMB_FACTS_EN = [
   "The name 'bouldering' comes from climbing boulders. The sport's cradle is Fontainebleau near Paris — climbers have trained on its sandstone blocks for over 120 years.",
@@ -1660,6 +1704,50 @@ const CLIMB_FACTS_EN = [
   "Rest days make you stronger: muscles, tendons and skin grow during the break, not the session. Two boulder days in a row? Sure. Five? Ouch.",
   "Fontainebleau grades with colors and numbers (the Fb scale) — your gym grades 1–8 follow exactly this tradition.",
   "The world's tallest artificial climbing tower is over 30 m high — but most world-class boulders are under 5 m. Hard doesn't mean high.",
+  "The men's speed world record stands at 4.64 seconds — set by Sam Watson (USA) at the 2025 World Cup in Bali. On the women's side, Aleksandra Mirosław holds 6.06 s from Paris 2024.",
+  "Aleksandra Mirosław broke the speed climbing world record four times on April 28, 2023 — all in a single day.",
+  "The speed wall has been identical worldwide since 2007: 15 meters, 5 degrees overhanging, 20 handholds, 11 footholds. The route itself is only about 6b — Alex Honnold needed 22.3 seconds, pros go under 5.",
+  "Just like the 100-meter sprint: reacting faster than 0.1 seconds after the start signal counts as a false start — quicker reactions are considered humanly impossible.",
+  "Paris 2024 had two climbing golds per gender for the first time: Boulder&Lead and Speed separately. Toby Roberts and Janja Garnbret took the Boulder&Lead titles.",
+  "'Burden of Dreams' is only 4 meters tall with 8 moves — yet Nalle Hukkataival needed around 4,000 attempts over four years for the first ascent.",
+  "Will Bosi trained for 'Burden of Dreams' on 3D-printed replicas of the original holds in England — the repeat on real rock then took 52 seconds.",
+  "If the 45-degree wall of 'Burden of Dreams' were vertical, the boulder would drop to roughly grade 5+ — steepness is a massive difficulty factor.",
+  "2025 was bouldering's record year: 16 ascents at grade 9A (V17) — and in November, Elias Iagnemma proposed history's first 9A+ (V18) with 'Exodia' in Italy.",
+  "Jakob Schubert (Austria) is the first person to have climbed both a 9A boulder and a 9c route.",
+  "The term 'redpoint' comes from Kurt Albert: in the 1970s he painted red dots on free-climbed routes in the Frankenjura — the word went international.",
+  "Bavaria's Frankenjura has one of the world's highest densities of hard sport routes — and is home to 'Action Directe'.",
+  "The 'gaston' grip (pushing away from your body, thumb down) is named after French mountain guide Gaston Rébuffat.",
+  "Turning your hip to the wall with the knee dropped in brings your shoulder closer to the hold — suddenly moves that felt impossible square-on become reachable.",
+  "A 'heel hook' turns your heel into a third hand — used well, it unloads your arms more than any muscle could.",
+  "'Campusing' means climbing without feet — extremely effective training, but only recommended for experienced fingers.",
+  "A 'kneebar' (jammed knee) can create full no-hands rests — pros plan entire routes around them.",
+  "A 'sit start' (assis) often makes a boulder one or two grades harder — 'Return of the Sleepwalker' (V17) is simply the sit start of 'Sleepwalker' (V16).",
+  "'Morpho' describes moves that depend heavily on body size — the same boulder can be a completely different grade for two people.",
+  "A 'beta break' is the discovery of an easier solution — it can lower an established route's grade overnight.",
+  "'Dab': touch the pad, your spotter or a neighboring rock mid-attempt and strictly speaking the try doesn't count — the community takes this surprisingly seriously.",
+  "In outdoor bouldering the spotter doesn't catch the falling climber — they only guide them so they land safely on the pad.",
+  "The first climbing shoes with rubber soles were developed by Pierre Allain in the 1940s — for the boulders of Fontainebleau. His 'PA' shoes were the standard for decades.",
+  "As early as the 1940s, colored arrow circuits led through the forests of Fontainebleau — numbered boulder loops with up to 50 problems in a row.",
+  "Fontainebleau traditionally used 'pof' — rosin bags instead of chalk. Today it's frowned upon because it polishes holds glassy.",
+  "Brushing holds is climbing etiquette: chalk layers fill the texture and cost friction — a clean crimp grips half a grade easier.",
+  "Bouldering gyms regularly wash their holds in dishwashers or with pressure washers — chalk and shoe rubber clog every bit of texture.",
+  "Modern holds are mostly polyurethane or polyester, volumes are coated wood — and the people who set them are called routesetters.",
+  "In Boulder World Cups each problem has two scores: the 'zone' (an intermediate hold) and the 'top' (both hands on the final hold, in control).",
+  "Climbing returns for Los Angeles 2028 — with three separate events planned for the first time: Boulder, Lead and Speed.",
+  "In 2013 Alex Megos became the first person to onsight 9a ('Estado Critico', Spain) — first try, with zero prior information.",
+  "Adam Ondra is famous for screaming while climbing — many athletes deliberately use loud exhales to activate for maximum moves.",
+  "Top climbers hang one-armed from 20-millimeter edges — sometimes with added weight. Finger strength is considered the most measurable single factor in performance climbing.",
+  "Growth plates in young fingers are injury-prone — which is why federations officially advise against intensive campus board training before adulthood.",
+  "Lots of easy boulders ('mileage') often improve your technique more than constant limit bouldering — movement quality beats ego.",
+  "10–15 minutes of warming up on easy boulders significantly lowers the risk of finger injuries — your pulleys need a head start.",
+  "Bouldering builds maximum strength, rope climbing builds endurance — mixing both makes the most complete climber.",
+  "Most bouldering injuries don't happen on the wall but when jumping off — climbing down in control saves your ankles.",
+  "'Skin management' is its own discipline among pros: attempts are scheduled around skin condition, because fresh skin measurably grips better than glassy skin.",
+  "Standardized training boards like the MoonBoard, Kilter Board and Tension Board have LED-lit holds and apps — your benchmark result is comparable worldwide.",
+  "A 'benchmark' is a standard problem on such boards where climbers around the globe test themselves on exactly the same moves.",
+  "'Lock-off': holding a hold statically with a bent arm while the other hand moves on — one of the most valuable basic skills on rock.",
+  "The difference between toprope, lead and bouldering is in your head: the same moves feel completely different depending on fall height — mental training is climbing training.",
+  "Climbers love calling grades 'soft' and 'hard': a soft 6 feels like a 5, a hard one like a 7 — in the end what counts is that YOU topped out.",
 ];
 function climbFact(n) {
   const arr = LANG === "en" ? CLIMB_FACTS_EN : CLIMB_FACTS_DE;
@@ -1879,11 +1967,13 @@ function downscale(file, maxDim = 1080, targetKB = 70) {
       const c = document.createElement("canvas"); c.width = w; c.height = h;
       c.getContext("2d").drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      // Two-pass: try quality 0.72, if still too big drop to 0.5
+      // Garantierte Kompression: JEDES Bild wird neu als JPEG kodiert (max. 1080px).
+      // Drei Qualitätsstufen, bis die Zielgröße erreicht ist.
       try {
         let data = c.toDataURL("image/jpeg", 0.72);
-        const kb = Math.round(data.length * 3 / 4 / 1024);
-        if (kb > targetKB * 1.4) data = c.toDataURL("image/jpeg", 0.52);
+        let kb = Math.round(data.length * 3 / 4 / 1024);
+        if (kb > targetKB * 1.4) { data = c.toDataURL("image/jpeg", 0.52); kb = Math.round(data.length * 3 / 4 / 1024); }
+        if (kb > targetKB * 2.2) { data = c.toDataURL("image/jpeg", 0.38); }
         res(data);
       } catch (e) { rej(e); }
     };
@@ -2541,6 +2631,11 @@ const CSS = `
 .snapdate { font-weight:700; font-size:14.5px; color:var(--chalk); }
 .snapmeta { font-size:12px; color:var(--muted); margin-top:2px; }
 .snaprestore { flex:none; font-size:12px; font-weight:700; color:#b8ff00; border:1px solid rgba(184,255,0,.4); border-radius:7px; padding:5px 9px; }
+.pwforgot { display:block; width:100%; margin-top:12px; background:none; border:none; color:var(--muted); font-size:13px; font-weight:600; text-align:center; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.pwforgot:active { color:var(--chalk); }
+.emailrow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; }
+.emailrow-l { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.emailval { font-size:13.5px; font-weight:700; color:var(--chalk); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .colpicker { display:grid; grid-template-columns:repeat(auto-fill,minmax(44px,1fr)); gap:8px; padding:4px 0; }
 .colbtn { width:100%; aspect-ratio:1; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:0; transition:all .12s; cursor:pointer; }
 .colbtn:hover { transform:scale(1.05); }
@@ -2797,13 +2892,17 @@ const CSS = `
 `;
 
 /* ============================ Login ============================ */
-function LoginScreen({ accounts, onLogin, onSignup, lang, onLang }) {
-  const [mode, setMode] = useState("login"); // login | signup
+function LoginScreen({ accounts, onLogin, onSignup, onResetPin, lang, onLang }) {
+  const [mode, setMode] = useState("login"); // login | signup | reset
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
   const [role, setRole] = useState("community");
   const [priv, setPriv] = useState(false);
   const [err, setErr] = useState("");
+  const [rEmail, setREmail] = useState("");
+  const [rPin2, setRPin2] = useState("");
+  const [rOk, setROk] = useState(false);
+  const en = lang === "en";
 
   async function doLogin() {
     const acc = accounts.find(a => a.name.toLowerCase() === name.trim().toLowerCase());
@@ -2818,6 +2917,21 @@ function LoginScreen({ accounts, onLogin, onSignup, lang, onLang }) {
     if (pin.length < 4) return setErr(t("login.errShort"));
     onSignup({ name: nm, pin, role: "community", private: priv });
   }
+  async function doReset() {
+    setErr("");
+    const nm = name.trim();
+    if (!nm) return setErr(t("login.errName"));
+    if (!rEmail.trim()) return setErr(en ? "Please enter your linked email." : "Bitte deine verknüpfte E-Mail eingeben.");
+    if (pin.length < 4) return setErr(t("login.errShort"));
+    if (pin !== rPin2) return setErr(en ? "Passwords don't match." : "Passwörter stimmen nicht überein.");
+    const res = await onResetPin({ name: nm, email: rEmail, newPin: pin });
+    if (!res.ok) {
+      if (res.err === "noacc") return setErr(t("login.errNoAcc"));
+      if (res.err === "noemail") return setErr(en ? "No email is linked to this account. Please contact an admin." : "Für dieses Konto ist keine E-Mail hinterlegt. Bitte wende dich an einen Admin.");
+      return setErr(en ? "Name and email don't match." : "Name und E-Mail passen nicht zusammen.");
+    }
+    setROk(true);
+  }
 
   return (
     <div className="login" style={{ backgroundImage: `linear-gradient(180deg, rgba(15,17,20,.30) 0%, rgba(15,17,20,.55) 38%, rgba(15,17,20,.93) 72%, rgba(15,17,20,.99) 100%), url(${BG_LOGIN_WALL || (typeof BG_LOGIN !== "undefined" ? BG_LOGIN : "")})` }}>
@@ -2831,6 +2945,30 @@ function LoginScreen({ accounts, onLogin, onSignup, lang, onLang }) {
         <div className="ltagline">elevate. score. repeat.</div>
       </div>
       <div className="logincard">
+        {mode === "reset" ? (
+          rOk ? (
+            <div style={{ textAlign: "center", padding: "8px 0" }}>
+              <div style={{ fontSize: 34 }}>✅</div>
+              <div style={{ fontWeight: 800, fontSize: 17, margin: "8px 0 6px" }}>{en ? "Password changed" : "Passwort geändert"}</div>
+              <div className="phint" style={{ marginBottom: 14 }}>{en ? "You can now sign in with your new password." : "Du kannst dich jetzt mit deinem neuen Passwort anmelden."}</div>
+              <button className="btn" onClick={() => { setMode("login"); setROk(false); setPin(""); setRPin2(""); setREmail(""); setErr(""); }}>{t("login.signin")}</button>
+            </div>
+          ) : (<>
+            <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{en ? "Reset password" : "Passwort zurücksetzen"}</div>
+            <div className="phint" style={{ marginBottom: 12 }}>{en ? "Works only if you linked an email to your account (under Profile). Otherwise ask an admin." : "Geht nur, wenn du in deinem Konto eine E-Mail verknüpft hast (unter Profil). Sonst hilft dir ein Admin."}</div>
+            <label className="flbl">{t("login.name")}</label>
+            <input className="inp" type="text" value={name} placeholder={t("login.namePh")} onChange={e => { setName(e.target.value); setErr(""); }} />
+            <label className="flbl" style={{ marginTop: 12 }}>{en ? "Linked email" : "Verknüpfte E-Mail"}</label>
+            <input className="inp" type="email" inputMode="email" autoCapitalize="none" value={rEmail} placeholder="name@mail.de" onChange={e => { setREmail(e.target.value); setErr(""); }} />
+            <label className="flbl" style={{ marginTop: 12 }}>{en ? "New password" : "Neues Passwort"}</label>
+            <input className="inp" type="password" value={pin} placeholder={en ? "min. 4 characters" : "mind. 4 Zeichen"} onChange={e => { setPin(e.target.value); setErr(""); }} />
+            <label className="flbl" style={{ marginTop: 12 }}>{en ? "Repeat" : "Wiederholen"}</label>
+            <input className="inp" type="password" value={rPin2} placeholder={en ? "repeat password" : "nochmal eingeben"} onChange={e => { setRPin2(e.target.value); setErr(""); }} onKeyDown={e => { if (e.key === "Enter") doReset(); }} />
+            {err && <div className="err">{err}</div>}
+            <button className="btn" onClick={doReset}>{en ? "Set new password" : "Neues Passwort setzen"}</button>
+            <button type="button" className="pwforgot" onClick={() => { setMode("login"); setErr(""); setPin(""); }}>{en ? "← Back to sign in" : "← Zurück zur Anmeldung"}</button>
+          </>)
+        ) : (<>
         <div className="authtabs">
           <button className={mode === "login" ? "on" : ""} onClick={() => { setMode("login"); setName(""); setErr(""); }}>{t("login.signin")}</button>
           <button className={mode === "signup" ? "on" : ""} onClick={() => { setMode("signup"); setName(genTag(lang)); setErr(""); }}>{t("login.signup")}</button>
@@ -2851,6 +2989,8 @@ function LoginScreen({ accounts, onLogin, onSignup, lang, onLang }) {
 
         {err && <div className="err">{err}</div>}
         <button className="btn" onClick={mode === "login" ? doLogin : doSignup}>{mode === "login" ? t("login.signin") : t("login.create")}</button>
+        {mode === "login" && <button type="button" className="pwforgot" onClick={() => { setMode("reset"); setErr(""); setPin(""); setRPin2(""); setROk(false); }}>{en ? "Forgot password?" : "Passwort vergessen?"}</button>}
+        </>)}
       </div>
     </div>
   );
@@ -3150,7 +3290,15 @@ export default function App() {
     if (b.uid !== me.id || !b.ids) { achBaseRef.current = { uid: me.id, ids: doneIds }; return; }
     if (doneIds.size > b.ids.size) {
       const fresh = achState.evald.filter(a => a.done && !b.ids.has(a.id));
-      if (fresh.length) setAchUnlock({ items: fresh.slice(0, 3), extra: Math.max(0, fresh.length - 3), fact: climbFact(doneIds.size) });
+      if (fresh.length) {
+        // Fakten-Reihenfolge: persistenter Zähler pro Nutzer, der NUR vorwärts läuft.
+        // (Vorher: Index aus der Erfolgs-Anzahl — die kann durch Ab-/Anhaken gleich bleiben
+        //  oder zurückspringen, wodurch derselbe Fakt mehrfach kam.)
+        let cur = 0;
+        try { cur = parseInt(localStorage.getItem("blocscore:factseq:" + me.id) || "0", 10) || 0; } catch (e) {}
+        setAchUnlock({ items: fresh.slice(0, 3), extra: Math.max(0, fresh.length - 3), fact: climbFact(cur) });
+        try { localStorage.setItem("blocscore:factseq:" + me.id, String(cur + 1)); } catch (e) {}
+      }
     }
     achBaseRef.current = { uid: me.id, ids: doneIds };
   }, [achState, ready, me]);
@@ -3325,11 +3473,21 @@ export default function App() {
       // ── Bilder VORAB als separate Blobs speichern — NIEMALS base64 in die Community!
       //    (Sonst wird der Community-Datensatz riesig (~8 MB) und das Speichern schlägt fehl.)
       let imgOk = 0, imgFail = 0;
-      const totalImg = normalized.filter(n => n.imageUrl).length;
+      // Vorab bestimmen, welche eingehenden Routen ihr Bild überhaupt brauchen:
+      // gematchte Routen, die schon ein Foto haben, brauchen keinen neuen Blob (spart DB-Platz).
+      const skipImg = new Set();
+      if (!fullReset) {
+        const usedPre = new Set();
+        for (const inc of normalized) {
+          const m = (community?.routes || []).find(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && (r.date || "") === (inc.date || "") && !usedPre.has(r.id));
+          if (m) { usedPre.add(m.id); if (m.photos && m.photos.length) skipImg.add(inc._idx); }
+        }
+      }
+      const totalImg = normalized.filter(n => n.imageUrl && !skipImg.has(n._idx)).length;
       if (totalImg) pushSyncLog(`⏳ Speichere ${totalImg} Bilder…`);
       let imgDone = 0;
       for (const inc of normalized) {
-        if (!inc.imageUrl) continue;
+        if (!inc.imageUrl || skipImg.has(inc._idx)) continue;
         try {
           let dataUrl = inc.imageUrl;
           const isData = typeof dataUrl === "string" && dataUrl.startsWith("data:");
@@ -3362,9 +3520,11 @@ export default function App() {
         for (const inc of normalized) {
           // WICHTIG: nur gegen vorhandene Original-Routen matchen, NICHT gegen in diesem
           // Lauf neu erstellte — sonst werden Routen mit gleicher Farbe+Grad+Sektor verschmolzen.
+          // Der Match schließt das SCHRAUBDATUM ein: gleiche Farbe+Grad+Sektor mit anderem
+          // Datum ist eine NEUE Route (Sektor wurde umgeschraubt) — alte wird archiviert.
           let matchIdx = -1;
           if (!fullReset) {
-            matchIdx = original.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && !usedIds.has(r.id));
+            matchIdx = original.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && (r.date || "") === (inc.date || "") && !usedIds.has(r.id));
           }
           if (matchIdx >= 0) {
             const mr = original[matchIdx];
@@ -3376,7 +3536,8 @@ export default function App() {
                 newRoutes[ni] = { ...newRoutes[ni], photos: [inc._photoId] };
               }
             }
-          } else if (fullReset || (inc.date && inc.date >= today)) {
+          } else {
+            // Nicht gematcht → anlegen (Sendly ist Quelle der Wahrheit für aktive Routen).
             const nick = genName(uid() + "|" + inc.color, inc.grade);
             newRoutes.push({
               id: uid(), date: inc.date || today, gym: inc.sector, grade: inc.grade,
@@ -3454,6 +3615,16 @@ export default function App() {
     alert("Snapshot wiederhergestellt.");
   }
   const [delConfirm, setDelConfirm] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  async function saveMyEmail(email, pw) {
+    const hasPin = !!(me?.pinHash || me?.pin);
+    if (hasPin && !(await verifyPin(pw, me))) return { ok: false, err: "pw" };
+    const em = (email || "").trim().toLowerCase();
+    if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return { ok: false, err: "format" };
+    setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, email: em } : a) }));
+    setEmailOpen(false);
+    return { ok: true };
+  }
   async function confirmDeleteMyAccount(pin) {
     const ok = await verifyPin(pin, me);
     if (!ok) return false;
@@ -3472,6 +3643,16 @@ export default function App() {
     if (!acc?.skipIntro) setShowIntro(true);
   }
   async function handleSignup({ name, pin, role, private: priv, emoji }) { const f = await makePinFields(pin); const acc = { id: uid(), name, ...f, role, private: !!priv, emoji: emoji || "", lastSeen: todayISO() }; setCommunity(c => ({ ...c, accounts: [...c.accounts, acc] })); handleLogin(acc.id); }
+  // Passwort-Reset über verknüpfte E-Mail (Name + hinterlegte E-Mail müssen zusammenpassen)
+  async function handlePinReset({ name, email, newPin }) {
+    const acc = accounts.find(a => a.name.toLowerCase() === name.trim().toLowerCase());
+    if (!acc) return { ok: false, err: "noacc" };
+    if (!acc.email) return { ok: false, err: "noemail" };
+    if (acc.email.toLowerCase() !== email.trim().toLowerCase()) return { ok: false, err: "mismatch" };
+    const f = await makePinFields(newPin);
+    setCommunity(c => ({ ...c, accounts: c.accounts.map(a => { if (a.id !== acc.id) return a; const { pin: _legacy, ...rest } = a; return { ...rest, ...f }; }) }));
+    return { ok: true };
+  }
   function logout() { setSession(null); saveSession(null); setTab("routes"); }
   function dismissIntro() {
     setShowIntro(false);
@@ -3485,7 +3666,7 @@ export default function App() {
     <button className="save" style={{ marginTop: 18 }} onClick={() => location.reload()}>Neu laden</button>
   </div></div>;
   if (!ready) return <div className="bld"><style>{CSS}</style><div className="empty" style={{ margin: "auto" }}>Lädt…</div></div>;
-  if (!me) return <LoginScreen accounts={accounts} onLogin={handleLogin} onSignup={handleSignup} lang={lang} onLang={changeLang} />;
+  if (!me) return <LoginScreen accounts={accounts} onLogin={handleLogin} onSignup={handleSignup} onResetPin={handlePinReset} lang={lang} onLang={changeLang} />;
   const introEl = showIntro && !me?.skipIntro ? <IntroModal me={me} onClose={() => setShowIntro(false)} onDismiss={dismissIntro} /> : null;
 
   const tipsRoute = routes.find(r => r.id === tipsRouteId) || null;
@@ -4200,6 +4381,14 @@ export default function App() {
                 {me.emoji ? <button className="miniaction" style={{ marginTop: 0 }} onClick={() => setMyEmoji("")}><span className="mi-ic">✕</span>{t("acc.none")}</button> : null}
               </div>
             </div>
+            <div className="emailrow">
+              <div className="emailrow-l">
+                <span className="langlbl">E-Mail</span>
+                <span className="emailval">{me.email || (LANG === "en" ? "not linked" : "nicht verknüpft")}</span>
+              </div>
+              <button className="miniaction" style={{ marginTop: 0 }} onClick={() => setEmailOpen(true)}><span className="mi-ic">🔗</span>{me.email ? (LANG === "en" ? "Change" : "Ändern") : (LANG === "en" ? "Link email" : "Verknüpfen")}</button>
+            </div>
+            {!me.email && <div className="lockhint" style={{ marginTop: 4 }}>{LANG === "en" ? "With a linked email you can reset a forgotten password yourself." : "Mit verknüpfter E-Mail kannst du ein vergessenes Passwort selbst zurücksetzen."}</div>}
             {me.role === "community" && (
               me.roleRequest === "schrauber"
                 ? <div className="reqnote">{t("acc.reqPending")} <span>{t("acc.reqInfo")}</span></div>
@@ -4465,6 +4654,7 @@ export default function App() {
       )}
       {achCat && <CategorySheet cat={achCat} items={achState.evald.filter(a => a.cat === achCat)} onClose={() => setAchCat(null)} />}
       {delConfirm && <DeleteAccountSheet me={me} onClose={() => setDelConfirm(false)} onConfirm={confirmDeleteMyAccount} />}
+      {emailOpen && <EmailLinkSheet me={me} onClose={() => setEmailOpen(false)} onSave={saveMyEmail} />}
       {snapOpen && (
         <div className="scrim" onClick={() => setSnapOpen(false)}>
           <div className="sheet" onClick={e => e.stopPropagation()}>
@@ -4660,6 +4850,44 @@ function CategorySheet({ cat, items, onClose }) {
 }
 
 /* ============================ Konto: Passwort ändern ============================ */
+function EmailLinkSheet({ me, onClose, onSave }) {
+  const [email, setEmail] = useState(me?.email || "");
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const en = LANG === "en";
+  const hasPin = !!(me?.pinHash || me?.pin);
+  async function go(clear) {
+    setBusy(true); setErr("");
+    const res = await onSave(clear ? "" : email, pw);
+    setBusy(false);
+    if (!res.ok) setErr(res.err === "pw" ? (en ? "Wrong password." : "Falsches Passwort.") : (en ? "Please enter a valid email address." : "Bitte eine gültige E-Mail-Adresse eingeben."));
+  }
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="grip" />
+        <div className="shead"><h2>🔗 {en ? "Link email" : "E-Mail verknüpfen"}</h2><button className="x" onClick={onClose}>✕</button></div>
+        <div className="sbody">
+          <div className="note" style={{ marginBottom: 12 }}>{en
+            ? "With a linked email you can reset a forgotten password on the login screen (name + email must match). The address is only stored for this — no emails are sent."
+            : "Mit verknüpfter E-Mail kannst du auf dem Login-Bildschirm ein vergessenes Passwort zurücksetzen (Name + E-Mail müssen zusammenpassen). Die Adresse wird nur dafür gespeichert — es werden keine Mails verschickt."}</div>
+          <div className="field"><label>{en ? "Email address" : "E-Mail-Adresse"}</label>
+            <input type="email" inputMode="email" autoCapitalize="none" value={email} autoFocus placeholder="name@mail.de" onChange={e => { setEmail(e.target.value); setErr(""); }} />
+          </div>
+          {hasPin && (
+            <div className="field" style={{ marginTop: 12 }}><label>{en ? "Confirm with your password" : "Mit deinem Passwort bestätigen"}</label>
+              <input type="password" value={pw} placeholder={en ? "Password" : "Passwort"} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => { if (e.key === "Enter" && email) go(false); }} />
+            </div>
+          )}
+          {err && <div className="phint" style={{ color: "#e98b7d", marginTop: 8 }}>{err}</div>}
+          <button className="save" style={{ marginTop: 14, opacity: (busy || !email || (hasPin && !pw)) ? .5 : 1 }} disabled={busy || !email || (hasPin && !pw)} onClick={() => go(false)}>{busy ? "…" : (en ? "Save" : "Speichern")}</button>
+          {me?.email && <button className="miniaction" style={{ marginTop: 8, width: "100%", justifyContent: "center", color: "#e98b7d" }} disabled={busy || (hasPin && !pw)} onClick={() => go(true)}>{en ? "Remove linked email" : "Verknüpfung entfernen"}</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
 function DeleteAccountSheet({ me, onClose, onConfirm }) {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
@@ -4940,6 +5168,7 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMe
   const [photos, setPhotos] = useState([]);
   const [photoBusy, setPhotoBusy] = useState(false);
   const fileRef = useRef(null);
+  const galRef = useRef(null);
   const origPhotoIds = route?.photos || [];
   const valid = !!wall && nick.trim().length > 0;
   const myStatus = results[me.name] || null;
@@ -5090,10 +5319,14 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMe
               <>
                 <div className="photos">
                   {photos.map(ph => <div className="thumb" key={ph.id}><img src={ph.dataUrl} alt="" /><button className="thx" onClick={() => removePhoto(ph.id)}>✕</button></div>)}
-                  {canPhoto && photos.length < MAX_PHOTOS && <button className="addphoto" onClick={() => fileRef.current?.click()}>{photoBusy ? "…" : <><span style={{ fontSize: 22, lineHeight: 1 }}>＋</span><span>Foto</span></>}</button>}
+                  {canPhoto && photos.length < MAX_PHOTOS && <>
+                    <button className="addphoto" onClick={() => fileRef.current?.click()}>{photoBusy ? "…" : <><span style={{ fontSize: 20, lineHeight: 1 }}>📷</span><span>Kamera</span></>}</button>
+                    <button className="addphoto" onClick={() => galRef.current?.click()}>{photoBusy ? "…" : <><span style={{ fontSize: 20, lineHeight: 1 }}>🖼</span><span>Galerie</span></>}</button>
+                  </>}
                 </div>
-                <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple style={{ display: "none" }} onChange={onPickFiles} />
-                <div className="phint">{photos.length >= MAX_PHOTOS ? (LANG==="en"?`Maximum of ${MAX_PHOTOS} photos reached.`:`Maximal ${MAX_PHOTOS} Fotos erreicht.`) : (LANG==="en"?"Camera or gallery. Images are downscaled.":"Kamera oder Galerie. Bilder werden verkleinert gespeichert.")}</div>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={onPickFiles} />
+                <input ref={galRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPickFiles} />
+                <div className="phint">{photos.length >= MAX_PHOTOS ? (LANG==="en"?`Maximum of ${MAX_PHOTOS} photos reached.`:`Maximal ${MAX_PHOTOS} Fotos erreicht.`) : (LANG==="en"?"Camera or gallery — every image is automatically compressed.":"Kamera oder Galerie — jedes Bild wird automatisch verkleinert und komprimiert.")}</div>
               </>
             )}
           </div>
