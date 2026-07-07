@@ -285,6 +285,16 @@ const STR = {
 };
 function t(k, v) { let s = (STR[LANG] && STR[LANG][k]) != null ? STR[LANG][k] : (STR.de[k] != null ? STR.de[k] : k); if (v) for (const key in v) s = s.split("{" + key + "}").join(v[key]); return s; }
 function routeTitle(r) { return (r.nick && r.nick.trim()) ? r.nick : genName((r.id || "") + "|" + (r.name || ""), r.grade); }
+// Erzeugt einen Namen, der in `existing` (Set aus kleingeschriebenen Namen) noch nicht vorkommt.
+// Jeder Aufruf nutzt einen frischen Zufalls-Seed — keine deterministischen Wiederholungen mehr.
+function genUniqueName(grade, existing) {
+  const seen = existing || new Set();
+  for (let i = 0; i < 80; i++) {
+    const n = genName(uid() + "|" + i + "|" + Math.random(), grade);
+    if (!seen.has(n.toLowerCase().trim())) return n;
+  }
+  return genName(uid() + "|" + Math.random(), grade) + " " + (Math.floor(Math.random() * 90) + 10);
+}
 function colorWord(name) { const t = (name || "").toLowerCase(); for (const k of Object.keys(COLOR_DOT)) if (t.includes(k)) return k.charAt(0).toUpperCase() + k.slice(1); return null; }
 
 /* ── Teilen: Route-Info+Foto sowie generierte Stats-Bildkarte ──────────────── */
@@ -2299,6 +2309,8 @@ const CSS = `
 .claimbtn:active { filter:brightness(.9); }
 .claimall { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-bottom:12px; padding:11px; border-radius:11px; background:#b8ff00; color:#11151a; font-weight:800; font-size:14px; border:none; cursor:pointer; }
 .claimall:active { filter:brightness(.9); }
+.rerollbtn { flex:none; width:46px; border-radius:10px; background:var(--panel2); border:1.3px solid var(--line); font-size:20px; cursor:pointer; }
+.rerollbtn:active { background:var(--panel); }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -3529,6 +3541,7 @@ export default function App() {
         const usedIds = new Set();
         if (fullReset) archived = original.filter(r => !r.archived).length;
 
+        const nickSeen = new Set(original.map(r => (r.nick || "").toLowerCase().trim()).filter(Boolean));
         for (const inc of normalized) {
           // WICHTIG: nur gegen vorhandene Original-Routen matchen, NICHT gegen in diesem
           // Lauf neu erstellte — sonst werden Routen mit gleicher Farbe+Grad+Sektor verschmolzen.
@@ -3550,7 +3563,8 @@ export default function App() {
             }
           } else {
             // Nicht gematcht → anlegen (Sendly ist Quelle der Wahrheit für aktive Routen).
-            const nick = genName(uid() + "|" + inc.color, inc.grade);
+            const nick = genUniqueName(inc.grade, nickSeen);
+            nickSeen.add(nick.toLowerCase().trim());
             newRoutes.push({
               id: uid(), date: inc.date || today, gym: inc.sector, grade: inc.grade,
               name: inc.color, nick, note: "", archived: false, results: {},
@@ -4637,7 +4651,7 @@ export default function App() {
 
       {editing && (
         <RouteSheetBoundary onClose={() => setEditing(null)}>
-        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} readOnly={!canSetRoutes && editing && editing !== "new"} canSeeMeta={canSetRoutes} canPhoto={canPhoto} achScore={achScore} screwDates={screwDates}
+        <RouteSheet route={editing === "new" ? null : editing} me={me} gyms={wallsPresent.map(w => w.code)} isAdmin={isAdmin} canSetRoutes={canSetRoutes} readOnly={!canSetRoutes && editing && editing !== "new"} canSeeMeta={canSetRoutes} canPhoto={canPhoto} achScore={achScore} existingNicks={new Set((community?.routes || []).filter(r => !(editing && editing !== "new" && r.id === editing.id)).map(r => (r.nick || "").toLowerCase().trim()).filter(Boolean))} screwDates={screwDates}
           onClose={() => setEditing(null)} onSave={(r) => { upsertRoute(r); setEditing(null); }} onDelete={(id) => { deleteRoute(id); setEditing(null); }} />
         </RouteSheetBoundary>
       )}
@@ -5202,7 +5216,7 @@ class RouteSheetBoundary extends React.Component {
   }
 }
 
-function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMeta, canPhoto, achScore, onClose, onSave, onDelete, screwDates }) {
+function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMeta, canPhoto, achScore, existingNicks, onClose, onSave, onDelete, screwDates }) {
   const MAX_PHOTOS = 3;
   const [sheetLb, setSheetLb] = useState(null);
   const FLASH_BONUS = _FLASH_BONUS; // use synced global
@@ -5214,7 +5228,7 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMe
   function changeWall(w) { setWall(w); if (isNew && screwDates?.[w]) setDate(screwDates[w]); }
   const [grade, setGrade] = useState(route?.grade || 5);
   const [name, setName] = useState(route?.name || "");
-  const [nick, setNick] = useState((route?.nick && route.nick.trim()) ? route.nick : genName((route?.id || "new") + "|" + (route?.name || ""), route?.grade || 5));
+  const [nick, setNick] = useState((route?.nick && route.nick.trim()) ? route.nick : genUniqueName(route?.grade || 5, existingNicks));
   const [note, setNote] = useState(route?.note || "");
   const [archived, setArchived] = useState(route?.archived || false);
   const [results, setResults] = useState(route?.results ? { ...route.results } : {});
@@ -5354,9 +5368,18 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMe
 
           <div className="field">
             <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>Routenname <button type="button" className="reroll" onClick={() => setNick(genName(uid(), grade))}>🎲 neu würfeln</button></label>
-            <input type="text" value={nick} onChange={e => setNick(e.target.value)} placeholder="Name der Route" autoFocus={isNew} />
-            <div className="phint">Wird automatisch aus Farbe & Grad gewürfelt — kannst du frei ändern.</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="text" value={nick} onChange={e => setNick(e.target.value)} placeholder="Name der Route" autoFocus={isNew} style={{ flex: 1 }} />
+              <button type="button" className="rerollbtn" title={LANG === "en" ? "New random name" : "Neuen Namen würfeln"} onClick={() => setNick(genUniqueName(grade, existingNicks))}>🎲</button>
+            </div>
+            <div className="phint">{LANG === "en" ? "Auto-generated and unique — feel free to change it." : "Automatisch gewürfelt und einzigartig — kannst du frei ändern."}</div>
           </div>
+          {isAdmin && (
+            <div className="field"><label>{LANG === "en" ? "Set date (screw date)" : "Schraubdatum"}</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <div className="phint">{LANG === "en" ? "Inherited from the sector's screw date — fix it here if it was set wrong. Note: the Sendly sync matches routes by this date." : "Wird vom Umschraubtermin des Sektors geerbt — hier kannst du es nachträglich korrigieren. Achtung: Der Sendly-Sync ordnet Routen über dieses Datum zu."}</div>
+            </div>
+          )}
 
           <div className="field"><label>{t("route.note")}</label>
             <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder={t("route.notePh")} maxLength={60} />
