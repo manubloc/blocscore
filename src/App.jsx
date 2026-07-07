@@ -2317,6 +2317,8 @@ const CSS = `
 .claimall:active { filter:brightness(.9); }
 .rerollbtn { flex:none; width:46px; border-radius:10px; background:var(--panel2); border:1.3px solid var(--line); font-size:20px; cursor:pointer; }
 .rerollbtn:active { background:var(--panel); }
+.gradepick .bs-btn { font-size:13px; font-weight:800; letter-spacing:.04em; min-width:44px; }
+.meta .ptssub { color:var(--muted); opacity:.75; font-size:11px; }
 .lhplan { color:#ffaa28; font-weight:700; }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
@@ -3780,9 +3782,9 @@ export default function App() {
             <button className={boardScope === "gruppen" ? "on" : ""} onClick={() => setBoardScope("gruppen")}>{t("board.gruppen")}</button>
           </div>
           <div className="seg">
-            <button className={boardMode === "aktuell" ? "on" : ""} onClick={() => setBoardMode("aktuell")}>{t("board.aktuell")}</button>
-            <button className={boardMode === "gesamt" ? "on" : ""} onClick={() => setBoardMode("gesamt")}>{t("board.gesamt")}</button>
-            <button className={boardMode === "erfolge" ? "on" : ""} onClick={() => setBoardMode("erfolge")}>{t("board.erfolge")}</button>
+            <button className={boardMode === "aktuell" ? "on" : ""} title={LANG === "en" ? "Points from routes currently on the wall" : "Punkte aus Routen, die aktuell an der Wand hängen"} onClick={() => setBoardMode("aktuell")}>{t("board.aktuell")}</button>
+            <button className={boardMode === "gesamt" ? "on" : ""} title={LANG === "en" ? "All-time points, incl. archived routes" : "Alle je erkletterten Punkte, inkl. archivierter Routen"} onClick={() => setBoardMode("gesamt")}>{t("board.gesamt")}</button>
+            <button className={boardMode === "erfolge" ? "on" : ""} title={LANG === "en" ? "Skillpoints from unlocked achievements" : "Skillpoints aus freigeschalteten Erfolgen"} onClick={() => setBoardMode("erfolge")}>{t("board.erfolge")}</button>
           </div>
         </div>
         <div className="scroll"><div className="lb">
@@ -3791,7 +3793,7 @@ export default function App() {
               <div className="rank">{medal(i) || (i + 1)}</div>
               <div className="who">
                 <div className="nm">{p}{isMe && <span className="youtag">DU</span>}</div>
-                <div className="meta"><span><b>{tot.flashes || 0}</b> Flashes</span><span>{tot.sends || 0} Tops</span></div>
+                <div className="meta"><span><b>{tot.flashes || 0}</b> Flashes</span><span>{tot.sends || 0} Tops</span>{boardMode === "aktuell" && (tot.gesamt || 0) > (tot.aktuell || 0) && <span className="ptssub">{LANG === "en" ? "all time" : "gesamt"} {fmtPts(tot.gesamt)}</span>}</div>
                 <div className="bar"><i style={{ width: `${(v / maxPts) * 100}%` }} /></div>
               </div>
               <div className="pts"><div className="v">{isErf ? Math.round(v) : fmtPts(v)}</div><div className="u">{isErf ? t("board.achpts") : t("board.points")}</div></div>
@@ -5371,8 +5373,14 @@ function RouteSheet({ route, me, gyms, isAdmin, canSetRoutes, readOnly, canSeeMe
           </div>
 
           <div className="field"><label>Grad</label>
-            <div className="gradepick">{GRADES.map(g => <button key={g} className={grade === g ? "on" : ""} style={grade === g ? { background: "#b8ff00", borderColor: "#b8ff00", color:"#13141a" } : {}} onClick={() => setGrade(g)}>{g}</button>)}</div>
-            <div className="ghint">Punkte: <b>{fmtPts(topPts(grade))}</b> für Top · <b>{fmtPts(topPts(grade) + FLASH_BONUS)}</b> für Flash</div>
+            <div className="gradepick">
+              {GRADES.map(g => <button key={g} className={grade === g ? "on" : ""} style={grade === g ? { background: "#b8ff00", borderColor: "#b8ff00", color:"#13141a" } : {}} onClick={() => setGrade(g)}>{g}</button>)}
+              <button className={grade === "BS" ? "on bs-btn" : "bs-btn"} style={grade === "BS" ? { background: "linear-gradient(140deg,#ffaa28,#e5477d)", borderColor: "#ffaa28", color: "#fff" } : {}} onClick={() => setGrade("BS")} title="Bockstar — Boulder ohne festen Grad">BS</button>
+            </div>
+            <div className="ghint">{grade === "BS"
+              ? <>Bockstar — kein fester Grad. Punkte: <b>{fmtPts(topPts(BOCKSTAR_GRADE_VALUE))}</b> für Top · <b>{fmtPts(topPts(BOCKSTAR_GRADE_VALUE) + FLASH_BONUS)}</b> für Flash (wie 5er)</>
+              : <>Punkte: <b>{fmtPts(topPts(grade))}</b> für Top · <b>{fmtPts(topPts(grade) + FLASH_BONUS)}</b> für Flash</>}
+            </div>
           </div>
 
           <div className="field"><label>Farbe der Griffe</label>
