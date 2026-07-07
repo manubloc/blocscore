@@ -3240,7 +3240,13 @@ export default function App() {
     wallOrder.forEach(w => map.set(w, { wall: w, items: [] }));
     rs.forEach(r => { const w = wallCanon(r.gym); if (!map.has(w)) map.set(w, { wall: w, items: [] }); map.get(w).items.push(r); });
     const arr = Array.from(map.values()).filter(s => s.items.length > 0);
-    arr.forEach(s => s.items.sort((a, b) => a.grade - b.grade || (a.date || "").localeCompare(b.date || "")));
+    arr.forEach(s => s.items.sort((a, b) => {
+      const aBs = a.grade === "BS" || a.grade === "bs" ? 1 : 0;
+      const bBs = b.grade === "BS" || b.grade === "bs" ? 1 : 0;
+      if (aBs !== bBs) return aBs - bBs;                     // BS immer ans Ende
+      if (aBs) return (a.date || "").localeCompare(b.date || "");
+      return (Number(a.grade) || 0) - (Number(b.grade) || 0) || (a.date || "").localeCompare(b.date || "");
+    }));
     // Pflegebedürftige Wände (Datum erreicht, keine aktuellen Routen) als leere Sektion zeigen
     if (scope === "aktuell" && !fGrade && !q) {
       Object.keys(needsCare).forEach(w => {
@@ -3833,6 +3839,7 @@ export default function App() {
               <div className="gradefilter">
                 <button className={"chip" + (!fGrade ? " on" : "")} onClick={() => setFGrade(0)}>{t("routes.allGrades")}</button>
                 {GRADES.map(g => <button key={g} className={"chip" + (fGrade === g ? " on" : "")} style={{ borderColor: fGrade === g ? "#b8ff00" : undefined, color: fGrade === g ? "#b8ff00" : undefined, background: fGrade === g ? "#b8ff0022" : undefined }} onClick={() => setFGrade(fGrade === g ? 0 : g)}>{g}</button>)}
+                <button className={"chip chip-bs" + (fGrade === "BS" ? " on" : "")} style={fGrade === "BS" ? { borderColor: "#ffaa28", color: "#ffaa28", background: "linear-gradient(140deg,rgba(255,170,40,.18),rgba(229,71,125,.18))" } : {}} onClick={() => setFGrade(fGrade === "BS" ? 0 : "BS")} title="Bockstar">BS</button>
               </div>
             </div>
             <input className="searchinp" value={q} onChange={e => setQ(e.target.value)} placeholder={t("routes.search")} />
