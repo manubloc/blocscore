@@ -2272,6 +2272,8 @@ const CSS = `
 .ri-color { font-size:13px; color:var(--muted); margin-top:2px; }
 .ri-note { font-size:14px; color:var(--muted); padding:9px 12px; background:var(--panel2); border-radius:9px; margin-bottom:12px; }
 .carebadge { flex:none; display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(255,170,40,.16); border:1px solid rgba(255,170,40,.5); color:#ffaa28; letter-spacing:.02em; }
+.archwallbtn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-bottom:10px; padding:10px; border-radius:11px; background:rgba(255,170,40,.1); color:#ffaa28; font-weight:800; font-size:13.5px; border:1.3px solid rgba(255,170,40,.45); cursor:pointer; }
+.archwallbtn:active { background:rgba(255,170,40,.2); }
 .carebox { background:linear-gradient(150deg,rgba(255,170,40,.12),var(--panel2)); border:1.4px solid rgba(255,170,40,.45); border-radius:12px; padding:13px 15px; margin-bottom:12px; }
 .carebox-ttl { font-family:'Barlow Condensed'; font-weight:700; font-size:16px; color:#ffaa28; letter-spacing:.02em; margin-bottom:5px; }
 .carebox-txt { font-size:13px; color:var(--chalk); line-height:1.5; opacity:.9; }
@@ -3457,6 +3459,8 @@ export default function App() {
       const incoming = Array.isArray(data) ? data : (data.routes || []);
       if (!incoming.length) { pushSyncLog("⚠️ Keine Routen in der Datei gefunden.", "warn"); return; }
       pushSyncLog(`✅ ${incoming.length} Routen in Import-Datei`);
+      // Sicherheitsnetz: aktuellen Stand VOR dem Import als Snapshot sichern
+      try { await writeSnapshot(community, true); pushSyncLog("🛟 Sicherungs-Snapshot des aktuellen Stands angelegt"); } catch (e) {}
 
       // Sektor-Mapping sendly → blocscore
       const SECTOR_MAP = { BH: "h", BV: "v", PL: "pl", TB: "tb", WK: "wkw", "Block Hinten": "h", "Block Vorne": "v", "Platte": "pl", "Platte & Bug": "pl", "Training & Bug": "tb", "Wettkampfwand": "wkw", Trainingsbereich: "tb" };
@@ -3589,26 +3593,44 @@ export default function App() {
   function removeAccount(id) { setCommunity(c => ({ ...c, accounts: c.accounts.filter(a => a.id !== id) })); }
 
   // ── Backup / Wiederherstellung ──────────────────────────────────────────────
-  function exportCommunity() {
+  const [backupBusy, setBackupBusy] = useState(false);
+  async function exportCommunity() {
+    if (backupBusy) return;
+    setBackupBusy(true);
     try {
-      const blob = new Blob([JSON.stringify(community, null, 2)], { type: "application/json" });
+      // Foto-Blobs einsammeln, damit das Backup WIRKLICH vollständig ist
+      // (Routen speichern nur Foto-IDs; die Bilder liegen als separate Blobs in der DB)
+      const ids = new Set();
+      for (const r of (community.routes || [])) for (const pid of (r.photos || [])) {
+        if (typeof pid === "string" && !pid.startsWith("data:") && !pid.startsWith("/")) ids.add(pid);
+      }
+      const photoBlobs = {};
+      for (const pid of ids) { const b = await loadPhotoBlob(pid); if (b) photoBlobs[pid] = b; }
+      const payload = { ...community, _backupVersion: 2, _exportedAt: new Date().toISOString(), _photoBlobs: photoBlobs };
+      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       a.href = url; a.download = `blocscore-backup-${stamp}.json`;
       document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (e) { alert("Export fehlgeschlagen."); }
+    setBackupBusy(false);
   }
   async function importCommunityFile(file) {
     if (!file) return;
     let data;
     try { data = JSON.parse(await file.text()); } catch (e) { alert("Datei ist kein gültiges JSON."); return; }
     if (!data || !Array.isArray(data.accounts) || !Array.isArray(data.routes)) { alert("Datei enthält keine gültigen blocscore-Daten (accounts/routes fehlen)."); return; }
-    if (!confirm(`Backup wiederherstellen?\n\n${data.accounts.length} Nutzer · ${data.routes.length} Routen\n\nDas ersetzt die aktuellen Daten. Der jetzige Stand wird vorher als Snapshot gesichert.`)) return;
+    const nPhotos = data._photoBlobs ? Object.keys(data._photoBlobs).length : 0;
+    if (!confirm(`Backup wiederherstellen?\n\n${data.accounts.length} Nutzer · ${data.routes.length} Routen${nPhotos ? ` · ${nPhotos} Bilder` : ""}\n\nDas ersetzt die aktuellen Daten. Der jetzige Stand wird vorher als Snapshot gesichert.`)) return;
     await writeSnapshot(community, true);
-    setCommunity(data);
-    alert("Wiederhergestellt.");
+    if (data._photoBlobs) {
+      for (const [pid, b] of Object.entries(data._photoBlobs)) { try { await savePhotoBlob(pid, b); } catch (e) {} }
+    }
+    const { _photoBlobs, _backupVersion, _exportedAt, ...clean } = data;
+    setCommunity(clean);
+    alert("Wiederhergestellt." + (nPhotos ? ` (${nPhotos} Bilder)` : ""));
   }
   const [snapOpen, setSnapOpen] = useState(false);
   const [snaps, setSnaps] = useState(null);
@@ -3623,6 +3645,17 @@ export default function App() {
     alert("Snapshot wiederhergestellt.");
   }
   const [delConfirm, setDelConfirm] = useState(false);
+  // Ganzen Bereich archivieren (Route Creator): z.B. wenn ein Sektor neu gepflegt werden soll
+  function archiveWall(wall) {
+    const act = (community.routes || []).filter(r => !r.archived && r.gym === wall);
+    if (!act.length) return;
+    if (!confirm((LANG === "en"
+      ? `Archive all ${act.length} active routes in "${wallName(wall)}"?\n\nResults are kept. A safety snapshot is taken first.`
+      : `Alle ${act.length} aktiven Routen in „${wallName(wall)}" archivieren?\n\nErgebnisse bleiben erhalten. Der aktuelle Stand wird vorher als Snapshot gesichert.`))) return;
+    writeSnapshot(community, true);
+    const ids = new Set(act.map(r => r.id));
+    setCommunity(c => ({ ...c, routes: c.routes.map(r => ids.has(r.id) ? { ...r, archived: true } : r) }));
+  }
   const [emailOpen, setEmailOpen] = useState(false);
   async function saveMyEmail(email, pw) {
     const hasPin = !!(me?.pinHash || me?.pin);
@@ -3795,6 +3828,9 @@ export default function App() {
                 </button>
                 {isOpen && (
                   <div className="wallbody">
+                    {canSetRoutes && filterScope === "aktuell" && s.items.length > 0 && (
+                      <button className="archwallbtn" onClick={() => archiveWall(s.wall)}>⏸ {LANG === "en" ? `Archive entire sector (${s.items.length} routes)` : `Ganzen Bereich archivieren (${s.items.length} Routen)`}</button>
+                    )}
                     {needsCare[s.wall] && (
                       <div className="carebox">
                         <div className="carebox-ttl">🔧 {LANG==="en"?"This sector needs setting":"Dieser Bereich muss neu geschraubt werden"}</div>
@@ -4513,9 +4549,9 @@ export default function App() {
                 )}
               </div>
               <div className="stcard"><h3><span>💾 Datensicherung</span></h3>
-                <div className="note">Lade regelmäßig ein Backup herunter — das ist deine Sicherung außerhalb der Datenbank. Automatische Snapshots werden zusätzlich im Hintergrund angelegt.</div>
+                <div className="note">Lade regelmäßig ein Backup herunter — es enthält Nutzer, Routen, Ergebnisse <b>und alle Bilder</b>. Automatische Snapshots werden zusätzlich im Hintergrund angelegt.</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-                  <button className="miniaction" style={{ marginTop: 0 }} onClick={exportCommunity}><span className="mi-ic">⬇️</span>Backup herunterladen (JSON)</button>
+                  <button className="miniaction" style={{ marginTop: 0, opacity: backupBusy ? .6 : 1 }} disabled={backupBusy} onClick={exportCommunity}><span className="mi-ic">⬇️</span>{backupBusy ? "Sammle Bilder ein…" : "Backup herunterladen (JSON, inkl. Bilder)"}</button>
                   <label className="miniaction" style={{ marginTop: 0, cursor: "pointer" }}>
                     <input type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => { importCommunityFile(e.target.files?.[0]); e.target.value = ""; }} />
                     <span className="mi-ic">⬆️</span>Aus Backup-Datei wiederherstellen
