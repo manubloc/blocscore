@@ -2290,6 +2290,13 @@ const CSS = `
 .creatorinfo-ic { flex:none; font-size:22px; line-height:1.2; }
 .creatorinfo-txt { font-size:13px; color:var(--chalk); line-height:1.5; opacity:.92; }
 .creatortag { font-size:12px; margin-left:6px; opacity:.85; }
+.tabbadge { position:absolute; top:2px; right:calc(50% - 22px); min-width:17px; height:17px; padding:0 4px; border-radius:9px; background:#b8ff00; color:#11151a; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #1e2028; }
+.claimtag { font-size:11px; font-weight:800; margin-left:6px; color:#11151a; background:#b8ff00; border-radius:8px; padding:1px 6px; }
+.achrow.claimable { border-color:rgba(184,255,0,.55); background:linear-gradient(150deg, rgba(184,255,0,.10), var(--panel)); }
+.claimbtn { flex:none; font-size:12.5px; font-weight:800; color:#11151a; background:#b8ff00; border:none; border-radius:8px; padding:8px 11px; cursor:pointer; }
+.claimbtn:active { filter:brightness(.9); }
+.claimall { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-bottom:12px; padding:11px; border-radius:11px; background:#b8ff00; color:#11151a; font-weight:800; font-size:14px; border:none; cursor:pointer; }
+.claimall:active { filter:brightness(.9); }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -3280,28 +3287,29 @@ export default function App() {
       lvlBaseRef.current = { uid: me.id, level: myLevelInfo.level };
     }
   }, [myLevelInfo.level, ready, me]);
-  // Erfolg-freigeschaltet-Erkennung: Baseline pro Nutzer, damit beim Login/Laden nichts aufpoppt
+  // ── Erfolge einfordern statt Auto-Popup ────────────────────────────────────
+  // Abgeschlossene Erfolge werden nicht mehr automatisch angezeigt, sondern als
+  // "einforderbar" markiert (Badge am Erfolge-Tab). Die Belohnung (Boulder-Wissen)
+  // kommt erst beim Einfordern. Eingeforderte IDs liegen am Account (synct überall).
   const [achUnlock, setAchUnlock] = useState(null);
-  const achBaseRef = useRef({ uid: null, ids: null });
+  const claimedSet = useMemo(() => new Set(me?.claimedAch || []), [me?.claimedAch]);
+  const unclaimedAch = useMemo(() => (ready && me) ? achState.evald.filter(a => a.done && !claimedSet.has(a.id)) : [], [achState, claimedSet, ready, me]);
+  const unclaimedByCat = useMemo(() => { const m = {}; for (const a of unclaimedAch) m[a.cat] = (m[a.cat] || 0) + 1; return m; }, [unclaimedAch]);
+  // Migration: Bestandsnutzer starten mit leerem Badge (alles bisher Erreichte gilt als eingefordert)
   useEffect(() => {
-    if (!ready || !me) return;
-    const doneIds = new Set(achState.evald.filter(a => a.done).map(a => a.id));
-    const b = achBaseRef.current;
-    if (b.uid !== me.id || !b.ids) { achBaseRef.current = { uid: me.id, ids: doneIds }; return; }
-    if (doneIds.size > b.ids.size) {
-      const fresh = achState.evald.filter(a => a.done && !b.ids.has(a.id));
-      if (fresh.length) {
-        // Fakten-Reihenfolge: persistenter Zähler pro Nutzer, der NUR vorwärts läuft.
-        // (Vorher: Index aus der Erfolgs-Anzahl — die kann durch Ab-/Anhaken gleich bleiben
-        //  oder zurückspringen, wodurch derselbe Fakt mehrfach kam.)
-        let cur = 0;
-        try { cur = parseInt(localStorage.getItem("blocscore:factseq:" + me.id) || "0", 10) || 0; } catch (e) {}
-        setAchUnlock({ items: fresh.slice(0, 3), extra: Math.max(0, fresh.length - 3), fact: climbFact(cur) });
-        try { localStorage.setItem("blocscore:factseq:" + me.id, String(cur + 1)); } catch (e) {}
-      }
-    }
-    achBaseRef.current = { uid: me.id, ids: doneIds };
-  }, [achState, ready, me]);
+    if (!ready || !me || me.claimedAch !== undefined) return;
+    const doneIds = achState.evald.filter(a => a.done).map(a => a.id);
+    setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, claimedAch: doneIds } : a) }));
+  }, [ready, me?.id, me?.claimedAch]);
+  function claimAch(ids) {
+    if (!ids.length) return;
+    const items = unclaimedAch.filter(a => ids.includes(a.id));
+    setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, claimedAch: [...new Set([...(a.claimedAch || []), ...ids])] } : a) }));
+    let cur = 0;
+    try { cur = parseInt(localStorage.getItem("blocscore:factseq:" + me.id) || "0", 10) || 0; } catch (e) {}
+    setAchUnlock({ items: items.slice(0, 3), extra: Math.max(0, items.length - 3), fact: climbFact(cur) });
+    try { localStorage.setItem("blocscore:factseq:" + me.id, String(cur + 1)); } catch (e) {}
+  }
   const NEED_COMMENT = 100, NEED_PHOTO = 300, NEED_GROUP = 200, NEED_CREATOR = 0;
   // Max groups: 1 ab 200 Pts, 2 ab 500 Pts, 3 ab 1500 Pts
   const maxGroupsAllowed = isAdmin ? 3 : achScore >= 1500 ? 3 : achScore >= 500 ? 2 : achScore >= 200 ? 1 : 0;
@@ -3953,10 +3961,10 @@ export default function App() {
             ))}
 
             <h3 className="ssec">{t("ach.cats")}</h3>
-            {achState.catList.map(c => { const full = c.total > 0 && c.done === c.total; const isContrib = c.cat === "Community" || c.cat === "Contributor"; return (
+            {achState.catList.map(c => { const full = c.total > 0 && c.done === c.total; const isContrib = c.cat === "Community" || c.cat === "Contributor"; const uc = unclaimedByCat[c.cat] || 0; return (
               <button key={c.cat} className={"catrow" + (full ? " catrow-done" : "")} onClick={() => setAchCat(c.cat)}>
                 <span className="achic">{c.icon}</span>
-                <div className="achinfo"><div className="achn">{c.cat}{isContrib && <span className="creatortag" title={LANG==="en"?"Some need Route Creator":"Teils Route-Creator nötig"}>🛠</span>}</div><div className="achbar"><i style={{ width: `${(c.done / c.total) * 100}%` }} /></div></div>
+                <div className="achinfo"><div className="achn">{c.cat}{isContrib && <span className="creatortag" title={LANG==="en"?"Some need Route Creator":"Teils Route-Creator nötig"}>🛠</span>}{uc > 0 && <span className="claimtag">{uc} 🎁</span>}</div><div className="achbar"><i style={{ width: `${(c.done / c.total) * 100}%` }} /></div></div>
                 {full
                   ? <div className="catprog-done"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8ff00" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></div>
                   : <div className="achprog">{c.done}/{c.total}</div>}
@@ -4572,9 +4580,10 @@ export default function App() {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l4-8 4 4 3-6 4 10"/><circle cx="19" cy="5" r="2"/></svg>
           <span>{t("nav.routes")}</span>
         </button>
-        <button className={"tab" + (tab === "stats" ? " on" : "")} onClick={() => setTab("stats")}>
+        <button className={"tab" + (tab === "stats" ? " on" : "")} onClick={() => setTab("stats")} style={{ position: "relative" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M9 21h6M12 13v8M7.5 16.5l-2 2M16.5 16.5l2 2"/></svg>
           <span>{t("nav.ach")}</span>
+          {unclaimedAch.length > 0 && <span className="tabbadge">{unclaimedAch.length > 9 ? "9+" : unclaimedAch.length}</span>}
         </button>
         <button className={"tab" + (tab === "gruppen" ? " on" : "")} onClick={() => setTab("gruppen")}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M22 20c0-2.2-2-4-4.5-4"/></svg>
@@ -4652,7 +4661,7 @@ export default function App() {
           </div>
         </div>
       )}
-      {achCat && <CategorySheet cat={achCat} items={achState.evald.filter(a => a.cat === achCat)} onClose={() => setAchCat(null)} />}
+      {achCat && <CategorySheet cat={achCat} items={achState.evald.filter(a => a.cat === achCat)} claimedSet={claimedSet} onClaim={claimAch} onClose={() => setAchCat(null)} />}
       {delConfirm && <DeleteAccountSheet me={me} onClose={() => setDelConfirm(false)} onConfirm={confirmDeleteMyAccount} />}
       {emailOpen && <EmailLinkSheet me={me} onClose={() => setEmailOpen(false)} onSave={saveMyEmail} />}
       {snapOpen && (
@@ -4812,8 +4821,12 @@ function FloorPlan({ value, onChange, newest }) {
 }
 
 /* ============================ Achievement-Kategorie ============================ */
-function CategorySheet({ cat, items, onClose }) {
-  const sorted = [...items].sort((a, b) => (b.done - a.done) || (a.target - b.target));
+function CategorySheet({ cat, items, claimedSet, onClaim, onClose }) {
+  const cs = claimedSet || new Set();
+  const isClaimable = a => a.done && !cs.has(a.id);
+  const claimable = items.filter(isClaimable);
+  // Einforderbare zuerst, dann Erledigte, dann nach Ziel
+  const sorted = [...items].sort((a, b) => (isClaimable(b) - isClaimable(a)) || (b.done - a.done) || (a.target - b.target));
   const shown = sorted.slice(0, 150);
   const done = items.filter(a => a.done).length;
   const headIcon = items[0]?.icon || "🏅";
@@ -4834,14 +4847,19 @@ function CategorySheet({ cat, items, onClose }) {
               </div>
             </div>
           )}
+          {claimable.length > 1 && (
+            <button className="claimall" onClick={() => onClaim(claimable.map(a => a.id))}>🎁 {LANG === "en" ? `Claim all (${claimable.length})` : `Alle einfordern (${claimable.length})`}</button>
+          )}
           <div className="note" style={{ marginBottom: 12 }}>{done} / {items.length} {t("ach.unlocked")}</div>
-          {shown.map(a => (
-            <div key={a.id} className={"achrow" + (a.done ? " done" : "")}>
-              <span className="achic">{a.done ? "🏅" : a.icon}</span>
-              <div className="achinfo"><div className="achn">{a.name}{a.done && <span className="achchk">✓</span>}</div><div className="achd">{a.desc}</div>{!a.done && <div className="achbar"><i style={{ width: `${a.ratio * 100}%` }} /></div>}</div>
-              <div className="achprog">{Math.min(a.cur, a.target)}/{a.target}<div className="achpts">+{a.pts}</div></div>
+          {shown.map(a => { const cl = isClaimable(a); return (
+            <div key={a.id} className={"achrow" + (a.done ? " done" : "") + (cl ? " claimable" : "")}>
+              <span className="achic">{a.done ? (cl ? "🎁" : "🏅") : a.icon}</span>
+              <div className="achinfo"><div className="achn">{a.name}{a.done && !cl && <span className="achchk">✓</span>}</div><div className="achd">{a.desc}</div>{!a.done && <div className="achbar"><i style={{ width: `${a.ratio * 100}%` }} /></div>}</div>
+              {cl
+                ? <button className="claimbtn" onClick={() => onClaim([a.id])}>{LANG === "en" ? "Claim" : "Einfordern"}</button>
+                : <div className="achprog">{Math.min(a.cur, a.target)}/{a.target}<div className="achpts">+{a.pts}</div></div>}
             </div>
-          ))}
+          ); })}
           {items.length > 150 && <div className="note" style={{ textAlign: "center", marginTop: 10 }}>… +{items.length - 150}</div>}
         </div>
       </div>
