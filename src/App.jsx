@@ -3576,11 +3576,13 @@ export default function App() {
         } else {
           const nick = genUniqueName(inc.grade, nickSeen);
           nickSeen.add(nick.toLowerCase().trim());
+          const newId = uid();
           newRoutes.push({
-            id: uid(), date: inc.date || today, gym: inc.sector, grade: inc.grade,
+            id: newId, date: inc.date || today, gym: inc.sector, grade: inc.grade,
             name: inc.color, nick, note: "", archived: false, results: {},
             photos: inc._photoId ? [inc._photoId] : [], tips: [],
           });
+          usedIds.add(newId); // WICHTIG: sonst archiviert die Schleife unten die gerade neu angelegte Route sofort wieder
           created++;
         }
       }
