@@ -2311,6 +2311,7 @@ const CSS = `
 .claimall:active { filter:brightness(.9); }
 .rerollbtn { flex:none; width:46px; border-radius:10px; background:var(--panel2); border:1.3px solid var(--line); font-size:20px; cursor:pointer; }
 .rerollbtn:active { background:var(--panel); }
+.lhplan { color:#ffaa28; font-weight:700; }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
 .iosnum { flex:none; width:24px; height:24px; border-radius:12px; background:var(--amber); color:#13161a; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
@@ -3860,7 +3861,18 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    {screwDates[s.wall] && !s.careOnly && <div className="lhsub">{t("routes.rescrewed")} {fmtDate(screwDates[s.wall])}</div>}
+                    {!s.careOnly && (() => {
+                      const ds = [...new Set(s.items.map(r => r.date).filter(Boolean))].sort();
+                      const planned = screwDates[s.wall];
+                      const tod = todayISO();
+                      if (!ds.length && !planned) return null;
+                      return (
+                        <div className="lhsub">
+                          {ds.length > 0 && <>🔩 {LANG === "en" ? "Routes on the wall from" : "Routen an der Wand vom"} {ds.map(d => fmtDate(d)).join(" + ")}</>}
+                          {planned && planned > tod && <span className="lhplan">{ds.length > 0 ? " · " : ""}🗓 {LANG === "en" ? "re-set planned" : "Umschrauben geplant"}: {fmtDate(planned)}</span>}
+                        </div>
+                      );
+                    })()}
                     <div className="route-grid">
                     {s.items.map(r => {
                       const myStatus = r.results?.[me.name] || null;
@@ -3882,7 +3894,7 @@ export default function App() {
                               <div className="rname">
                                 <div className="t1"><span className="txt">{routeTitle(r)}</span>{r.archived && <span className="archtag">Archiv</span>}</div>
                                 {r.note ? <div className="rnote">{r.note}</div> : null}
-                                <div className="t2">{colorWord(r.name) ? colorWord(r.name) + " · " : ""}{r.grade}er · {wallName(r.gym)}</div>
+                                <div className="t2">{colorWord(r.name) ? colorWord(r.name) + " · " : ""}{r.grade}er · {wallName(r.gym)}{r.date ? " · 🔩 " + fmtDate(r.date) : ""}</div>
                               </div>
                               <div className="rpills">
                                 <span className={"rschip top" + (topN > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
@@ -3931,7 +3943,7 @@ export default function App() {
                 </div>
               </div>
             ); })}
-            {canSetRoutes && <div className="phint" style={{ marginTop: 8 }}>Datum ändern → neue Routen dieser Wand erben automatisch das Schraubdatum.</div>}
+            {canSetRoutes && <div className="phint" style={{ marginTop: 8 }}>Datum ändern → neue Routen dieser Wand erben automatisch das Schraubdatum. <b>Achtung:</b> Steht ein Termin auf dem heutigen Datum, archiviert die App die alten Routen dieser Wand automatisch (einmalig). Zukünftige Termine ändern an den bestehenden Routen nichts.</div>}
           </div>)}
 
         </div></div>
