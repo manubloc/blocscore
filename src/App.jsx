@@ -3513,7 +3513,7 @@ export default function App() {
       if (!fullReset) {
         const usedPre = new Set();
         for (const inc of normalized) {
-          const m = (community?.routes || []).find(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && (r.date || "") === (inc.date || "") && !usedPre.has(r.id));
+          const m = (community?.routes || []).find(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && !usedPre.has(r.id));
           if (m) { usedPre.add(m.id); if (m.photos && m.photos.length) skipImg.add(inc._idx); }
         }
       }
@@ -3556,17 +3556,22 @@ export default function App() {
       for (const inc of normalized) {
         let matchIdx = -1;
         if (!fullReset) {
-          matchIdx = originalRoutes.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && (r.date || "") === (inc.date || "") && !usedIds.has(r.id));
+          // Match: Farbe + Grad + Sektor (Datum wird auf Sendly-Stand angeglichen).
+          // Hintergrund: An einer Wand hängt immer nur EIN Umschraub-Datum-Set gleichzeitig.
+          matchIdx = originalRoutes.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && !usedIds.has(r.id));
         }
         if (matchIdx >= 0) {
           const mr = originalRoutes[matchIdx];
           usedIds.add(mr.id);
           matched++;
-          if (inc._photoId) {
-            const ni = newRoutes.findIndex(r => r.id === mr.id);
-            if (ni >= 0 && (!newRoutes[ni].photos || newRoutes[ni].photos.length === 0)) {
-              newRoutes[ni] = { ...newRoutes[ni], photos: [inc._photoId] };
-            }
+          const ni = newRoutes.findIndex(r => r.id === mr.id);
+          if (ni >= 0) {
+            const patch = { ...newRoutes[ni] };
+            // Datum an Sendly angleichen, damit die Wand einheitlich datiert ist
+            if (inc.date && patch.date !== inc.date) patch.date = inc.date;
+            // Bild ergänzen, falls noch keins da ist
+            if (inc._photoId && (!patch.photos || patch.photos.length === 0)) patch.photos = [inc._photoId];
+            newRoutes[ni] = patch;
           }
         } else {
           const nick = genUniqueName(inc.grade, nickSeen);
