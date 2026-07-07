@@ -20,6 +20,12 @@ import { SEED, BG_LOGIN } from "./seed.js";
 let _STEP = 0.25;
 let _FLASH_BONUS = 0.25;
 const GRADES = [1, 2, 3, 4, 5, 6, 7, 8];
+// Bockstar-Routen: keine feste Schwierigkeit ("BS"). Werden für Punkte wie ein 5er behandelt
+// (mittlerer Grad, damit sie nicht komplett wertlos sind), aber im UI mit "BS" statt Zahl angezeigt.
+const BOCKSTAR_GRADE_VALUE = 5;
+function isBockstar(r) { return r && (r.grade === "BS" || r.grade === "bs"); }
+function gradeLabel(r) { return isBockstar(r) ? "BS" : String(r.grade); }
+function gradeValue(r) { return isBockstar(r) ? BOCKSTAR_GRADE_VALUE : (Number(r.grade) || 0); }
 const GRADE_COLOR = { 1: "#b8ff00", 2: "#b8ff00", 3: "#b8ff00", 4: "#b8ff00", 5: "#b8ff00", 6: "#b8ff00", 7: "#b8ff00", 8: "#b8ff00" };
 function topPts(g) { return g * _STEP; }
 function pointsFor(grade, status) { if (!status) return 0; return grade * _STEP + (status === "flash" ? _FLASH_BONUS : 0); }
@@ -284,7 +290,7 @@ const STR = {
   },
 };
 function t(k, v) { let s = (STR[LANG] && STR[LANG][k]) != null ? STR[LANG][k] : (STR.de[k] != null ? STR.de[k] : k); if (v) for (const key in v) s = s.split("{" + key + "}").join(v[key]); return s; }
-function routeTitle(r) { return (r.nick && r.nick.trim()) ? r.nick : genName((r.id || "") + "|" + (r.name || ""), r.grade); }
+function routeTitle(r) { return (r.nick && r.nick.trim()) ? r.nick : genName((r.id || "") + "|" + (r.name || ""), gradeValue(r)); }
 // Erzeugt einen Namen, der in `existing` (Set aus kleingeschriebenen Namen) noch nicht vorkommt.
 // Jeder Aufruf nutzt einen frischen Zufalls-Seed — keine deterministischen Wiederholungen mehr.
 function genUniqueName(grade, existing) {
@@ -311,8 +317,8 @@ function dataUrlToFile(dataUrl, filename) {
 async function shareRouteInfo(r, photoDataUrl) {
   const col = colorWord(r.name);
   const info = LANG === "en"
-    ? [col, "grade " + r.grade, "set " + fmtDate(r.date)].filter(Boolean).join(" · ")
-    : [col, r.grade + "er", "Schraubdatum " + fmtDate(r.date)].filter(Boolean).join(" · ");
+    ? [col, isBockstar(r) ? "grade Bockstar" : ("grade " + r.grade), "set " + fmtDate(r.date)].filter(Boolean).join(" · ")
+    : [col, isBockstar(r) ? "Bockstar" : (r.grade + "er"), "Schraubdatum " + fmtDate(r.date)].filter(Boolean).join(" · ");
   const text = "🧗 " + routeTitle(r) + "\n" + info + "\n→ blocscore.de";
   let files = [];
   if (photoDataUrl) { const f = dataUrlToFile(photoDataUrl, "route.jpg"); if (f && navigator.canShare && navigator.canShare({ files: [f] })) files = [f]; }
@@ -895,7 +901,7 @@ function ShareCard({ me, routes, today, onClose, logoSrc }) {
   const todayRoutes = routes.filter(r => r.date === today && r.results?.[me?.name]);
   const todayTops = todayRoutes.filter(r => r.results[me.name] === "top").length;
   const todayFlashes = todayRoutes.filter(r => r.results[me.name] === "flash").length;
-  const todayPts = todayRoutes.reduce((s,r) => s + pointsFor(r.grade, r.results[me.name]), 0);
+  const todayPts = todayRoutes.reduce((s,r) => s + pointsFor(gradeValue(r), r.results[me.name]), 0);
   const todayMeters = todayRoutes.length * WALL_HEIGHT;
   const gradeMap = {};
   todayRoutes.forEach(r => { gradeMap[r.grade] = (gradeMap[r.grade]||0)+1; });
@@ -1774,7 +1780,7 @@ function computeAgg(routes, name) {
   const wallDaySet = new Set();
   routes.forEach(r => {
     const st = r.results?.[name]; if (!st) return;
-    const g = r.grade, w = wallCanon(r.gym), isF = st === "flash";
+    const g = gradeValue(r), w = wallCanon(r.gym), isF = st === "flash";
     const cw = colorWord(r.name); const c = cw ? normColor(cw.toLowerCase()) : null;
   agg.tops++; if (isF) agg.flashes++; agg.points += pointsFor(g, st); agg.totalRoutes = (agg.totalRoutes || 0) + 1;
     (agg.grade[g] = agg.grade[g] || { t: 0, f: 0 }).t++; if (isF) agg.grade[g].f++;
@@ -2389,6 +2395,9 @@ const CSS = `
 .gcol { width:36px; height:36px; border-radius:9px; flex:none; display:flex; align-items:center; justify-content:center; border:2px solid var(--gcol-color, #b8ff00); background:transparent; }
 .gcol .ggrade { font-family:'Barlow Condensed'; font-weight:300; font-size:23px; line-height:1; text-align:center; color:var(--gcol-color, #b8ff00); letter-spacing:.02em; }
 .gcol.black-grade .ggrade { color:#13141a; }
+.gcol .ggrade.ggrade-bs { font-size:15px; font-weight:800; letter-spacing:.06em; }
+.gcol:has(.ggrade-bs) { background:linear-gradient(140deg, rgba(255,170,40,.28), rgba(255,80,120,.28)) !important; }
+.gcol:has(.ggrade-bs) .ggrade { color:#fff !important; }
 .wldone { font-family:'Barlow Condensed'; font-weight:700; font-size:14px; color:#b8ff00; margin-left:auto; padding:0 6px; }
 .wlcount { min-width:20px; text-align:right; }
 .ovdone { font-size:12px; font-weight:700; color:#5cc97e; margin-left:6px; }
@@ -3166,7 +3175,7 @@ export default function App() {
   const totals = useMemo(() => {
     const t = {}; players.forEach(p => t[p] = { aktuell: 0, gesamt: 0, sends: 0, flashes: 0, erfolge: 0 });
     routes.forEach(r => players.forEach(p => {
-      const s = r.results?.[p]; if (!s) return; const pts = pointsFor(r.grade, s);
+      const s = r.results?.[p]; if (!s) return; const pts = pointsFor(gradeValue(r), s);
       t[p].gesamt += pts; if (!r.archived) { t[p].aktuell += pts; t[p].sends += 1; if (s === "flash") t[p].flashes += 1; }
     }));
     const list = ACHS();
@@ -3483,7 +3492,7 @@ export default function App() {
       const normalized = incoming.map((r, idx) => ({
         _idx: idx,
         color: COLOR_MAP[r.color] || (r.color || "").toLowerCase().trim(),
-        grade: Number(r.grade) || 0,
+        grade: (r.grade === "BS" || r.grade === "bs" || r.isBockstar) ? "BS" : (Number(r.grade) || 0),
         sector: SECTOR_MAP[r.sector] || SECTOR_MAP[r.gym] || r.sector || r.gym,
         date: r.date || todayISO(),
         imageUrl: r.imageUrl || r.image || null,
@@ -3889,12 +3898,12 @@ export default function App() {
                           <div className="rbody">
                             <div className="rchead">
                               <div className={"gcol" + (col === "#181C22" ? " black-grade" : "")} style={col ? { "--gcol-color": col === "#181C22" ? "#181C22" : col, background: col === "#181C22" ? "rgba(255,255,255,0.9)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
-                                <span className="ggrade">{r.grade}</span>
+                                <span className={"ggrade" + (isBockstar(r) ? " ggrade-bs" : "")}>{gradeLabel(r)}</span>
                               </div>
                               <div className="rname">
                                 <div className="t1"><span className="txt">{routeTitle(r)}</span>{r.archived && <span className="archtag">Archiv</span>}</div>
                                 {r.note ? <div className="rnote">{r.note}</div> : null}
-                                <div className="t2">{colorWord(r.name) ? colorWord(r.name) + " · " : ""}{r.grade}er · {wallName(r.gym)}{r.date ? " · 🔩 " + fmtDate(r.date) : ""}</div>
+                                <div className="t2">{colorWord(r.name) ? colorWord(r.name) + " · " : ""}{isBockstar(r) ? "Bockstar" : isBockstar(r) ? "Bockstar" : (r.grade + "er")} · {wallName(r.gym)}{r.date ? " · 🔩 " + fmtDate(r.date) : ""}</div>
                               </div>
                               <div className="rpills">
                                 <span className={"rschip top" + (topN > 0 ? " has" : "")}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{topN}</span>
@@ -3909,8 +3918,8 @@ export default function App() {
                             </div>
                             <div className="rfoot">
                               <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
-                                {myStatus === "flash" ? <><svg width="11" height="13" viewBox="0 0 10 12" fill="currentColor"><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>Flash <span className="dpts">+{fmtPts(pointsFor(r.grade, "flash"))}</span></>
-                                  : myStatus === "top" ? <><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,5.5 4,8 8.5,2"/></svg>Top <span className="dpts">+{fmtPts(pointsFor(r.grade, "top"))}</span></>
+                                {myStatus === "flash" ? <><svg width="11" height="13" viewBox="0 0 10 12" fill="currentColor"><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>Flash <span className="dpts">+{fmtPts(pointsFor(gradeValue(r), "flash"))}</span></>
+                                  : myStatus === "top" ? <><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,5.5 4,8 8.5,2"/></svg>Top <span className="dpts">+{fmtPts(pointsFor(gradeValue(r), "top"))}</span></>
                                     : <><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M7 1v12M1 7h12"/></svg> Eintragen</>}
                               </button>
                               <button className={"pill" + (tipsN ? " has" : "") + (canComment ? "" : " locked")} title={canComment ? "" : t("lock.comments", { n: achScore })} onClick={() => { if (canComment) setTipsRouteId(r.id); }}>
@@ -4103,7 +4112,7 @@ export default function App() {
                 <div key={r.id} className="hpop-row" onClick={() => { setTab("routes"); setTimeout(() => jumpToRoute(r.id), 80); }} style={{ cursor: "pointer" }}>
                   <span className="hrank">{medal(i) || (i + 1)}</span>
                   <div className={"gcol" + (colorOf(r.name) === "#181C22" ? " black-grade" : "")} style={colorOf(r.name) ? { "--gcol-color": colorOf(r.name) === "#181C22" ? "#181C22" : colorOf(r.name), background: colorOf(r.name) === "#181C22" ? "rgba(255,255,255,0.9)" : "transparent" } : { "--gcol-color": "#b8ff00" }}>
-                    <span className="ggrade">{r.grade}</span>
+                    <span className={"ggrade" + (isBockstar(r) ? " ggrade-bs" : "")}>{gradeLabel(r)}</span>
                   </div>
                   <div className="hrname">
                     <div className="t1">{routeTitle(r)}</div>
@@ -4145,7 +4154,7 @@ export default function App() {
             const memberStats = members.map(m => {
               const mRoutes = routes.filter(r => r.results?.[m.name]);
               const mFlashes = mRoutes.filter(r => r.results[m.name] === "flash").length;
-              const mPts = mRoutes.reduce((sum,r) => sum + pointsFor(r.grade, r.results[m.name]), 0);
+              const mPts = mRoutes.reduce((sum,r) => sum + pointsFor(gradeValue(r), r.results[m.name]), 0);
               const mMeters = mRoutes.length * WALL_HEIGHT;
               return { acc: m, tops: mRoutes.length, flashes: mFlashes, pts: mPts, meters: mMeters };
             }).sort((a,b) => b.pts - a.pts);
@@ -4255,7 +4264,7 @@ export default function App() {
                     {colorOf(r.name) && <span className="hrswatch" style={{ borderColor: colorOf(r.name), background: colorOf(r.name) === "#181C22" ? "rgba(255,255,255,.15)" : colorOf(r.name) + "22" }} />}
                     <div className="hrname">
                       <div className="t1">{routeTitle(r)}</div>
-                      <div className="t2">{r.grade}er · {wallName(r.gym)}</div>
+                      <div className="t2">{isBockstar(r) ? "Bockstar" : isBockstar(r) ? "Bockstar" : (r.grade + "er")} · {wallName(r.gym)}</div>
                     </div>
                     <span className="rschip top">💬 {(r.tips || []).length}</span>
                   </div>
@@ -4289,7 +4298,7 @@ export default function App() {
                       return (
                         <div key={r.id} className="sroute-row">
                           {colorOf(r.name) && <span className="hrswatch sm" style={{ borderColor: colorOf(r.name), background: colorOf(r.name) === "#181C22" ? "rgba(255,255,255,.15)" : colorOf(r.name) + "22" }} />}
-                          <span className="srn">{routeTitle(r)} <span className="sgrade">{r.grade}er</span></span>
+                          <span className="srn">{routeTitle(r)} <span className="sgrade">{isBockstar(r) ? "BS" : isBockstar(r) ? "Bockstar" : (r.grade + "er")}</span></span>
                           <span className="rschip top" style={{ marginLeft: "auto" }}><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><polyline points="1.5,5.5 4,8 8.5,2"/></svg>{sends - flashes}</span>
                           <span className="rschip flash"><svg width="8" height="9" viewBox="0 0 10 12" fill="currentColor" style={{display:"inline-block",verticalAlign:"middle",marginRight:2,marginTop:-1}}><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>{flashes}</span>
                           {comments > 0 && <span style={{ fontSize: 11, color: "var(--muted)" }}>💬{comments}</span>}
@@ -4329,7 +4338,7 @@ export default function App() {
             };
             const myRoutes = routes.filter(inPeriod);
             const myFlashes = myRoutes.filter(r => r.results[me.name] === "flash").length;
-            const myPts = myRoutes.reduce((s,r) => s + pointsFor(r.grade, r.results[me.name]), 0);
+            const myPts = myRoutes.reduce((s,r) => s + pointsFor(gradeValue(r), r.results[me.name]), 0);
             const myMeters = myRoutes.length * WALL_HEIGHT;
             // Grad-Verteilung (Vergleichsbalken analog Gruppen) für den gewählten Zeitraum
             const gmetrics = [
@@ -4340,7 +4349,7 @@ export default function App() {
             const curM = gmetrics.find(m => m.key === myMetric) || gmetrics[0];
             const byGrade = GRADES.map(g => {
               const rs = myRoutes.filter(r => r.grade === g);
-              return { grade:g, tops: rs.length, flashes: rs.filter(r=>r.results[me.name]==="flash").length, pts: rs.reduce((s,r)=>s+pointsFor(r.grade,r.results[me.name]),0) };
+              return { grade:g, tops: rs.length, flashes: rs.filter(r=>r.results[me.name]==="flash").length, pts: rs.reduce((s,r)=>s+pointsFor(gradeValue(r),r.results[me.name]),0) };
             });
             const maxG = Math.max(1, ...byGrade.map(curM.val));
             // Berge (immer kumulativ / Gesamt)
