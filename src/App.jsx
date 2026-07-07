@@ -3545,55 +3545,51 @@ export default function App() {
       }
       if (totalImg) pushSyncLog(`📸 ${imgOk} Bilder gespeichert` + (imgFail ? ` (${imgFail} fehlgeschlagen)` : ""), imgFail ? "warn" : "");
 
-      setCommunity(c => {
-        const original = [...(c.routes || [])];
-        let newRoutes = fullReset ? [] : [...original];
-        const usedIds = new Set();
-        if (fullReset) archived = original.filter(r => !r.archived).length;
+      // Abgleich VOR dem State-Update berechnen (React kann den Reducer im Strict-Mode
+      // doppelt aufrufen — deshalb muss der Reducer pur sein und darf nicht mitzählen).
+      const originalRoutes = [...(community?.routes || [])];
+      const usedIds = new Set();
+      let newRoutes = fullReset ? [] : [...originalRoutes];
+      if (fullReset) archived = originalRoutes.filter(r => !r.archived).length;
+      const nickSeen = new Set(originalRoutes.map(r => (r.nick || "").toLowerCase().trim()).filter(Boolean));
 
-        const nickSeen = new Set(original.map(r => (r.nick || "").toLowerCase().trim()).filter(Boolean));
-        for (const inc of normalized) {
-          // WICHTIG: nur gegen vorhandene Original-Routen matchen, NICHT gegen in diesem
-          // Lauf neu erstellte — sonst werden Routen mit gleicher Farbe+Grad+Sektor verschmolzen.
-          // Der Match schließt das SCHRAUBDATUM ein: gleiche Farbe+Grad+Sektor mit anderem
-          // Datum ist eine NEUE Route (Sektor wurde umgeschraubt) — alte wird archiviert.
-          let matchIdx = -1;
-          if (!fullReset) {
-            matchIdx = original.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && (r.date || "") === (inc.date || "") && !usedIds.has(r.id));
-          }
-          if (matchIdx >= 0) {
-            const mr = original[matchIdx];
-            usedIds.add(mr.id);
-            matched++;
-            if (inc._photoId) {
-              const ni = newRoutes.findIndex(r => r.id === mr.id);
-              if (ni >= 0 && (!newRoutes[ni].photos || newRoutes[ni].photos.length === 0)) {
-                newRoutes[ni] = { ...newRoutes[ni], photos: [inc._photoId] };
-              }
-            }
-          } else {
-            // Nicht gematcht → anlegen (Sendly ist Quelle der Wahrheit für aktive Routen).
-            const nick = genUniqueName(inc.grade, nickSeen);
-            nickSeen.add(nick.toLowerCase().trim());
-            newRoutes.push({
-              id: uid(), date: inc.date || today, gym: inc.sector, grade: inc.grade,
-              name: inc.color, nick, note: "", archived: false, results: {},
-              photos: inc._photoId ? [inc._photoId] : [], tips: [],
-            });
-            created++;
-          }
-        }
-
+      for (const inc of normalized) {
+        let matchIdx = -1;
         if (!fullReset) {
-          const sectorsInSync = new Set(normalized.map(n => n.sector));
-          newRoutes = newRoutes.map(r => {
-            if (!r.archived && sectorsInSync.has(r.gym) && !usedIds.has(r.id)) { archived++; return { ...r, archived: true }; }
-            return r;
-          });
+          matchIdx = originalRoutes.findIndex(r => !r.archived && r.name === inc.color && r.grade === inc.grade && r.gym === inc.sector && (r.date || "") === (inc.date || "") && !usedIds.has(r.id));
         }
+        if (matchIdx >= 0) {
+          const mr = originalRoutes[matchIdx];
+          usedIds.add(mr.id);
+          matched++;
+          if (inc._photoId) {
+            const ni = newRoutes.findIndex(r => r.id === mr.id);
+            if (ni >= 0 && (!newRoutes[ni].photos || newRoutes[ni].photos.length === 0)) {
+              newRoutes[ni] = { ...newRoutes[ni], photos: [inc._photoId] };
+            }
+          }
+        } else {
+          const nick = genUniqueName(inc.grade, nickSeen);
+          nickSeen.add(nick.toLowerCase().trim());
+          newRoutes.push({
+            id: uid(), date: inc.date || today, gym: inc.sector, grade: inc.grade,
+            name: inc.color, nick, note: "", archived: false, results: {},
+            photos: inc._photoId ? [inc._photoId] : [], tips: [],
+          });
+          created++;
+        }
+      }
 
-        return { ...c, routes: newRoutes };
-      });
+      if (!fullReset) {
+        const sectorsInSync = new Set(normalized.map(n => n.sector));
+        newRoutes = newRoutes.map(r => {
+          if (!r.archived && sectorsInSync.has(r.gym) && !usedIds.has(r.id)) { archived++; return { ...r, archived: true }; }
+          return r;
+        });
+      }
+
+      // Reducer ist jetzt eine reine Zuweisung — im Strict-Mode ungefährlich.
+      setCommunity(c => ({ ...c, routes: newRoutes }));
 
       pushSyncLog(`✓ ${matched} bestehende Routen aktualisiert`);
       pushSyncLog(`✓ ${created} neue Routen angelegt`);
