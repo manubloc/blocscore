@@ -28,7 +28,33 @@ function gradeLabel(r) { return isBockstar(r) ? "BS" : String(r.grade); }
 function gradeValue(r) { return isBockstar(r) ? BOCKSTAR_GRADE_VALUE : (Number(r.grade) || 0); }
 const GRADE_COLOR = { 1: "#b8ff00", 2: "#b8ff00", 3: "#b8ff00", 4: "#b8ff00", 5: "#b8ff00", 6: "#b8ff00", 7: "#b8ff00", 8: "#b8ff00" };
 function topPts(g) { return g * _STEP; }
+// Basispunkte (ohne Popularitäts-Dämpfung) — für Vorschau-Referenz + Achievements/Skillpoints.
 function pointsFor(grade, status) { if (!status) return 0; return grade * _STEP + (status === "flash" ? _FLASH_BONUS : 0); }
+// Popularitäts-Faktor: je mehr Leute eine Route GESAMT geschafft haben, desto weniger
+// "Vergleichspunkte" gibt sie — LIVE berechnet (nicht eingefroren), da es Vergleichs-,
+// keine Skillpunkte sind. Degressiv: schneller Abfall am Anfang, sanftes Auslaufen.
+//   total = Gesamtzahl der Kletterer, die die Route geschafft haben (inkl. Person selbst).
+//   Kurve: Faktor = MIN + (1-MIN) · 0,85^(total-1)
+//   MIN = 0,55 (Route gibt nie weniger als 55 % ihrer Basispunkte → Grade-Reihenfolge bleibt).
+const POP_MIN = 0.55, POP_DECAY = 0.85;
+function popFactor(total) {
+  const t = Math.max(1, total || 1);
+  return POP_MIN + (1 - POP_MIN) * Math.pow(POP_DECAY, t - 1);
+}
+// Vergleichspunkte eines Kletterers auf einer Route: Basis × Popularitäts-Faktor (live).
+function effectivePts(r, playerName) {
+  const st = r?.results?.[playerName];
+  if (!st) return 0;
+  const total = Object.values(r.results || {}).filter(Boolean).length;
+  return pointsFor(gradeValue(r), st) * popFactor(total);
+}
+// Vorschau, wenn ICH gleich eintrage: total = aktuelle Sender + ich (falls noch nicht dabei).
+function previewPts(r, status, playerName) {
+  if (!status) return 0;
+  const already = !!r?.results?.[playerName];
+  const total = Object.values(r.results || {}).filter(Boolean).length + (already ? 0 : 1);
+  return pointsFor(gradeValue(r), status) * popFactor(total);
+}
 /* ============================ Wände ============================ */
 const WALLS = [
   { code: "v", name: "Block vorne", short: "V", aliases: ["bv", "block vorne", "block_vorne"] },
@@ -901,7 +927,7 @@ function ShareCard({ me, routes, today, onClose, logoSrc }) {
   const todayRoutes = routes.filter(r => r.date === today && r.results?.[me?.name]);
   const todayTops = todayRoutes.filter(r => r.results[me.name] === "top").length;
   const todayFlashes = todayRoutes.filter(r => r.results[me.name] === "flash").length;
-  const todayPts = todayRoutes.reduce((s,r) => s + pointsFor(gradeValue(r), r.results[me.name]), 0);
+  const todayPts = todayRoutes.reduce((s,r) => s + effectivePts(r, me.name), 0);
   const todayMeters = todayRoutes.length * WALL_HEIGHT;
   const gradeMap = {};
   todayRoutes.forEach(r => { gradeMap[r.grade] = (gradeMap[r.grade]||0)+1; });
@@ -2288,7 +2314,7 @@ const CSS = `
 .ri-color { font-size:13px; color:var(--muted); margin-top:2px; }
 .ri-note { font-size:14px; color:var(--muted); padding:9px 12px; background:var(--panel2); border-radius:9px; margin-bottom:12px; }
 .carebadge { flex:none; display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:6px; background:rgba(255,170,40,.16); border:1px solid rgba(255,170,40,.5); color:#ffaa28; letter-spacing:.02em; }
-.archwallbtn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-bottom:10px; padding:10px; border-radius:11px; background:rgba(255,170,40,.1); color:#ffaa28; font-weight:800; font-size:13.5px; border:1.3px solid rgba(255,170,40,.45); cursor:pointer; }
+.archwallbtn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:14px; padding:10px; border-radius:11px; background:rgba(255,170,40,.1); color:#ffaa28; font-weight:800; font-size:13.5px; border:1.3px solid rgba(255,170,40,.45); cursor:pointer; }
 .archwallbtn:active { background:rgba(255,170,40,.2); }
 .carebox { background:linear-gradient(150deg,rgba(255,170,40,.12),var(--panel2)); border:1.4px solid rgba(255,170,40,.45); border-radius:12px; padding:13px 15px; margin-bottom:12px; }
 .carebox-ttl { font-family:'Barlow Condensed'; font-weight:700; font-size:16px; color:#ffaa28; letter-spacing:.02em; margin-bottom:5px; }
@@ -2319,6 +2345,17 @@ const CSS = `
 .rerollbtn:active { background:var(--panel); }
 .gradepick .bs-btn { font-size:13px; font-weight:800; letter-spacing:.04em; min-width:44px; }
 .meta .ptssub { color:var(--muted); opacity:.75; font-size:11px; }
+.cmpbar { display:flex; align-items:center; gap:8px; padding:2px 2px 10px; }
+.cmptabs { display:flex; gap:6px; overflow-x:auto; flex:1; -webkit-overflow-scrolling:touch; }
+.cmptab { flex:none; font-size:13px; font-weight:700; padding:6px 12px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); cursor:pointer; white-space:nowrap; }
+.cmptab.on { background:#b8ff0022; border-color:#b8ff00; color:#b8ff00; }
+.cmpnew { font-size:16px; padding:6px 11px; }
+.cmpedit { flex:none; font-size:12.5px; font-weight:700; color:var(--muted); background:none; border:none; cursor:pointer; }
+.cmphint { text-align:center; font-size:11.5px; color:var(--muted); opacity:.7; margin-top:12px; }
+.cmpsearch { width:100%; margin-bottom:10px; padding:9px 11px; border-radius:10px; background:var(--panel2); border:1px solid var(--line); color:var(--chalk); font-size:14px; box-sizing:border-box; }
+.cmppick { display:flex; flex-wrap:wrap; gap:7px; max-height:44vh; overflow-y:auto; }
+.cmpname { font-size:13.5px; font-weight:600; padding:8px 12px; border-radius:20px; background:var(--panel2); border:1.3px solid var(--line); color:var(--chalk); cursor:pointer; }
+.cmpname.on { background:#b8ff0022; border-color:#b8ff00; color:#b8ff00; font-weight:800; }
 .lhplan { color:#ffaa28; font-weight:700; }
 .iosstep { display:flex; gap:11px; align-items:flex-start; padding:9px 0; font-size:14px; color:var(--chalk); line-height:1.5; border-bottom:1px solid var(--line); }
 .iosstep:last-of-type { border-bottom:none; }
@@ -3045,6 +3082,19 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [tipsRouteId, setTipsRouteId] = useState(null);
   const [boardScope, setBoardScope] = useState("einzel");
+  // Persönliche Vergleichslisten — NUR lokal pro Gerät (localStorage), berührt keine geteilten Daten.
+  const [compareLists, setCompareLists] = useState(() => {
+    try { const r = localStorage.getItem("blocscore:compareLists"); if (r) return JSON.parse(r); } catch (e) {}
+    return [];
+  });
+  const [activeCompareId, setActiveCompareId] = useState(null);
+  const [compareEditOpen, setCompareEditOpen] = useState(false);
+  useEffect(() => { try { localStorage.setItem("blocscore:compareLists", JSON.stringify(compareLists)); } catch (e) {} }, [compareLists]);
+  function saveCompareList(list) {
+    setCompareLists(prev => { const i = prev.findIndex(l => l.id === list.id); if (i >= 0) { const n = [...prev]; n[i] = list; return n; } return [...prev, list]; });
+    setActiveCompareId(list.id);
+  }
+  function deleteCompareList(id) { setCompareLists(prev => prev.filter(l => l.id !== id)); setActiveCompareId(cur => cur === id ? null : cur); }
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [openGroupId, setOpenGroupId] = useState(null);
   const [flashId, setFlashId] = useState(null);
@@ -3177,7 +3227,7 @@ export default function App() {
   const totals = useMemo(() => {
     const t = {}; players.forEach(p => t[p] = { aktuell: 0, gesamt: 0, sends: 0, flashes: 0, erfolge: 0 });
     routes.forEach(r => players.forEach(p => {
-      const s = r.results?.[p]; if (!s) return; const pts = pointsFor(gradeValue(r), s);
+      const s = r.results?.[p]; if (!s) return; const pts = effectivePts(r, p);
       t[p].gesamt += pts; if (!r.archived) { t[p].aktuell += pts; t[p].sends += 1; if (s === "flash") t[p].flashes += 1; }
     }));
     const list = ACHS();
@@ -3616,9 +3666,27 @@ export default function App() {
     }
   }
   async function setMyPin(p) { const f = await makePinFields(p); setCommunity(c => ({ ...c, accounts: c.accounts.map(a => { if (a.id !== me.id) return a; const { pin, pinHash, pinSalt, ...rest } = a; return { ...rest, ...f }; }) })); }
-  function setScrewDate(wall, date) {
+  const [screwConfirm, setScrewConfirm] = useState(null); // {wall, newDate, oldDate, isToday, activeCount}
+  function requestSetScrewDate(wall, date) {
+    if (!date) return;
+    const oldDate = screwDates?.[wall];
+    if (oldDate === date) return;
+    // Warnung überspringen, wenn Nutzer "Nicht mehr fragen" gewählt hat
+    let skip = false;
+    try { skip = localStorage.getItem("blocscore:screwConfirmOff") === "1"; } catch (e) {}
+    const today = todayISO();
+    const isToday = date === today;
+    const activeCount = (community?.routes || []).filter(r => !r.archived && r.gym === wall).length;
+    if (skip || (!isToday && activeCount === 0)) {
+      applySetScrewDate(wall, date);
+      return;
+    }
+    setScrewConfirm({ wall, newDate: date, oldDate, isToday, activeCount });
+  }
+  function applySetScrewDate(wall, date) {
     setCommunity(c => ({ ...c, screwDates: { ...c.screwDates, [wall]: date } }));
   }
+  function setScrewDate(wall, date) { requestSetScrewDate(wall, date); }
   function requestRole() { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, roleRequest: "schrauber" } : a) })); }
   function requestReactivate() { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === me.id ? { ...a, reactivateRequest: true } : a) })); }
   function reactivateAccount(id) { setCommunity(c => ({ ...c, accounts: c.accounts.map(a => a.id === id ? { ...a, archived: false, reactivateRequest: false, lastSeen: todayISO() } : a) })); }
@@ -3786,6 +3854,7 @@ export default function App() {
           <div className="seg">
             <button className={boardScope === "einzel" ? "on" : ""} onClick={() => setBoardScope("einzel")}>{t("board.einzel")}</button>
             <button className={boardScope === "gruppen" ? "on" : ""} onClick={() => setBoardScope("gruppen")}>{t("board.gruppen")}</button>
+            <button className={boardScope === "vergleich" ? "on" : ""} onClick={() => setBoardScope("vergleich")}>{LANG === "en" ? "Compare" : "Vergleich"}</button>
           </div>
           <div className="seg">
             <button className={boardMode === "aktuell" ? "on" : ""} title={LANG === "en" ? "Points from routes currently on the wall" : "Punkte aus Routen, die aktuell an der Wand hängen"} onClick={() => setBoardMode("aktuell")}>{t("board.aktuell")}</button>
@@ -3821,6 +3890,43 @@ export default function App() {
               <div className="pts"><div className="v">{boardMode === "erfolge" ? Math.round(v) : fmtPts(v)}</div><div className="u">{boardMode === "erfolge" ? t("board.achpts") : t("board.points")}</div></div>
             </div>
           ); }); })()}
+
+          {boardScope === "vergleich" && (() => {
+            const active = compareLists.find(l => l.id === activeCompareId) || compareLists[0];
+            if (!active) {
+              return (
+                <div className="empty">
+                  <div className="big">⚖️</div>
+                  {LANG === "en" ? "Create your own comparison — pick the people you want to measure yourself against." : "Erstell deinen eigenen Vergleich — wähle die Leute, mit denen du dich messen willst."}
+                  <button className="save" style={{ marginTop: 16 }} onClick={() => setCompareEditOpen(true)}>{LANG === "en" ? "New comparison" : "Neuer Vergleich"}</button>
+                </div>
+              );
+            }
+            const names = [me.name, ...active.names.filter(n => n !== me.name)];
+            const rankedC = names.filter(n => totals[n]).sort((a, b) => (totals[b]?.[boardMode] || 0) - (totals[a]?.[boardMode] || 0));
+            const cmax = Math.max(1, ...rankedC.map(n => totals[n]?.[boardMode] || 0));
+            return (<>
+              <div className="cmpbar">
+                <div className="cmptabs">
+                  {compareLists.map(l => <button key={l.id} className={"cmptab" + (l.id === active.id ? " on" : "")} onClick={() => setActiveCompareId(l.id)}>{l.name}</button>)}
+                  <button className="cmptab cmpnew" onClick={() => setCompareEditOpen(true)}>＋</button>
+                </div>
+                <button className="cmpedit" onClick={() => { setActiveCompareId(active.id); setCompareEditOpen(true); }}>✎ {LANG === "en" ? "Edit" : "Bearbeiten"}</button>
+              </div>
+              {rankedC.map((p, i) => { const tot = totals[p] || {}; const v = tot[boardMode] || 0; const isMe = p === me.name; const isErf = boardMode === "erfolge"; return (
+                <div key={p} className={"lbrow" + (i === 0 && v > 0 ? " lead" : "") + (isMe ? " meRow" : "")}>
+                  <div className="rank">{medal(i) || (i + 1)}</div>
+                  <div className="who">
+                    <div className="nm">{p}{isMe && <span className="youtag">DU</span>}</div>
+                    <div className="meta"><span><b>{tot.flashes || 0}</b> Flashes</span><span>{tot.sends || 0} Tops</span></div>
+                    <div className="bar"><i style={{ width: `${(v / cmax) * 100}%` }} /></div>
+                  </div>
+                  <div className="pts"><div className="v">{isErf ? Math.round(v) : fmtPts(v)}</div><div className="u">{isErf ? t("board.achpts") : t("board.points")}</div></div>
+                </div>
+              ); })}
+              <div className="cmphint">{LANG === "en" ? "Only visible to you — saved on this device." : "Nur für dich sichtbar — auf diesem Gerät gespeichert."}</div>
+            </>);
+          })()}
         </div></div>
       </>)}
 
@@ -3864,9 +3970,6 @@ export default function App() {
                 </button>
                 {isOpen && (
                   <div className="wallbody">
-                    {canSetRoutes && filterScope === "aktuell" && s.items.length > 0 && (
-                      <button className="archwallbtn" onClick={() => archiveWall(s.wall)}>⏸ {LANG === "en" ? `Archive entire sector (${s.items.length} routes)` : `Ganzen Bereich archivieren (${s.items.length} Routen)`}</button>
-                    )}
                     {needsCare[s.wall] && (
                       <div className="carebox">
                         <div className="carebox-ttl">🔧 {LANG==="en"?"This sector needs setting":"Dieser Bereich muss neu geschraubt werden"}</div>
@@ -3930,8 +4033,8 @@ export default function App() {
                             </div>
                             <div className="rfoot">
                               <button className={"du " + (myStatus || "")} onClick={() => cycleMine(r.id)}>
-                                {myStatus === "flash" ? <><svg width="11" height="13" viewBox="0 0 10 12" fill="currentColor"><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>Flash <span className="dpts">+{fmtPts(pointsFor(gradeValue(r), "flash"))}</span></>
-                                  : myStatus === "top" ? <><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,5.5 4,8 8.5,2"/></svg>Top <span className="dpts">+{fmtPts(pointsFor(gradeValue(r), "top"))}</span></>
+                                {myStatus === "flash" ? <><svg width="11" height="13" viewBox="0 0 10 12" fill="currentColor"><path d="M7 1L1 7h4l-2 4 6-6H5z"/></svg>Flash <span className="dpts">+{fmtPts(effectivePts(r, me.name))}</span></>
+                                  : myStatus === "top" ? <><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,5.5 4,8 8.5,2"/></svg>Top <span className="dpts">+{fmtPts(effectivePts(r, me.name))}</span></>
                                     : <><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M7 1v12M1 7h12"/></svg> Eintragen</>}
                               </button>
                               <button className={"pill" + (tipsN ? " has" : "") + (canComment ? "" : " locked")} title={canComment ? "" : t("lock.comments", { n: achScore })} onClick={() => { if (canComment) setTipsRouteId(r.id); }}>
@@ -3943,6 +4046,9 @@ export default function App() {
                       );
                     })}
                     </div>
+                    {isAdmin && filterScope === "aktuell" && s.items.length > 0 && (
+                      <button className="archwallbtn" onClick={() => archiveWall(s.wall)}>⏸ {LANG === "en" ? `Archive entire sector (${s.items.length} routes)` : `Ganzen Bereich archivieren (${s.items.length} Routen)`}</button>
+                    )}
                   </div>
                 )}
               </div>
@@ -4166,7 +4272,7 @@ export default function App() {
             const memberStats = members.map(m => {
               const mRoutes = routes.filter(r => r.results?.[m.name]);
               const mFlashes = mRoutes.filter(r => r.results[m.name] === "flash").length;
-              const mPts = mRoutes.reduce((sum,r) => sum + pointsFor(gradeValue(r), r.results[m.name]), 0);
+              const mPts = mRoutes.reduce((sum,r) => sum + effectivePts(r, m.name), 0);
               const mMeters = mRoutes.length * WALL_HEIGHT;
               return { acc: m, tops: mRoutes.length, flashes: mFlashes, pts: mPts, meters: mMeters };
             }).sort((a,b) => b.pts - a.pts);
@@ -4350,7 +4456,7 @@ export default function App() {
             };
             const myRoutes = routes.filter(inPeriod);
             const myFlashes = myRoutes.filter(r => r.results[me.name] === "flash").length;
-            const myPts = myRoutes.reduce((s,r) => s + pointsFor(gradeValue(r), r.results[me.name]), 0);
+            const myPts = myRoutes.reduce((s,r) => s + effectivePts(r, me.name), 0);
             const myMeters = myRoutes.length * WALL_HEIGHT;
             // Grad-Verteilung (Vergleichsbalken analog Gruppen) für den gewählten Zeitraum
             const gmetrics = [
@@ -4361,7 +4467,7 @@ export default function App() {
             const curM = gmetrics.find(m => m.key === myMetric) || gmetrics[0];
             const byGrade = GRADES.map(g => {
               const rs = myRoutes.filter(r => r.grade === g);
-              return { grade:g, tops: rs.length, flashes: rs.filter(r=>r.results[me.name]==="flash").length, pts: rs.reduce((s,r)=>s+pointsFor(gradeValue(r),r.results[me.name]),0) };
+              return { grade:g, tops: rs.length, flashes: rs.filter(r=>r.results[me.name]==="flash").length, pts: rs.reduce((s,r)=>s+effectivePts(r,me.name),0) };
             });
             const maxG = Math.max(1, ...byGrade.map(curM.val));
             // Berge (immer kumulativ / Gesamt)
@@ -4747,6 +4853,14 @@ export default function App() {
       {achCat && <CategorySheet cat={achCat} items={achState.evald.filter(a => a.cat === achCat)} claimedSet={claimedSet} onClaim={claimAch} onClose={() => setAchCat(null)} />}
       {delConfirm && <DeleteAccountSheet me={me} onClose={() => setDelConfirm(false)} onConfirm={confirmDeleteMyAccount} />}
       {emailOpen && <EmailLinkSheet me={me} onClose={() => setEmailOpen(false)} onSave={saveMyEmail} />}
+      {compareEditOpen && <CompareEditSheet
+        list={compareLists.find(l => l.id === activeCompareId) || null}
+        allNames={[...visName].filter(n => n !== me.name).sort((a, b) => a.localeCompare(b))}
+        onClose={() => setCompareEditOpen(false)}
+        onSave={(l) => { saveCompareList(l); setCompareEditOpen(false); }}
+        onDelete={(id) => { deleteCompareList(id); setCompareEditOpen(false); }}
+      />}
+      {screwConfirm && <ScrewDateConfirmSheet cf={screwConfirm} onClose={() => setScrewConfirm(null)} onConfirm={(dontAskAgain) => { if (dontAskAgain) { try { localStorage.setItem("blocscore:screwConfirmOff", "1"); } catch(e) {} } applySetScrewDate(screwConfirm.wall, screwConfirm.newDate); setScrewConfirm(null); }} />}
       {snapOpen && (
         <div className="scrim" onClick={() => setSnapOpen(false)}>
           <div className="sheet" onClick={e => e.stopPropagation()}>
@@ -4951,6 +5065,80 @@ function CategorySheet({ cat, items, claimedSet, onClaim, onClose }) {
 }
 
 /* ============================ Konto: Passwort ändern ============================ */
+function CompareEditSheet({ list, allNames, onClose, onSave, onDelete }) {
+  const en = LANG === "en";
+  const [name, setName] = useState(list?.name || (en ? "My comparison" : "Mein Vergleich"));
+  const [picked, setPicked] = useState(new Set(list?.names || []));
+  const [q, setQ] = useState("");
+  const toggle = n => setPicked(p => { const s = new Set(p); s.has(n) ? s.delete(n) : s.add(n); return s; });
+  const filtered = allNames.filter(n => !q || n.toLowerCase().includes(q.toLowerCase()));
+  function save() {
+    const names = [...picked];
+    if (!names.length) return;
+    onSave({ id: list?.id || uid(), name: name.trim() || (en ? "Comparison" : "Vergleich"), names });
+  }
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="grip" />
+        <div className="shead"><h2>⚖️ {list ? (en ? "Edit comparison" : "Vergleich bearbeiten") : (en ? "New comparison" : "Neuer Vergleich")}</h2><button className="x" onClick={onClose}>✕</button></div>
+        <div className="sbody">
+          <div className="field"><label>{en ? "Name" : "Name"}</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder={en ? "e.g. My crew" : "z.B. Meine Crew"} maxLength={30} />
+          </div>
+          <div className="note" style={{ margin: "4px 0 10px" }}>{en ? "Pick who to compare yourself with. You're always included." : "Wähle, mit wem du dich vergleichen willst. Du bist immer dabei."}</div>
+          {allNames.length > 8 && <input type="text" className="cmpsearch" value={q} onChange={e => setQ(e.target.value)} placeholder={en ? "Search…" : "Suchen…"} />}
+          <div className="cmppick">
+            {filtered.map(n => <button key={n} className={"cmpname" + (picked.has(n) ? " on" : "")} onClick={() => toggle(n)}>{picked.has(n) ? "✓ " : ""}{n}</button>)}
+            {filtered.length === 0 && <div className="note">{en ? "No people found." : "Keine Personen gefunden."}</div>}
+          </div>
+          <button className="save" style={{ marginTop: 14, opacity: picked.size ? 1 : .5 }} disabled={!picked.size} onClick={save}>{en ? `Save (${picked.size} selected)` : `Speichern (${picked.size} ausgewählt)`}</button>
+          {list && <button className="miniaction" style={{ marginTop: 8, width: "100%", justifyContent: "center", color: "#e98b7d" }} onClick={() => onDelete(list.id)}>{en ? "Delete this comparison" : "Diesen Vergleich löschen"}</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+function ScrewDateConfirmSheet({ cf, onClose, onConfirm }) {
+  const [dontAsk, setDontAsk] = useState(false);
+  const en = LANG === "en";
+  const wname = wallName(cf.wall);
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <div className="grip" />
+        <div className="shead"><h2>🗓 {en ? "Change re-setting date?" : "Umschraubdatum ändern?"}</h2><button className="x" onClick={onClose}>✕</button></div>
+        <div className="sbody">
+          <div className="note" style={{ marginBottom: 12 }}>
+            {en
+              ? <>Setting the date for <b>{wname}</b> from <b>{cf.oldDate ? fmtDate(cf.oldDate) : "—"}</b> to <b>{fmtDate(cf.newDate)}</b>.</>
+              : <>Termin für <b>{wname}</b> wird von <b>{cf.oldDate ? fmtDate(cf.oldDate) : "—"}</b> auf <b>{fmtDate(cf.newDate)}</b> geändert.</>}
+          </div>
+          {cf.isToday && cf.activeCount > 0 && (
+            <div className="delwarn">
+              {en
+                ? <><b>⚠️ The new date is today.</b> As soon as this is saved, all {cf.activeCount} currently active routes at {wname} will be <b>automatically archived</b>. Results stay preserved. Do this only if the sector was actually re-set today.</>
+                : <><b>⚠️ Das neue Datum ist heute.</b> Sobald du speicherst, werden alle {cf.activeCount} aktuell aktiven Routen an {wname} <b>automatisch archiviert</b>. Ergebnisse bleiben erhalten. Nur nutzen, wenn der Sektor heute wirklich umgeschraubt wurde.</>}
+            </div>
+          )}
+          {!cf.isToday && cf.activeCount > 0 && (
+            <div className="lockhint" style={{ marginTop: 4 }}>
+              {en
+                ? <>The change is only informational (no auto-archiving). The {cf.activeCount} currently active routes stay untouched.</>
+                : <>Reine Info-Änderung (keine Auto-Archivierung). Die {cf.activeCount} aktuell aktiven Routen bleiben unverändert.</>}
+            </div>
+          )}
+          <label className="privtoggle" style={{ marginTop: 14, cursor: "pointer" }} onClick={(e) => { e.preventDefault(); setDontAsk(v => !v); }}>
+            <span className={"switch" + (dontAsk ? " on" : "")}><span className="knob" /></span>
+            <span className="privtext"><b>{en ? "Don't show this again" : "Nicht mehr anzeigen"}</b><span>{en ? "Future date changes will apply without confirmation." : "Zukünftige Änderungen werden ohne Rückfrage übernommen."}</span></span>
+          </label>
+          <button className="save" style={{ marginTop: 14 }} onClick={() => onConfirm(dontAsk)}>{en ? "Save date" : "Datum speichern"}</button>
+          <button className="miniaction" style={{ marginTop: 8, width: "100%", justifyContent: "center" }} onClick={onClose}>{en ? "Cancel" : "Abbrechen"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function EmailLinkSheet({ me, onClose, onSave }) {
   const [email, setEmail] = useState(me?.email || "");
   const [pw, setPw] = useState("");
